@@ -1,6 +1,9 @@
 import { auth } from "@/auth";
 import React, { ReactNode } from "react";
 import NotAuthorized from "../components/NotAuthorized";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "./components/app-sidebar";
+import { AppHeader } from "./components/app-header";
 
 interface EmployeeLayoutProps {
 	children: ReactNode;
@@ -9,7 +12,7 @@ interface EmployeeLayoutProps {
 const EmployeeLayout: React.FC<EmployeeLayoutProps> = async ({ children }) => {
 	const session = await auth();
 
-	if (!session || !session.user || !session.user.id) {
+	if (!session || !session.user || !session.user.id || !session.user.name) {
 		return <NotAuthorized />;
 	}
 
@@ -20,14 +23,21 @@ const EmployeeLayout: React.FC<EmployeeLayoutProps> = async ({ children }) => {
 	}
 
 	return (
-		<div className='employee-layout'>
-			<header className='employee-header'>
-				<h1>Employee Dashboard LAYOUT</h1>
-				{/* Add navigation or user info here */}
-			</header>
-			<main className='employee-content'>{children}</main>
-			<footer className='employee-footer'>&copy; {new Date().getFullYear()} Fahad Al Sharq Complain System</footer>
-		</div>
+		<SidebarProvider
+			style={
+				{
+					"--sidebar-width": "calc(var(--spacing) * 72)",
+					"--header-height": "calc(var(--spacing) * 12)",
+				} as React.CSSProperties
+			}>
+			<AppSidebar />
+			<SidebarInset className='overflow-y-hidden'>
+				<main className='h-full'>
+					<AppHeader name={session.user.name} />
+					{children}
+				</main>
+			</SidebarInset>
+		</SidebarProvider>
 	);
 };
 

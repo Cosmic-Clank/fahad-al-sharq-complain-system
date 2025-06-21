@@ -37,7 +37,6 @@ export async function authenticate(formData: FormData) {
 		});
 
 		// If signIn is successful, redirect to a protected page (e.g., dashboard)
-		redirect("/dashboard"); // Change this to your desired authenticated route
 	} catch (error) {
 		// Handle specific NextAuth errors
 		if (error instanceof AuthError) {

@@ -1,17 +1,12 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, LucideOctagon, User } from "lucide-react";
+import { Home, LucideOctagon } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 
 const items = [
 	{
 		title: "Home",
-		url: "/dashboard/admin",
+		url: "/dashboard/employee",
 		icon: Home,
-	},
-	{
-		title: "Employees",
-		url: "/dashboard/admin/employees",
-		icon: User,
 	},
 ];
 

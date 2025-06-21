@@ -63,7 +63,7 @@ const columns = [
 
 function CustomDataTable({ data }: { data: RowData[] }) {
 	const handleRowClick = (row: RowData) => {
-		window.location.href = `/dashboard/admin/complaint/${row.id}`;
+		window.location.href = `/dashboard/employee/complaint/${row.id}`;
 	};
 
 	return <DataTable columns={columns} data={data} pagination sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />;

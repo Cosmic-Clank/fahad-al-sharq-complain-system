@@ -22,6 +22,7 @@ model User {
   role Role @default(EMPLOYEE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  complaintResponses ComplaintResponse[]
 }
 
 enum Role {
@@ -49,8 +50,10 @@ model ComplaintResponse {
   id          Int      @id @default(autoincrement())
   complaintId Int
   response    String
+  responderId Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  responder User @relation(fields: [responderId], references: [id])
   complaint Complaint @relation(fields: [complaintId], references: [id])
 }

@@ -31,8 +31,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = async ({ children }) => {
 				} as React.CSSProperties
 			}>
 			<AppSidebar />
-			<SidebarInset>
-				<main>
+			<SidebarInset className='overflow-y-hidden'>
+				<main className='h-full'>
 					<AppHeader name={session.user.name} />
 					{children}
 				</main>

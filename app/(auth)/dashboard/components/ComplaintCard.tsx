@@ -13,15 +13,17 @@ interface ComplaintData {
 	id: string;
 	customerName: string;
 	customerPhone: string;
-	billNumber: string;
+	buildingName: string;
 	area: string;
 	description: string;
 	imagePaths: string[]; // Array of image URLs
-	createdAt: string; // ISO string from the server
+	createdAt: String; // ISO string from the server
 	responses: {
 		id: string;
 		response: string; // The actual response text
-		createdAt: string; // When this specific response was created (ISO string)
+		createdAt: String; // When this specific response was created (ISO string)
+		startedAt: String; // When this specific response was started (ISO string)
+		completedAt: String; // When this specific response was completed (ISO string)
 		responder: {
 			// Details of the user who made the response
 			fullName: string;
@@ -52,7 +54,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				<h3 className='text-xl font-semibold text-gray-800 mb-1'>{complaint.customerName}</h3>
 				<p className='text-xs text-gray-500 flex items-center'>
 					<FileText className='w-3.5 h-3.5 mr-1 text-gray-400' />
-					Bill No: <span className='font-medium text-gray-700 ml-1'>{complaint.billNumber}</span>
+					Building Name: <span className='font-medium text-gray-700 ml-1'>{complaint.buildingName}</span>
 				</p>
 			</div>
 
@@ -61,21 +63,21 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				<div className='grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 mb-5'>
 					{/* Phone */}
 					<div className='flex items-center text-gray-700'>
-						<Phone className='w-4 h-4 mr-2 text-blue-500' /> {/* Slightly smaller icon, slightly toned-down blue */}
-						<span className='font-medium mr-1'>Phone:</span> {/* Reduced font weight */}
-						<span className='text-base'>{complaint.customerPhone}</span> {/* Reduced size */}
+						<Phone className='w-3 h-3 mr-1 text-blue-500 ' /> {/* Slightly smaller icon, slightly toned-down blue */}
+						<span className='font-medium text-sm mr-1'>Phone:</span> {/* Reduced font weight */}
+						<span className='text-sm'>{complaint.customerPhone}</span> {/* Reduced size */}
 					</div>
 					{/* Area */}
 					<div className='flex items-center text-gray-700'>
-						<MapPin className='w-4 h-4 mr-2 text-green-500' /> {/* Slightly smaller icon, slightly toned-down green */}
-						<span className='font-medium mr-1'>Area:</span> {/* Reduced font weight */}
-						<span className='text-base'>{complaint.area}</span> {/* Reduced size */}
+						<MapPin className='w-3 h-3 mr-1 text-green-500' /> {/* Slightly smaller icon, slightly toned-down green */}
+						<span className='font-medium text-sm mr-1'>Area:</span> {/* Reduced font weight */}
+						<span className='text-sm'>{complaint.area}</span> {/* Reduced size */}
 					</div>
 				</div>
 
 				{/* Description - Smaller header, smaller text */}
 				<div className='mb-5 text-gray-700 leading-relaxed'>
-					<p className='font-semibold text-gray-800 mb-2 flex items-center text-base'>
+					<p className='font-semibold text-gray-800 mb-2 flex items-center text-sm'>
 						<CornerDownRight className='w-4 h-4 mr-2 text-purple-500' /> {/* Smaller icon, slightly toned-down purple */}
 						Description:
 					</p>
@@ -96,11 +98,11 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				{/* Images - Smaller header, smaller grid gap, smaller image height, less rounded */}
 				{complaint.imagePaths && complaint.imagePaths.length > 0 && (
 					<div className='mb-5'>
-						<p className='font-semibold text-gray-800 mb-3 flex items-center text-base'>
-							<ImageIcon className='w-4 h-4 mr-2 text-orange-500' /> {/* Smaller icon, slightly toned-down orange */}
+						<p className='font-semibold text-gray-800 mb-3 flex items-center text-sm'>
+							<ImageIcon className='w-3 h-3 mr-1 text-orange-500' /> {/* Smaller icon, slightly toned-down orange */}
 							Attached Images:
 						</p>
-						<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+						<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-3xl'>
 							{" "}
 							{/* Reduced gap */}
 							{complaint.imagePaths.map((path, index) => (
@@ -130,35 +132,38 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			<div className='p-5 pt-0 border-t border-gray-100 bg-white'>
 				{" "}
 				{/* Toned down background, consistent border */}
-				<h4 className='text-lg font-semibold text-gray-800 mb-3 flex items-center'>
+				<h4 className='text-base font-semibold text-gray-800 mb-3 flex items-center'>
 					{" "}
 					{/* Reduced size */}
-					<MessageSquare className='w-4 h-4 mr-2 text-indigo-500' /> Past Responses ({complaint.responses.length}) {/* Smaller icon, toned-down indigo */}
+					<MessageSquare className='w-3 h-3 mr-1 text-indigo-500' /> Past Responses ({complaint.responses.length}) {/* Smaller icon, toned-down indigo */}
 				</h4>
 				{complaint.responses.length > 0 ? (
 					<div className='space-y-3'>
 						{" "}
 						{/* Reduced vertical space */}
 						{complaint.responses
-							.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort by oldest first
-							.map((response) => (
-								<div key={response.id} className='bg-gray-50 p-3 rounded-md border border-gray-200 shadow-sm'>
-									{" "}
-									{/* Reduced padding, less rounded */}
-									<div className='flex items-center justify-between text-xs text-gray-600 mb-1.5'>
-										{" "}
-										{/* Reduced text size, adjusted margin */}
-										<span className='flex items-center font-medium text-gray-700'>
+							// .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort by oldest first
+							.map((response) => {
+								if (response.response)
+									return (
+										<div key={response.id} className='bg-gray-50 p-3 rounded-md border border-gray-200 shadow-sm'>
 											{" "}
-											{/* Reduced font weight */}
-											<User className='w-3.5 h-3.5 mr-1 text-gray-500' /> {/* Smaller icon */}
-											{response.responder.fullName} ({response.responder.role})
-										</span>
-										<span className='text-xs text-gray-500'>{new Date(response.createdAt).toLocaleString()}</span>
-									</div>
-									<p className='text-gray-700 leading-relaxed text-sm whitespace-pre-wrap'>{response.response}</p> {/* Reduced text size, slightly darker text */}
-								</div>
-							))}
+											{/* Reduced padding, less rounded */}
+											<div className='flex items-center justify-between text-xs text-gray-600 mb-1.5'>
+												{" "}
+												{/* Reduced text size, adjusted margin */}
+												<span className='flex items-center font-medium text-gray-700'>
+													{" "}
+													{/* Reduced font weight */}
+													<User className='w-3.5 h-3.5 mr-1 text-gray-500' /> {/* Smaller icon */}
+													{response.responder.fullName} ({response.responder.role})
+												</span>
+												<span className='text-xs text-gray-500'>{response.createdAt}</span>
+											</div>
+											<p className='text-gray-700 leading-relaxed text-sm whitespace-pre-wrap'>{response.response}</p> {/* Reduced text size, slightly darker text */}
+										</div>
+									);
+							})}
 					</div>
 				) : (
 					<div className='text-gray-500 text-center py-3 border rounded-md bg-white text-sm'>No responses yet.</div>
@@ -176,7 +181,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			<div className='p-3 text-right text-xs text-gray-500 bg-gray-50 mt-auto'>
 				<p className='flex items-center justify-end'>
 					<Calendar className='w-3.5 h-3.5 mr-1 text-gray-400' /> {/* Smaller icon */}
-					Filed: {new Date(complaint.createdAt).toLocaleString()}
+					Filed: {complaint.createdAt}
 				</p>
 			</div>
 		</div>

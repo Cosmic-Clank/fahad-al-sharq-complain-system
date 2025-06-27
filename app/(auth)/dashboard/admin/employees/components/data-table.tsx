@@ -39,7 +39,7 @@ const columns = [
 	},
 	{
 		name: "Created At",
-		selector: (row: RowData) => new Date(row.createdAt).toLocaleString(), // Format date for display
+		selector: (row: RowData) => row.createdAt, // Format date for display
 		sortable: true,
 		grow: 1.5,
 	},

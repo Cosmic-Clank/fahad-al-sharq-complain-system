@@ -4,7 +4,7 @@
 import React, { useState, useRef } from "react";
 import { useFormStatus } from "react-dom"; // Hook for Server Action status
 import { Send } from "lucide-react"; // Icon for submit button
-import { addComplaintResponse } from "../actions"; // Import your server action (ensure this path is correct, e.g., '@/actions/complaint-actions')
+import { addComplaintResponse } from "./actions"; // Import your server action (ensure this path is correct, e.g., '@/actions/complaint-actions')
 import { Button } from "@/components/ui/button"; // Assuming this is a Shadcn UI Button or similar
 
 interface ComplaintResponseFormProps {

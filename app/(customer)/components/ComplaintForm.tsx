@@ -8,12 +8,11 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 
 import { submitComplaint } from "../actions"; // Import your server action
-import { redirect } from "next/navigation";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 const formSchema = z.object({
@@ -21,8 +20,8 @@ const formSchema = z.object({
 	email: z.string({ required_error: "Email is required" }).email({ message: "Enter a valid email address" }),
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
-	billNumber: z.string({ required_error: "Bill number is required" }).min(1, { message: "Bill number must be at least 1 character long" }).max(20, { message: "Bill number must be at most 20 characters long" }),
-	branchArea: z.string({ required_error: "Branch area is required" }).refine((val) => ["Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Umm Al Quwain", "Ras Al Khaimah", "Fujairah"].includes(val), {
+	buildingName: z.string({ required_error: "Building name is required" }).min(1, { message: "Building name must be at least 1 character long" }).max(20, { message: "Building name must be at most 20 characters long" }),
+	branchArea: z.string({ required_error: "Branch area is required" }).refine((val) => ["Al Nuaimia 1 - Ajman", "Al Jerf - Ajman", "Taawun - Sharjah", "Al Nahda - Sharjah", "Al Khan - Sharjah", "Al Majaz 1 - Sharjah", "Al Majaz 2 - Sharjah", "Abu Shagara - Sharjah", "Al Qasimia - Sharjah", "Muwaileh - Sharjah", "Industrial 15 - Sharjah", "Al Nahda - Dubai", "Al Qusais - Dubai", "Al Garhoud - Dubai", "Warsan - Dubai", "Silicon - Dubai", "Ras al Khor - Dubai", "Al Barsha - Dubai", "DIP - Dubai", "DIC - Dubai"].includes(val), {
 		message: "Please select a valid branch area",
 	}),
 	description: z.string({ required_error: "Description is required" }).min(10, { message: "Description must be at least 10 characters long" }).max(500, { message: "Description must be at most 500 characters long" }),
@@ -40,7 +39,7 @@ function ComplaintForm() {
 			email: "",
 			phoneNumber: "",
 			address: "",
-			billNumber: "",
+			buildingName: "",
 			branchArea: "",
 			description: "",
 		},
@@ -83,7 +82,7 @@ function ComplaintForm() {
 		formData.append("email", values.email);
 		formData.append("phoneNumber", values.phoneNumber);
 		formData.append("address", values.address);
-		formData.append("billNumber", values.billNumber);
+		formData.append("buildingName", values.buildingName);
 		formData.append("branchArea", values.branchArea);
 		formData.append("description", values.description);
 
@@ -195,12 +194,12 @@ function ComplaintForm() {
 				{/* Bill Number */}
 				<FormField
 					control={form.control}
-					name='billNumber' // This name must match the schema and formData key
+					name='buildingName' // This name must match the schema and formData key
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Bill Number</FormLabel>
+							<FormLabel>Building Name</FormLabel>
 							<FormControl>
-								<Input placeholder='Enter the bill number of your purchase' {...field} />
+								<Input placeholder='Enter the building name' {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -213,20 +212,44 @@ function ComplaintForm() {
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Branch Area</FormLabel>
+
 							<Select onValueChange={field.onChange} defaultValue={field.value}>
 								<FormControl>
 									<SelectTrigger>
-										<SelectValue placeholder='Select a branch area' />
+										<SelectValue placeholder='Select an area' />
 									</SelectTrigger>
 								</FormControl>
+
 								<SelectContent>
-									<SelectItem value='Abu Dhabi'>Abu Dhabi</SelectItem>
-									<SelectItem value='Dubai'>Dubai</SelectItem>
-									<SelectItem value='Sharjah'>Sharjah</SelectItem>
-									<SelectItem value='Ajman'>Ajman</SelectItem>
-									<SelectItem value='Umm Al Quwain'>Umm Al Quwain</SelectItem>
-									<SelectItem value='Ras Al Khaimah'>Ras Al Khaimah</SelectItem>
-									<SelectItem value='Fujairah'>Fujairah</SelectItem>
+									<SelectGroup>
+										<SelectLabel>Ajman</SelectLabel>
+										<SelectItem value='Al Nuaimia 1 - Ajman'>Al Nuaimia 1</SelectItem>
+										<SelectItem value='Al Jerf - Ajman'>Al Jerf</SelectItem>
+									</SelectGroup>
+									<SelectGroup>
+										<SelectLabel>Sharjah</SelectLabel>
+										<SelectItem value='Taawun - Sharjah'>Taawun</SelectItem>
+										<SelectItem value='Al Nahda - Sharjah'>Al Nahda</SelectItem>
+										<SelectItem value='Al Khan - Sharjah'>Al Khan</SelectItem>
+										<SelectItem value='Al Majaz 1 - Sharjah'>Al Majaz 1</SelectItem>
+										<SelectItem value='Al Majaz 2 - Sharjah'>Al Majaz 2</SelectItem>
+										<SelectItem value='Abu Shagara - Sharjah'>Abu Shagara</SelectItem>
+										<SelectItem value='Al Qasimia - Sharjah'>Al Qasimia</SelectItem>
+										<SelectItem value='Muwaileh - Sharjah'>Muwaileh</SelectItem>
+										<SelectItem value='Industrial 15 - Sharjah'>Industrial 15</SelectItem>
+									</SelectGroup>
+									<SelectGroup>
+										<SelectLabel>Dubai</SelectLabel>
+										<SelectItem value='Al Nahda - Dubai'>Al Nahda</SelectItem>
+										<SelectItem value='Al Qusais - Dubai'>Al Qusais</SelectItem>
+										<SelectItem value='Al Garhoud - Dubai'>Al Garhoud</SelectItem>
+										<SelectItem value='Warsan - Dubai'>Warsan</SelectItem>
+										<SelectItem value='Silicon - Dubai'>Silicon</SelectItem>
+										<SelectItem value='Ras al Khor - Dubai'>Ras al Khor</SelectItem>
+										<SelectItem value='Al Barsha - Dubai'>Al Barsha</SelectItem>
+										<SelectItem value='DIP - Dubai'>DIP</SelectItem>
+										<SelectItem value='DIC - Dubai'>DIC</SelectItem>
+									</SelectGroup>
 								</SelectContent>
 							</Select>
 							<FormDescription>Please select the branch area where you would like to submit your complaint.</FormDescription>
@@ -283,7 +306,7 @@ function ComplaintForm() {
 
 				{submitError && <p className='text-red-500 text-sm mt-2'>{submitError}</p>}
 
-				<Button type='submit' className='w-full' disabled={isSubmitting}>
+				<Button type='submit' className='w-full hover:cursor-pointer' disabled={isSubmitting}>
 					{isSubmitting ? "Submitting..." : "Submit Complaint"}
 				</Button>
 			</form>

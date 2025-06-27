@@ -1,5 +1,6 @@
 import { signOut } from "@/auth";
 import { LogOut } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export function LogoutForm() {
 	return (
@@ -7,7 +8,7 @@ export function LogoutForm() {
 			action={async () => {
 				"use server";
 				await signOut();
-				window.location.href = "/login"; // Redirect to login page after logout
+				return redirect("/login"); // Redirect to login page after logout
 			}}>
 			<LogOut />
 

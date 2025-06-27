@@ -36,14 +36,14 @@ model Complaint {
   customerEmail   String
   customerPhone   String
   customerAddress String
-  billNumber      String
+  buildingName    String
   area            String
   description     String
   imagePaths      String[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  responses       ComplaintResponse[]
+  responses       ComplaintResponse[] 
 }
 
 model ComplaintResponse {
@@ -53,7 +53,9 @@ model ComplaintResponse {
   responderId Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
 
   responder User @relation(fields: [responderId], references: [id])
-  complaint Complaint @relation(fields: [complaintId], references: [id])
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
 }

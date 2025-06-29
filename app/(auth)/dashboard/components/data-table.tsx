@@ -15,6 +15,9 @@ type RowData = {
 	area: string;
 	description: string;
 	createdAt: string;
+	status: string;
+	completedBy?: string | null;
+	completedOn?: string | null;
 };
 
 const columns = [
@@ -22,24 +25,25 @@ const columns = [
 		name: "ID",
 		selector: (row: RowData) => row.id,
 		sortable: true,
+		grow: 0,
 	},
 	{
-		name: "Customer Name",
+		name: "Cust Name",
 		selector: (row: RowData) => row.customerName,
 		sortable: true,
 	},
 	{
-		name: "Customer Email",
+		name: "Cust Email",
 		selector: (row: RowData) => row.customerEmail,
 		sortable: true,
 	},
 	{
-		name: "Customer Phone",
+		name: "Cust Phone",
 		selector: (row: RowData) => row.customerPhone,
 		sortable: true,
 	},
 	{
-		name: "Building Name",
+		name: "Bldg Name",
 		selector: (row: RowData) => row.buildingName,
 		sortable: true,
 	},
@@ -59,8 +63,46 @@ const columns = [
 		sortable: true,
 	},
 	{
-		name: "Created At",
+		name: "Submitted On",
 		selector: (row: RowData) => row.createdAt,
+		sortable: true,
+	},
+	{
+		name: "Status",
+		selector: (row: RowData) => row.status,
+		sortable: true,
+		conditionalCellStyles: [
+			{
+				when: (row: RowData) => row.status === "Completed",
+				style: {
+					backgroundColor: "#d4edda",
+					color: "#155724",
+				},
+			},
+			{
+				when: (row: RowData) => row.status === "In Progress",
+				style: {
+					backgroundColor: "#fff3cd",
+					color: "#856404",
+				},
+			},
+			{
+				when: (row: RowData) => row.status === "Incomplete",
+				style: {
+					backgroundColor: "#f8d7da",
+					color: "#721c24",
+				},
+			},
+		],
+	},
+	{
+		name: "Completed By",
+		selector: (row: RowData) => row.completedBy || "-",
+		sortable: true,
+	},
+	{
+		name: "Worked On",
+		selector: (row: RowData) => row.completedOn || "-",
 		sortable: true,
 	},
 ];

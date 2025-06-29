@@ -41,8 +41,24 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 							role: true, // Assuming you have a role field in your user model
 						},
 					},
+					imagePaths: true, // Assuming this is an array of image URLs for the response
 				},
 				orderBy: { createdAt: "asc" },
+			},
+			workTimes: {
+				select: {
+					id: true,
+					date: true, // Date of the work time entry
+					startTime: true, // Start time of the work
+					endTime: true, // End time of the work
+					user: {
+						select: {
+							fullName: true, // Assuming you have a name field in your user model
+							role: true, // Assuming you have a role field in your user model
+						},
+					},
+				},
+				orderBy: { date: "asc" }, // Order by date ascending
 			},
 		},
 	});
@@ -73,7 +89,18 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 				fullName: resp.responder.fullName,
 				role: String(resp.responder.role),
 			},
+			imagePaths: resp.imagePaths || [], // Ensure imagePaths is an array
 		})),
+		workTimes: complaint.workTimes.map((wt) => ({
+			id: String(wt.id),
+			date: wt.date instanceof Date ? wt.date.toISOString().split("T")[0] : String(wt.date), // Format date as YYYY-MM-DD
+			startTime: wt.startTime instanceof Date ? wt.startTime.toLocaleTimeString() : String(wt.startTime), // Format time as HH:MM:SS
+			endTime: wt.endTime instanceof Date ? wt.endTime.toLocaleTimeString() : String(wt.endTime), // Format time as HH:MM:SS
+			user: {
+				fullName: wt.user.fullName,
+				role: wt.user.role, // Ensure role is a string
+			},
+		}))[0],
 	};
 
 	return (

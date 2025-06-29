@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import fs from "fs/promises"; // Import Node.js file system promises API
 import path from "path"; // Import Node.js path module
 import { nanoid } from "nanoid"; // For unique file names
-import { signIn } from "@/auth";
 
 // IMPORTANT: Re-define your Zod schema on the server for validation!
 // Match this with your client-side formSchema, but enforce server-side validation.

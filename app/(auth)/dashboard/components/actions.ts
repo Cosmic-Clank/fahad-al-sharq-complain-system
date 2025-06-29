@@ -3,7 +3,10 @@
 
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma"; // Your Prisma client instance
-import { revalidatePath } from "next/cache"; // To revalidate the data after submission
+import { nanoid } from "nanoid"; // For unique file names
+
+import path from "path";
+import fs from "fs/promises";
 
 // Define the type for the form data you expect
 interface ResponseFormData {
@@ -16,6 +19,7 @@ export async function addComplaintResponse(formData: FormData) {
 	if (!session || !session.user || !session.user.id) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
+
 	// Extract data from the FormData object
 	const complaintId = formData.get("complaintId") as string;
 	const responseText = formData.get("responseText") as string;
@@ -23,6 +27,57 @@ export async function addComplaintResponse(formData: FormData) {
 	// Basic validation (you might want more robust validation here, e.g., Zod)
 	if (!complaintId || !responseText || responseText.trim() === "") {
 		return { success: false, message: "Complaint ID and response text are required." };
+	}
+
+	const files = formData.getAll("images") as File[]; // 'images' should match your input name
+
+	const uploadedImagePaths: string[] = []; // This will now store only strings (paths)
+
+	const maxSize = 5 * 1024 * 1024; // 5MB
+	const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+	const maxImages = 5;
+
+	if (files.length > maxImages) {
+		return { success: false, message: `You can upload a maximum of ${maxImages} images.` };
+	}
+	const directoryName = nanoid(); // Basic slugify
+	const uploadDir = path.join(process.cwd(), "public", "uploads", directoryName);
+
+	if (files.length > 0) {
+		try {
+			// Create the directory if it doesn't exist
+			await fs.mkdir(uploadDir, { recursive: true });
+		} catch (dirError) {
+			console.error(`Error creating upload directory ${uploadDir}:`, dirError);
+			return { message: "Failed to create upload directory on server." };
+		}
+	}
+
+	for (const file of files) {
+		// Skip empty file inputs if any (e.g. user selected nothing for an optional upload)
+		if (file.size === 0 && file.name === "undefined") continue;
+
+		if (!allowedTypes.includes(file.type) || file.size > maxSize) {
+			console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+			return { message: `Invalid file detected: ${file.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.` };
+		}
+
+		const fileExtension = path.extname(file.name);
+		const uniqueFileName = `${nanoid()}${fileExtension}`; // Generate a unique name for the file
+		const filePath = path.join(uploadDir, uniqueFileName); // Absolute path to save the file
+		// The web-accessible path relative to the 'public' directory
+		const relativeWebPath = `/uploads/${directoryName}/${uniqueFileName}`;
+
+		try {
+			// Convert File object to ArrayBuffer then to Buffer for writing
+			const buffer = Buffer.from(await file.arrayBuffer());
+			await fs.writeFile(filePath, buffer);
+
+			uploadedImagePaths.push(relativeWebPath); // Store only the path string
+		} catch (uploadError) {
+			console.error("Error saving image locally:", uploadError);
+			return { message: `Failed to save image ${file.name} on the server. Please try again.` };
+		}
 	}
 
 	try {
@@ -33,6 +88,7 @@ export async function addComplaintResponse(formData: FormData) {
 				complaintId: Number(complaintId),
 				response: responseText.trim(),
 				responderId: Number(session.user.id), // Assuming you have a user ID in the session
+				imagePaths: uploadedImagePaths, // Store the paths of uploaded images
 				// Add fields for who responded (e.g., userId from auth context)
 				// userId: 'your_user_id_here',
 			},
@@ -50,147 +106,76 @@ export async function addComplaintResponse(formData: FormData) {
 	}
 }
 
-type ActionResponse = {
-	success: boolean;
-	message: string;
-	responseId?: string;
-	startedAt?: string; // ISO string for Date
-	completedAt?: string; // ISO string for Date
-	error?: string; // Detailed error message for development/debugging
-};
-
-// --- Server Action: startComplaintResponse ---
-/**
- * Starts a new response session for a complaint or identifies an existing in-progress one for the current user.
- * It sets the `startedAt` timestamp on the response record.
- * @param complaintId The ID of the complaint to start work on.
- * @returns An object indicating success/failure, message, and the ID of the started response.
- */
-export async function startComplaintResponse(complaintId: string): Promise<ActionResponse> {
-	const session = await auth(); // Get the current user session
+export async function addStartWorkTime(formData: FormData) {
+	const session = await auth();
 	if (!session || !session.user || !session.user.id) {
-		return { success: false, message: "Unauthorized. Please log in.", error: "User not authenticated." };
+		return { success: false, message: "Unauthorized. Please log in." };
 	}
 
-	const employeeId = session.user.id; // Get the employeeId securely from the session
+	const complaintId = formData.get("complaintId") as string;
+
+	if (!complaintId) {
+		return { success: false, message: "Server error" };
+	}
 
 	try {
-		// First, check if this specific employee already has an active (started but not completed)
-		// response session for this complaint. This prevents multiple 'start' entries for the same work in progress.
-		const existingInProgressResponse = await prismaClient.complaintResponse.findFirst({
-			// <--- CORRECTED MODEL NAME
-			where: {
-				complaintId: Number(complaintId),
-				responderId: Number(employeeId),
-				startedAt: { not: null },
-				completedAt: null, // Looking for responses that are started but not yet completed
-			},
-		});
-
-		if (existingInProgressResponse) {
-			console.log(`Work already in progress for complaint ${complaintId} by ${employeeId}. Returning existing session.`);
-			return {
-				success: true,
-				message: "Work session already in progress.",
-				responseId: existingInProgressResponse.id.toString(),
-				startedAt: existingInProgressResponse.startedAt?.toISOString(),
-			};
-		}
-
-		// If no existing in-progress response for this employee and complaint, create a new one
-		const newResponse = await prismaClient.complaintResponse.create({
-			// <--- CORRECTED MODEL NAME
+		const newWorkTime = await prismaClient.workTimes.create({
 			data: {
+				userId: Number(session.user.id), // Assuming you have a user ID in the session
 				complaintId: Number(complaintId),
-				startedAt: new Date(), // Set the started timestamp
-				response: "", // Initialize with an empty response text
-				responderId: Number(employeeId), // Set the foreign key directly
-				// Add any other default fields needed for a new response (e.g., a default status)
+				date: new Date(),
+				startTime: new Date(),
 			},
 		});
 
-		// Revalidate paths to refresh data on affected pages in the UI
+		console.log("Work started:", newWorkTime);
 
-		return {
-			success: true,
-			message: "Work session started successfully.",
-			responseId: newResponse.id.toString(),
-			startedAt: newResponse.startedAt?.toISOString(),
-		};
+		return { success: true, message: "Work time added successfully!" };
 	} catch (error) {
-		console.error("Error starting complaint response:", error);
-		return { success: false, error: (error as Error).message || "Database error.", message: "Failed to start work session." };
+		console.error("Error adding work time:", error);
+		return { success: false, message: "Failed to add work time. Please try again." };
 	}
 }
 
-// --- Server Action: completeComplaintResponse ---
-/**
- * Completes an existing response session by setting its `completedAt` timestamp.
- * It also verifies that the current user is the one who started this response.
- * @param responseId The ID of the response session to complete.
- * @returns An object indicating success/failure and message.
- */
-export async function completeComplaintResponse(responseId: string): Promise<ActionResponse> {
-	const session = await auth(); // Get the current user session
+export async function addEndWorkTime(formData: FormData) {
+	const session = await auth();
 	if (!session || !session.user || !session.user.id) {
-		return { success: false, message: "Unauthorized. Please log in.", error: "User not authenticated." };
+		return { success: false, message: "Unauthorized. Please log in." };
 	}
 
-	const employeeId = session.user.id;
+	const complaintId = formData.get("complaintId") as string;
+
+	if (!complaintId) {
+		return { success: false, message: "Server error" };
+	}
 
 	try {
-		// Find and update the specific response. Ensure it was started by this user and isn't already completed.
-		const updatedResponse = await prismaClient.complaintResponse.updateMany({
-			// <--- CORRECTED MODEL NAME
+		const workTime = await prismaClient.workTimes.findFirst({
 			where: {
-				id: Number(responseId),
-				responderId: Number(employeeId), // Ensure only the actual responder can complete their session
-				startedAt: { not: null },
-				completedAt: null, // Ensure we are only completing an active, not-yet-completed session
+				complaintId: Number(complaintId),
+				endTime: null, // Find the work time that has not ended yet
 			},
+			orderBy: {
+				date: "desc", // Get the most recent work time
+			},
+		});
+
+		if (!workTime) {
+			return { success: false, message: "No active work time found for this complaint." };
+		}
+
+		const updatedWorkTime = await prismaClient.workTimes.update({
+			where: { id: workTime.id },
 			data: {
-				completedAt: new Date(), // Set the completed timestamp
-				// You might also want to set a 'status' field on the response here, e.g., 'Completed'
+				endTime: new Date(),
 			},
 		});
 
-		if (updatedResponse.count === 0) {
-			// This means the response was not found, or it didn't match the responderId,
-			// or it was already completed.
-			const responseCheck = await prismaClient.complaintResponse.findUnique({ where: { id: Number(responseId) } }); // <--- CORRECTED MODEL NAME
-			if (!responseCheck) {
-				return { success: false, message: "Work session not found.", error: "Response ID not found." };
-			}
-			if (responseCheck.responderId !== Number(employeeId)) {
-				return { success: false, message: "Not authorized to complete this session.", error: "Responder mismatch." };
-			}
-			if (responseCheck.completedAt) {
-				return { success: false, message: "Work session already completed.", error: "Already completed." };
-			}
-			return { success: false, message: "Could not complete work session. (Unknown issue)", error: "UpdateMany count 0." };
-		}
+		console.log("Work ended:", updatedWorkTime);
 
-		// Fetch the updated response to return its details
-		const responseDetails = await prismaClient.complaintResponse.findUnique({
-			// <--- CORRECTED MODEL NAME
-			where: { id: Number(responseId) },
-			select: { complaintId: true, startedAt: true, completedAt: true },
-		});
-
-		if (!responseDetails) {
-			return { success: false, message: "Completed work, but could not retrieve details.", error: "Response details not found after update." };
-		}
-
-		// Revalidate paths to refresh data in the UI
-
-		return {
-			success: true,
-			message: "Work session completed successfully!",
-			completedAt: responseDetails.completedAt?.toISOString(),
-			startedAt: responseDetails.startedAt?.toISOString(),
-		};
+		return { success: true, message: "Work time ended successfully!" };
 	} catch (error) {
-		console.error("Error completing complaint response:", error);
-		return { success: false, error: (error as Error).message || "Database error.", message: "Failed to complete work session." };
+		console.error("Error ending work time:", error);
+		return { success: false, message: "Failed to end work time. Please try again." };
 	}
 }

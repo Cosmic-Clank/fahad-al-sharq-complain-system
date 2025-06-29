@@ -13,12 +13,31 @@ async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
 			area: true,
 			description: true,
 			createdAt: true,
+			workTimes: {
+				select: {
+					id: true,
+					date: true,
+					startTime: true,
+					endTime: true,
+					user: {
+						select: {
+							fullName: true,
+							role: true,
+						},
+					},
+				},
+				orderBy: { date: "asc" },
+			},
 		},
 	});
 	const formattedData = data.map((item) => ({
 		...item,
 		id: String(item.id),
 		createdAt: item.createdAt.toDateString(),
+
+		status: item.workTimes.length > 0 ? (item.workTimes[item.workTimes.length - 1].endTime ? "Completed" : "In Progress") : "Incomplete",
+		completedBy: item.workTimes.length > 0 ? item.workTimes[item.workTimes.length - 1].user.fullName : null,
+		completedOn: item.workTimes.length > 0 ? item.workTimes[item.workTimes.length - 1].date.toDateString() : null,
 	}));
 	return (
 		<>

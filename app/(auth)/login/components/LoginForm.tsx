@@ -13,7 +13,7 @@ import { Loading } from "@/components/ui/loading";
 
 // Client-side Zod schema for login (should match server-side)
 const loginFormSchema = z.object({
-	email: z.string({ required_error: "Email is required" }).email({ message: "Enter a valid email address" }),
+	username: z.string({ required_error: "Username is required" }),
 	password: z.string({ required_error: "Password is required" }).min(1, { message: "Password cannot be empty." }),
 });
 
@@ -24,7 +24,7 @@ function LoginForm() {
 	const form = useForm<z.infer<typeof loginFormSchema>>({
 		resolver: zodResolver(loginFormSchema),
 		defaultValues: {
-			email: "",
+			username: "",
 			password: "",
 		},
 	});
@@ -34,7 +34,7 @@ function LoginForm() {
 		setLoginError(null); // Clear previous errors
 
 		const formData = new FormData();
-		formData.append("email", values.email);
+		formData.append("username", values.username);
 		formData.append("password", values.password);
 
 		try {
@@ -68,12 +68,12 @@ function LoginForm() {
 					{/* Email Field */}
 					<FormField
 						control={form.control}
-						name='email'
+						name='username'
 						render={({ field }) => (
 							<FormItem className=''>
-								<FormLabel>Email</FormLabel>
+								<FormLabel>Username</FormLabel>
 								<FormControl>
-									<Input type='email' placeholder='Enter your email' {...field} />
+									<Input placeholder='Enter your username' {...field} />
 								</FormControl>
 								<FormMessage />
 							</FormItem>

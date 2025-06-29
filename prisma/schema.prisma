@@ -16,13 +16,14 @@ datasource db {
 
 model User {
   id    Int     @id @default(autoincrement())
-  email String  @unique
+  username String  @unique
   passwordHash String
   fullName  String
   role Role @default(EMPLOYEE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   complaintResponses ComplaintResponse[]
+  workTimes WorkTimes[]
 }
 
 enum Role {
@@ -43,7 +44,8 @@ model Complaint {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  responses       ComplaintResponse[] 
+  responses       ComplaintResponse[]
+  workTimes       WorkTimes[]
 }
 
 model ComplaintResponse {
@@ -53,9 +55,22 @@ model ComplaintResponse {
   responderId Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  startedAt   DateTime?
-  completedAt DateTime?
+  imagePaths  String[]
 
   responder User @relation(fields: [responderId], references: [id])
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+}
+
+model WorkTimes {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  complaintId Int
+  date        DateTime
+  startTime   DateTime
+  endTime     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
 }

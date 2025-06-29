@@ -21,7 +21,7 @@ CREATE TABLE "Complaint" (
     "customerEmail" TEXT NOT NULL,
     "customerPhone" TEXT NOT NULL,
     "customerAddress" TEXT NOT NULL,
-    "billNumber" TEXT NOT NULL,
+    "buildingName" TEXT NOT NULL,
     "area" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "imagePaths" TEXT[],
@@ -36,8 +36,11 @@ CREATE TABLE "ComplaintResponse" (
     "id" SERIAL NOT NULL,
     "complaintId" INTEGER NOT NULL,
     "response" TEXT NOT NULL,
+    "responderId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
 
     CONSTRAINT "ComplaintResponse_pkey" PRIMARY KEY ("id")
 );
@@ -46,4 +49,7 @@ CREATE TABLE "ComplaintResponse" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- AddForeignKey
-ALTER TABLE "ComplaintResponse" ADD CONSTRAINT "ComplaintResponse_complaintId_fkey" FOREIGN KEY ("complaintId") REFERENCES "Complaint"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ComplaintResponse" ADD CONSTRAINT "ComplaintResponse_responderId_fkey" FOREIGN KEY ("responderId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ComplaintResponse" ADD CONSTRAINT "ComplaintResponse_complaintId_fkey" FOREIGN KEY ("complaintId") REFERENCES "Complaint"("id") ON DELETE CASCADE ON UPDATE CASCADE;

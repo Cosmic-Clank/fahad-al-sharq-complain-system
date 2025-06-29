@@ -7,6 +7,8 @@ import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight,
 
 import ComplaintResponseForm from "./ComplaintResponseForm"; // Import the response form
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { addEndWorkTime, addStartWorkTime } from "./actions";
 
 // Define the data type for a single complaint
 interface ComplaintData {
@@ -22,14 +24,23 @@ interface ComplaintData {
 		id: string;
 		response: string; // The actual response text
 		createdAt: String; // When this specific response was created (ISO string)
-		startedAt: String; // When this specific response was started (ISO string)
-		completedAt: String; // When this specific response was completed (ISO string)
 		responder: {
 			// Details of the user who made the response
 			fullName: string;
 			role: string;
 		};
+		imagePaths: string[]; // Array of image URLs for the response
 	}[];
+	workTimes: {
+		id: string; // Unique identifier for the work time entry
+		date: string; // Date of the work time entry
+		startTime: string; // Start time of the work
+		endTime: string; // End time of the work
+		user: {
+			fullName: string; // Name of the user who worked on the complaint
+			role: string; // Role of the user (e.g., EMPLOYEE, ADMIN)
+		};
+	};
 }
 
 interface ComplaintCardProps {
@@ -128,6 +139,82 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				)}
 			</div>
 
+			{/* Work times section */}
+			<div className='px-5 pb-5'>
+				{complaint.workTimes && complaint.workTimes.endTime !== "null" && (
+					<div className='bg-green-50 border border-green-200 rounded-md p-4 mb-4'>
+						<div className='text-green-700 font-semibold flex items-center mb-2'>
+							<Calendar className='w-4 h-4 mr-2 text-green-500' />
+							Work Completed: {complaint.workTimes.user.fullName} ({complaint.workTimes.user.role})
+						</div>
+						<div className='text-sm text-gray-700 mb-1'>
+							<span className='font-medium'>Date:</span> <span>{complaint.workTimes.date}</span>
+						</div>
+						<div className='text-sm text-gray-700 mb-1'>
+							<span className='font-medium'>Start Time:</span> <span>{complaint.workTimes.startTime}</span>
+						</div>
+						<div className='text-sm text-gray-700'>
+							<span className='font-medium'>End Time:</span> <span>{complaint.workTimes.endTime}</span>
+						</div>
+					</div>
+				)}
+				{!complaint.workTimes && (
+					<div className='bg-blue-50 border border-blue-200 rounded-md p-4 mb-4'>
+						<form
+							action={async (formData: FormData) => {
+								// Call the server action directly
+								const result = await addStartWorkTime(formData);
+
+								if (result.success) {
+									// Optionally, you can refresh the page or update the state to reflect the new work time
+									window.location.reload(); // Reloads the page to show updated work times
+								} else {
+									alert(result.message); // Show error message
+								}
+							}}>
+							<input type='hidden' name='complaintId' value={complaint.id} />
+							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition'>
+								<Calendar className='w-4 h-4' />
+								Start Work
+							</Button>
+						</form>
+					</div>
+				)}
+
+				{complaint.workTimes && complaint.workTimes.startTime && complaint.workTimes.endTime === "null" && (
+					<div className='bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4'>
+						<div className='text-yellow-700 font-semibold flex items-center mb-2'>
+							<Calendar className='w-4 h-4 mr-2 text-yellow-500' />
+							Work In Progress: {complaint.workTimes.user.fullName} ({complaint.workTimes.user.role})
+						</div>
+						<div className='text-sm text-gray-700 mb-1'>
+							<span className='font-medium'>Date:</span> <span>{complaint.workTimes.date}</span>
+						</div>
+						<div className='text-sm text-gray-700 mb-3'>
+							<span className='font-medium'>Start Time:</span> <span>{complaint.workTimes.startTime}</span>
+						</div>
+						<form
+							action={async (formData: FormData) => {
+								// Call the server action directly
+								const result = await addEndWorkTime(formData);
+
+								if (result.success) {
+									// Optionally, you can refresh the page or update the state to reflect the new work time
+									window.location.reload(); // Reloads the page to show updated work times
+								} else {
+									alert(result.message); // Show error message
+								}
+							}}>
+							<input type='hidden' name='complaintId' value={complaint.id} />
+							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 rounded-md transition'>
+								<Calendar className='w-4 h-4' />
+								End Work
+							</Button>
+						</form>
+					</div>
+				)}
+			</div>
+
 			{/* NEW: Past Responses Section - Slightly reduced padding, smaller text elements, lighter borders */}
 			<div className='p-5 pt-0 border-t border-gray-100 bg-white'>
 				{" "}
@@ -161,6 +248,21 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 												<span className='text-xs text-gray-500'>{response.createdAt}</span>
 											</div>
 											<p className='text-gray-700 leading-relaxed text-sm whitespace-pre-wrap'>{response.response}</p> {/* Reduced text size, slightly darker text */}
+											<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-3xl'>
+												{" "}
+												{/* Reduced gap */}
+												{response.imagePaths.map((path, index) => (
+													<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm'>
+														{" "}
+														{/* Reduced height, less rounded */}
+														<Link href={path} target='_blank' rel='noopener noreferrer'>
+															{" "}
+															{/* Link to open image in new tab */}
+															<Image src={path} alt={`Complaint Image ${index + 1}`} fill sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
+														</Link>
+													</div>
+												))}
+											</div>
 										</div>
 									);
 							})}

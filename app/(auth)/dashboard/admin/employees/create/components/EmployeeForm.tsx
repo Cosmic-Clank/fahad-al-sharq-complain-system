@@ -17,7 +17,7 @@ import { Loading } from "@/components/ui/loading";
 // IMPORTANT: This schema should match the one in your server action for client-side validation
 const employeeFormSchema = z.object({
 	fullName: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long." }).max(100, { message: "Full name must be at most 100 characters long." }),
-	email: z.string({ required_error: "Email is required" }).email({ message: "Please enter a valid email address." }),
+	username: z.string({ required_error: "Username is required" }),
 	password: z.string({ required_error: "Password is required" }),
 	// .min(8, { message: "Password must be at least 8 characters long." })
 	// .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
@@ -38,7 +38,7 @@ function EmployeeForm() {
 		resolver: zodResolver(employeeFormSchema),
 		defaultValues: {
 			fullName: "",
-			email: "",
+			username: "",
 			password: "",
 		},
 	});
@@ -51,7 +51,7 @@ function EmployeeForm() {
 
 		const formData = new FormData();
 		formData.append("fullName", values.fullName);
-		formData.append("email", values.email);
+		formData.append("username", values.username);
 		formData.append("password", values.password);
 
 		try {
@@ -105,15 +105,15 @@ function EmployeeForm() {
 					)}
 				/>
 
-				{/* Email */}
+				{/* Username */}
 				<FormField
 					control={form.control}
-					name='email'
+					name='username'
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Email</FormLabel>
+							<FormLabel>Username</FormLabel>
 							<FormControl>
-								<Input placeholder='john.doe@example.com' type='email' {...field} disabled={isSubmitting} />
+								<Input placeholder='john' {...field} disabled={isSubmitting} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

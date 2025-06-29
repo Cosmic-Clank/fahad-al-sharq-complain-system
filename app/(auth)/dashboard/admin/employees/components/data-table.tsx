@@ -7,13 +7,14 @@ import React, { useState } from "react"; // Added useState
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading"; // Import the loading component
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation"; // Use next/navigation for client-side navigation
 
 import { deleteEmployees } from "../actions"; // Import the delete action
 
 type RowData = {
 	id: string;
 	fullName: string;
-	email: string;
+	username: string;
 	createdAt: string; // ISO string from DB
 };
 
@@ -32,8 +33,8 @@ const columns = [
 		grow: 1.5,
 	},
 	{
-		name: "Email",
-		selector: (row: RowData) => row.email,
+		name: "Username",
+		selector: (row: RowData) => row.username,
 		sortable: true,
 		grow: 2,
 	},
@@ -54,6 +55,7 @@ function CustomDataTable({ data }: CustomDataTableProps) {
 	const [selectedRows, setSelectedRows] = useState<RowData[]>([]);
 	const [isDeleting, setIsDeleting] = useState(false); // State for delete button loading
 	const [deleteMessage, setDeleteMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+	const router = useRouter(); // Use Next.js router for navigation
 
 	// Handler for row selection changes
 	function handleRowSelected(selected: { allSelected: boolean; selectedCount: number; selectedRows: RowData[] }) {
@@ -99,6 +101,7 @@ function CustomDataTable({ data }: CustomDataTableProps) {
 				selectableRows // Enable row selection
 				onSelectedRowsChange={handleRowSelected}
 				className='rounded-lg overflow-hidden' // Apply some styling to the table container
+				onRowClicked={(row) => router.push(`/dashboard/admin/employees/${row.id}`)} // Navigate to employee details on row click
 			/>
 
 			{deleteMessage && <div className={`mt-4 p-3 rounded-md text-sm ${deleteMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>{deleteMessage.text}</div>}

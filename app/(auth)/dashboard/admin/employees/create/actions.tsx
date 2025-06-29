@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 // Server-side Zod schema for validation
 const serverEmployeeFormSchema = z.object({
 	fullName: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long." }).max(100, { message: "Full name must be at most 100 characters long." }),
-	email: z.string({ required_error: "Email is required" }).email({ message: "Please enter a valid email address." }),
+	username: z.string({ required_error: "username is required" }),
 	password: z.string({ required_error: "Password is required" }),
 	// .min(8, { message: "Password must be at least 8 characters long." })
 	// .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
@@ -21,7 +21,7 @@ const serverEmployeeFormSchema = z.object({
 export async function createEmployee(formData: FormData) {
 	const data = {
 		fullName: formData.get("fullName"),
-		email: formData.get("email"),
+		username: formData.get("username"),
 		password: formData.get("password"),
 	};
 
@@ -31,21 +31,21 @@ export async function createEmployee(formData: FormData) {
 
 		// 2. Check if email already exists
 		const existingUser = await prismaClient.user.findUnique({
-			where: { email: validatedData.email },
+			where: { username: validatedData.username },
 		});
 
 		if (existingUser) {
-			return { success: false, message: "Email already registered.", errors: { email: "Email already in use." } };
+			return { success: false, message: "Username already registered.", errors: { email: "Username already in use." } };
 		}
 
 		// 3. Hash the password
-		const hashedPassword = await bcrypt.hash(validatedData.password, 12); // 10 rounds recommended
+		const hashedPassword = await bcrypt.hash(validatedData.password, 12);
 
 		// 4. Create the employee (user) in the database
 		await prismaClient.user.create({
 			data: {
 				fullName: validatedData.fullName,
-				email: validatedData.email,
+				username: validatedData.username,
 				passwordHash: hashedPassword,
 				role: "EMPLOYEE", // Assign a default role
 			},

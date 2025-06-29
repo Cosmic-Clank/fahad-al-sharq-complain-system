@@ -7,10 +7,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 	providers: [
 		Credentials({
 			credentials: {
-				email: {
-					type: "email",
-					label: "Email",
-					placeholder: "Enter your email address",
+				username: {
+					label: "Username",
+					placeholder: "Enter your username address",
 				},
 				password: {
 					type: "password",
@@ -22,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				let user = null;
 
 				// logic to verify if the user exists
-				user = await getUserFromDb(credentials.email as string, credentials.password as string);
+				user = await getUserFromDb(credentials.username as string, credentials.password as string);
 
 				if (!user) {
 					// No user found, so this is their first attempt to login
@@ -53,16 +52,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 	},
 });
 
-async function getUserFromDb(email: string, password: string) {
+async function getUserFromDb(username: string, password: string) {
 	const user = await prismaClient.user.findFirst({
 		where: {
-			email: email,
+			username: username,
 		},
 	});
 	if (user && (await bcrypt.compare(password, user.passwordHash))) {
 		return {
 			id: String(user.id),
-			email: user.email,
+			username: user.username,
 			name: user.fullName,
 			role: user.role,
 		};

@@ -8,13 +8,13 @@ import { redirect } from "next/navigation";
 
 // Server-side Zod schema for login
 const loginSchema = z.object({
-	email: z.string().email({ message: "Invalid email address." }),
+	username: z.string().min(1, { message: "Username cannot be empty." }),
 	password: z.string().min(1, { message: "Password cannot be empty." }),
 });
 
 export async function authenticate(formData: FormData) {
 	const rawData = {
-		email: formData.get("email"),
+		username: formData.get("username"),
 		password: formData.get("password"),
 	};
 
@@ -25,12 +25,12 @@ export async function authenticate(formData: FormData) {
 		return validatedFields.error.flatten().fieldErrors;
 	}
 
-	const { email, password } = validatedFields.data;
+	const { username, password } = validatedFields.data;
 
 	try {
 		// Call NextAuth's signIn function
 		await signIn("credentials", {
-			email,
+			username,
 			password,
 			redirect: false, // Prevent NextAuth from redirecting automatically
 			// We'll handle redirection manually after checking the result

@@ -7,7 +7,7 @@ async function page() {
 		select: {
 			id: true,
 			fullName: true,
-			email: true,
+			username: true,
 			createdAt: true,
 		},
 		where: {

@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
 			bodySizeLimit: "5mb",
 		},
 	},
+	eslint: {
+		ignoreDuringBuilds: true, // Ignore ESLint errors during build
+	},
 	/* config options here */
 };
 

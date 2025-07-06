@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 
 const userData: Prisma.UserCreateInput[] = [
 	{
-		fullName: "Admin",
+		fullName: "Administrator",
 		username: "admin",
-		passwordHash: "$2a$12$oZveZ4AsulkcbuwbDRx6QuO37hNxRZURqgTQGFSHosFjShdPMpdbe",
+		passwordHash: "$2a$12$1wGz5mSp8KeypLDY0T2oXe604EXab87Sus.5Jhc1vBw1EkYwU4faK",
 		role: "ADMIN",
 	},
 	{

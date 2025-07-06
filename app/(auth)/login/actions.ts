@@ -22,7 +22,10 @@ export async function authenticate(formData: FormData) {
 
 	if (!validatedFields.success) {
 		// Return validation errors if they exist
-		return validatedFields.error.flatten().fieldErrors;
+		return {
+			success: false,
+			message: "Invalid input",
+		};
 	}
 
 	const { username, password } = validatedFields.data;
@@ -35,19 +38,19 @@ export async function authenticate(formData: FormData) {
 			redirect: false, // Prevent NextAuth from redirecting automatically
 			// We'll handle redirection manually after checking the result
 		});
+		return {
+			success: true,
+			message: "Sign-in successful",
+		};
 
 		// If signIn is successful, redirect to a protected page (e.g., dashboard)
 	} catch (error) {
 		// Handle specific NextAuth errors
 		if (error instanceof AuthError) {
-			switch (error.type) {
-				case "CredentialsSignin":
-					return "Invalid credentials."; // This message comes from your 'authorize' throwing "Invalid credentials."
-				default:
-					return "Invalid credentials";
-			}
+			console.error("Authentication error:", error);
+			return { success: false, message: "Invalid Credentials" };
 		}
 		console.error("Unexpected authentication error:", error);
-		throw error; // Re-throw other unexpected errors
+		return { success: false, message: "An unexpected error occurred. Please try again." };
 	}
 }

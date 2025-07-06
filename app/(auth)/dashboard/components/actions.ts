@@ -94,8 +94,6 @@ export async function addComplaintResponse(formData: FormData) {
 			},
 		});
 
-		console.log("Complaint response added:", newResponse);
-
 		// Revalidate the current page to show the new response immediately
 		// Adjust the path to match your complaint detail page route
 
@@ -127,8 +125,6 @@ export async function addStartWorkTime(formData: FormData) {
 				startTime: new Date(),
 			},
 		});
-
-		console.log("Work started:", newWorkTime);
 
 		return { success: true, message: "Work time added successfully!" };
 	} catch (error) {
@@ -170,8 +166,6 @@ export async function addEndWorkTime(formData: FormData) {
 				endTime: new Date(),
 			},
 		});
-
-		console.log("Work ended:", updatedWorkTime);
 
 		return { success: true, message: "Work time ended successfully!" };
 	} catch (error) {

@@ -42,9 +42,10 @@ function LoginForm() {
 			const { authenticate } = await import("../actions"); // Dynamic import for client component
 			const result = await authenticate(formData); // `undefined` for prevState
 
-			if (result) {
+			if (!result.success) {
 				// If the server action returns a string, it's an error message
-				setLoginError(result as string); // Cast to string as per server action's return type for errors
+				setLoginError(result.message); // Cast to string as per server action's return type for errors
+				return;
 			}
 			router.push("/dashboard"); // Redirect to the dashboard on successful login
 			// If `result` is undefined, it means the redirect happened successfully on the server.

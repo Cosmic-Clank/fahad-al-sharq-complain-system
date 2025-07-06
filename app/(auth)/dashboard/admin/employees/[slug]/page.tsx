@@ -4,7 +4,7 @@ import React from "react";
 import ComplaintDetailPage from "./components/EmployeeDetails";
 
 // This is your Server Component that fetches data
-async function page({ params }: { params: { slug: string } }) {
+async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
 	return <ComplaintDetailPage slug={slug} />;
 }

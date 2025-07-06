@@ -17,7 +17,7 @@ app.prepare().then(() => {
 			const parsedUrl = parse(req.url, true);
 			handle(req, res, parsedUrl);
 		}
-	).listen(port);
+	).listen(port, "0.0.0.0");
 
-	console.log(`> Server listening at https://localhost:${port} as ${dev ? "development" : process.env.NODE_ENV}`);
+	console.log(`> Server listening at https://0.0.0.0:${port} as ${dev ? "development" : process.env.NODE_ENV}`);
 });

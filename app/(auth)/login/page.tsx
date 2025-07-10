@@ -9,12 +9,12 @@ async function page() {
 		return <LoginForm />;
 	}
 	if ((session.user as any).role === "EMPLOYEE") {
-		return redirect("/dashboard/employee");
+		redirect("/dashboard/employee");
 	}
 	if ((session.user as any).role === "ADMIN") {
-		return redirect("/dashboard/admin");
+		redirect("/dashboard/admin");
 	}
-	return redirect("/");
+	redirect("/");
 }
 
 export default page;

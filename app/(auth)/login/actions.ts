@@ -4,7 +4,6 @@
 import { z } from "zod";
 import { signIn } from "@/auth"; // Import signIn from your NextAuth config
 import { AuthError } from "next-auth";
-import { redirect } from "next/navigation";
 
 // Server-side Zod schema for login
 const loginSchema = z.object({

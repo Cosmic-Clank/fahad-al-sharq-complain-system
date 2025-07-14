@@ -106,7 +106,7 @@ export async function submitComplaint(formData: FormData) {
 		});
 	} catch (dbError) {
 		console.error("Error saving complaint to DB:", dbError);
-		return { message: "Failed to save complaint to the database. Please try again." };
+		return { message: "Failed to save complaint to the database. Please try again." + dbError };
 	}
 
 	// 5. Revalidate paths and redirect

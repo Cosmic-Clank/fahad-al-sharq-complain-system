@@ -125,7 +125,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 									<Link href={path} target='_blank' rel='noopener noreferrer'>
 										{" "}
 										{/* Link to open image in new tab */}
-										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
+										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105 object-fill' />
 									</Link>
 								</div>
 							))}

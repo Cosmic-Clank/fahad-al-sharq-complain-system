@@ -49,7 +49,7 @@ function ComplaintForm() {
 		if (e.target.files) {
 			const selectedFiles = Array.from(e.target.files);
 			const maxImages = 5;
-			const maxSize = 5 * 1024 * 1024; // 5MB
+			const maxSize = 2 * 1024 * 1024;
 			const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
 			if (selectedFiles.length > maxImages) {
@@ -60,7 +60,7 @@ function ComplaintForm() {
 
 			const invalidFiles = selectedFiles.filter((file) => file.size > maxSize || !allowedTypes.includes(file.type));
 			if (invalidFiles.length > 0) {
-				setSubmitError(`Some files are invalid: Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`);
+				setSubmitError(`Some files are invalid: Max size is 2MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`);
 				e.target.value = ""; // Clear the input
 				return;
 			}

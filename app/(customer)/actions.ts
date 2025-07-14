@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import fs from "fs/promises"; // Import Node.js file system promises API
 import path from "path"; // Import Node.js path module
 import { nanoid } from "nanoid"; // For unique file names
+import supabaseAdminClient from "@/lib/supabaseAdmin";
 
 // IMPORTANT: Re-define your Zod schema on the server for validation!
 // Match this with your client-side formSchema, but enforce server-side validation.
@@ -52,7 +53,7 @@ export async function submitComplaint(formData: FormData) {
 
 	const uploadedImagePaths: string[] = []; // This will now store only strings (paths)
 
-	const maxSize = 5 * 1024 * 1024; // 5MB
+	const maxSize = 2 * 1024 * 1024; // 5MB
 	const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 	const maxImages = 5;
 
@@ -64,42 +65,27 @@ export async function submitComplaint(formData: FormData) {
 	// Next.js serves static files from 'public'
 	// Use a slugified email for the directory name to be file-system safe
 	const directoryName = email.replace(/[^a-zA-Z0-9_-]/g, "_"); // Basic slugify
-	const uploadDir = path.join(process.cwd(), "public", "uploads", directoryName);
+	const uploadPath = path.join(directoryName, nanoid());
 
 	if (files.length > 0) {
-		try {
-			// Create the directory if it doesn't exist
-			await fs.mkdir(uploadDir, { recursive: true });
-		} catch (dirError) {
-			console.error(`Error creating upload directory ${uploadDir}:`, dirError);
-			return { message: "Failed to create upload directory on server." };
-		}
-	}
+		for (const file of files) {
+			// Skip empty file inputs if any (e.g. user selected nothing for an optional upload)
+			if (file.size === 0 && file.name === "undefined") continue;
 
-	for (const file of files) {
-		// Skip empty file inputs if any (e.g. user selected nothing for an optional upload)
-		if (file.size === 0 && file.name === "undefined") continue;
+			if (!allowedTypes.includes(file.type) || file.size > maxSize) {
+				console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+				return { message: `Invalid file detected: ${file.name}. Max size is 2MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.` };
+			}
 
-		if (!allowedTypes.includes(file.type) || file.size > maxSize) {
-			console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
-			return { message: `Invalid file detected: ${file.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.` };
-		}
-
-		const fileExtension = path.extname(file.name);
-		const uniqueFileName = `${nanoid()}${fileExtension}`; // Generate a unique name for the file
-		const filePath = path.join(uploadDir, uniqueFileName); // Absolute path to save the file
-		// The web-accessible path relative to the 'public' directory
-		const relativeWebPath = `/uploads/${directoryName}/${uniqueFileName}`;
-
-		try {
-			// Convert File object to ArrayBuffer then to Buffer for writing
-			const buffer = Buffer.from(await file.arrayBuffer());
-			await fs.writeFile(filePath, buffer);
-
-			uploadedImagePaths.push(relativeWebPath); // Store only the path string
-		} catch (uploadError) {
-			console.error("Error saving image locally:", uploadError);
-			return { message: `Failed to save image ${file.name} on the server. Please try again.` };
+			const { data, error } = await supabaseAdminClient.storage.from("complaint-images").upload(uploadPath, file);
+			if (error) {
+				console.error("Error uploading file to Supabase:", error);
+				return { message: `Failed to upload image ${file.name} to Database. Please try again.` };
+				// Handle error
+			} else {
+				// Handle success
+				uploadedImagePaths.push(data.path); // Store the path returned by Supabase
+			}
 		}
 	}
 	// --- End Image Upload to Local Filesystem ---

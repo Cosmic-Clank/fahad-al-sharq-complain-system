@@ -9,6 +9,7 @@ import ComplaintResponseForm from "./ComplaintResponseForm"; // Import the respo
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { addEndWorkTime, addStartWorkTime } from "./actions";
+import { Loading } from "@/components/ui/loading";
 
 // Define the data type for a single complaint
 interface ComplaintData {
@@ -50,6 +51,8 @@ interface ComplaintCardProps {
 const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 	const [showFullDescription, setShowFullDescription] = useState(false);
 	const maxDescriptionLength = 150; // Max characters before truncation
+
+	const [isWorkTimesLoading, setIsWorkTimesLoading] = useState(false);
 
 	const toggleDescription = () => {
 		setShowFullDescription(!showFullDescription);
@@ -162,6 +165,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 					<div className='bg-blue-50 border border-blue-200 rounded-md p-4 mb-4'>
 						<form
 							action={async (formData: FormData) => {
+								setIsWorkTimesLoading(true);
 								// Call the server action directly
 								const result = await addStartWorkTime(formData);
 
@@ -173,8 +177,9 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 								}
 							}}>
 							<input type='hidden' name='complaintId' value={complaint.id} />
-							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition'>
+							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition' disabled={isWorkTimesLoading}>
 								<Calendar className='w-4 h-4' />
+								{isWorkTimesLoading && <Loading />}
 								Start Work
 							</Button>
 						</form>
@@ -196,6 +201,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 						<form
 							action={async (formData: FormData) => {
 								// Call the server action directly
+								setIsWorkTimesLoading(true);
 								const result = await addEndWorkTime(formData);
 
 								if (result.success) {
@@ -206,8 +212,9 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 								}
 							}}>
 							<input type='hidden' name='complaintId' value={complaint.id} />
-							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 rounded-md transition'>
+							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 rounded-md transition' disabled={isWorkTimesLoading}>
 								<Calendar className='w-4 h-4' />
+								{isWorkTimesLoading && <Loading />}
 								End Work
 							</Button>
 						</form>

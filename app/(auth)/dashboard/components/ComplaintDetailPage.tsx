@@ -76,10 +76,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		id: String(complaint.id), // Ensure ID is string if it's a number/BigInt
 		createdAt: complaint.createdAt.toLocaleString(), // Convert Date to local string
 		// IMPORTANT: Parse imagePaths if they are stored as JSON strings in the DB
-		imagePaths:
-			typeof complaint.imagePaths === "string"
-				? JSON.parse(complaint.imagePaths as string) // Cast to string before parsing
-				: complaint.imagePaths || [], // Assume it's already an array or default to empty
+		imagePaths: complaint.imagePaths.map((imagePath) => `https://koxptzqfmeasndsaecyo.supabase.co/storage/v1/object/public/complaint-images/${imagePath}`),
 		// Format responses to match ComplaintData type
 		responses: complaint.responses.map((resp) => ({
 			id: String(resp.id),
@@ -89,7 +86,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 				fullName: resp.responder.fullName,
 				role: String(resp.responder.role),
 			},
-			imagePaths: resp.imagePaths || [], // Ensure imagePaths is an array
+			imagePaths: resp.imagePaths.map((imagePath) => `https://koxptzqfmeasndsaecyo.supabase.co/storage/v1/object/public/complaint-images/${imagePath}`), // Ensure imagePaths is an array
 		})),
 		workTimes: complaint.workTimes.map((wt) => ({
 			id: String(wt.id),

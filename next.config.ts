@@ -11,6 +11,15 @@ const nextConfig: NextConfig = {
 		ignoreDuringBuilds: true, // Ignore ESLint errors during build
 	},
 	allowedDevOrigins: ["http://fahadalsharq.com"],
+	images: {
+		remotePatterns: [
+			{
+				protocol: "https",
+				hostname: "koxptzqfmeasndsaecyo.supabase.co",
+				pathname: "/storage/v1/object/public/**",
+			},
+		],
+	},
 	/* config options here */
 };
 

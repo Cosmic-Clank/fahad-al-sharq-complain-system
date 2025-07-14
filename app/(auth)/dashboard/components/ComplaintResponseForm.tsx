@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"; // Assuming this is a Shadcn UI
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Image from "next/image"; // For displaying uploaded images
+import { Loading } from "@/components/ui/loading";
 
 interface ComplaintResponseFormProps {
 	complaintId: string; // The ID of the complaint this response belongs to
@@ -22,7 +23,7 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 
 	// useFormStatus gives us information about the pending state of the form
 	// We rename pending to isPending to avoid conflict with the component's own state if any
-	const { pending: isPending } = useFormStatus();
+	const [loading, isLoading] = useState<boolean>(false);
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files) {
@@ -54,6 +55,7 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 			setMessage({ type: "error", text: "Response cannot be empty." });
 			return;
 		}
+		isLoading(true); // Set loading state to true
 		// formData.delete("images"); // Clear any previous images to avoid duplicates
 		// images.forEach((file) => {
 		// 	formData.append("images", file);
@@ -65,10 +67,13 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 		if (result.success) {
 			setMessage({ type: "success", text: result.message });
 			setResponseText(""); // Clear the textarea
+			isLoading(false); // Set loading state to true
+
 			formRef.current?.reset(); // Reset form fields (if any other inputs)
-			// window.location.reload(); // Reload the page to reflect the new response
+			window.location.reload(); // Reload the page to reflect the new response
 		} else {
 			setMessage({ type: "error", text: result.message });
+			isLoading(false); // Set loading state to true
 		}
 	};
 
@@ -96,7 +101,7 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 					rows={4} // Slightly reduced rows for compactness
 					placeholder='Write your response here...'
 					className='w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-1 focus:ring-blue-300 focus:border-blue-300 text-gray-700 resize-y text-sm placeholder:text-gray-400 transition-colors' // Reduced padding, less rounded, softer focus ring, smaller text
-					disabled={isPending} // Disable textarea when submitting
+					disabled={loading} // Disable textarea when submitting
 				></textarea>
 				<div className='p-4 border border-gray-200 dark:border-gray-700 rounded-sm bg-white dark:bg-gray-800'>
 					<Label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>Upload Images (Optional)</Label>
@@ -135,16 +140,11 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 					// Removed explicit bg-blue-600, text-white, py-3 px-4, rounded-lg, font-semibold
 					// and let the imported Button component handle its professional defaults.
 					className='w-full hover:cursor-pointer' // Keep w-full and hover cursor
-					disabled={isPending} // Disable button when submitting
+					disabled={loading} // Disable button when submitting
 				>
-					{isPending ? (
+					{loading ? (
 						<>
-							<svg className='animate-spin -ml-1 mr-2 h-4 w-4 text-current' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
-								{" "}
-								{/* Smaller spinner, text-current to inherit button text color */}
-								<circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
-								<path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-							</svg>
+							<Loading />
 							Submitting...
 						</>
 					) : (

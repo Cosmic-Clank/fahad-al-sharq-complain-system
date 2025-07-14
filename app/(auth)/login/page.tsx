@@ -9,10 +9,16 @@ async function page() {
 		return <LoginForm />;
 	}
 	if ((session.user as any).role === "EMPLOYEE") {
-		redirect("/dashboard/employee");
+		setTimeout(() => {
+			redirect("/dashboard/employee");
+		}, 1000);
+		return <div className='text-center'>Redirecting to Employee Dashboard...</div>;
 	}
 	if ((session.user as any).role === "ADMIN") {
-		redirect("/dashboard/admin");
+		setTimeout(() => {
+			redirect("/dashboard/admin");
+		}, 1000);
+		return <div className='text-center'>Redirecting to Admin Dashboard...</div>;
 	}
 	redirect("/");
 }

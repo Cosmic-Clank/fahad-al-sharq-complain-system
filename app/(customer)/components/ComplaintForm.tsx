@@ -11,8 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-
-import { submitComplaint } from "../actions"; // Import your server action
+import { useRouter } from "next/navigation";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 const formSchema = z.object({
@@ -31,6 +30,7 @@ function ComplaintForm() {
 	const [images, setImages] = React.useState<File[]>([]);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [submitError, setSubmitError] = React.useState<string | null>(null);
+	const router = useRouter();
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -94,34 +94,25 @@ function ComplaintForm() {
 
 		try {
 			// Call your server action directly with the FormData object
-			const result = await submitComplaint(formData);
-
+			const res = await fetch("/api/complaints", {
+				method: "POST",
+				body: formData,
+			});
+			const data = await res.json();
 			// Handle potential errors or messages returned from the server action
-			if (result && result.errors) {
-				// If the server action returns Zod validation errors, you can
-				// map them back to react-hook-form fields
-				console.error("Server-side validation failed:", result.errors);
-				setSubmitError(result.message || "Server-side validation failed. Please check your inputs.");
-
-				// Example of setting react-hook-form errors (optional but good UX)
-				// This part would be more complex if you want to map specific server-side
-				// errors back to specific form fields. For simplicity, we'll just show a general error.
-				// For a more robust solution, consider `useFormState` or passing the errors back
-				// in a specific structure that `react-hook-form` can consume.
-			} else if (result && result.message) {
-				// Handle other server-side messages (e.g., file upload errors)
-				setSubmitError(result.message);
-			} else {
-				// Success!
-				form.reset(); // Reset form fields
-				setImages([]); // Clear selected images state
-				// Optional: redirect or show a success message
+			if (!res.ok) {
+				throw new Error(data.message || "Something went wrong");
 			}
-		} catch (error) {
-			console.error("An unexpected error occurred during submission:", error);
-			setSubmitError(`An unexpected error occurred. Please try again. ${error}`);
+			if (res.ok) {
+				router.push("/success"); // Redirect to a success page
+			}
+		} catch (err) {
+			console.error("Error submitting complaint:", err);
+			setSubmitError("Failed to submit complaint. Please try again.");
 		} finally {
-			setIsSubmitting(false); // Re-enable the submit button
+			setIsSubmitting(false);
+			setImages([]); // Clear images after submission
+			form.reset(); // Reset the form fields
 		}
 	};
 

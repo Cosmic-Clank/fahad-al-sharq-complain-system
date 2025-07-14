@@ -2,7 +2,6 @@
 "use client"; // This component will be interactive on the client
 
 import React, { useState } from "react";
-import Image from "next/image"; // For optimized images
 import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User } from "lucide-react"; // Icons
 
 import ComplaintResponseForm from "./ComplaintResponseForm"; // Import the response form
@@ -126,7 +125,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 									<Link href={path} target='_blank' rel='noopener noreferrer'>
 										{" "}
 										{/* Link to open image in new tab */}
-										<Image src={path} alt={`Complaint Image ${index + 1}`} fill sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
+										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
 									</Link>
 								</div>
 							))}
@@ -164,8 +163,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				{!complaint.workTimes && (
 					<div className='bg-blue-50 border border-blue-200 rounded-md p-4 mb-4'>
 						<form
-							action={async (formData: FormData) => {
+							onSubmit={async (event) => {
+								event.preventDefault();
 								setIsWorkTimesLoading(true);
+								const formData = new FormData(event.currentTarget as HTMLFormElement);
 								// Call the server action directly
 								const result = await addStartWorkTime(formData);
 
@@ -179,8 +180,8 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 							<input type='hidden' name='complaintId' value={complaint.id} />
 							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition' disabled={isWorkTimesLoading}>
 								<Calendar className='w-4 h-4' />
-								{isWorkTimesLoading && <Loading />}
 								Start Work
+								{isWorkTimesLoading && <Loading />}
 							</Button>
 						</form>
 					</div>
@@ -199,13 +200,13 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 							<span className='font-medium'>Start Time:</span> <span>{complaint.workTimes.startTime}</span>
 						</div>
 						<form
-							action={async (formData: FormData) => {
-								// Call the server action directly
+							onSubmit={async (event) => {
+								event.preventDefault();
 								setIsWorkTimesLoading(true);
+								const formData = new FormData(event.currentTarget as HTMLFormElement);
 								const result = await addEndWorkTime(formData);
 
 								if (result.success) {
-									// Optionally, you can refresh the page or update the state to reflect the new work time
 									window.location.reload(); // Reloads the page to show updated work times
 								} else {
 									alert(result.message); // Show error message
@@ -214,8 +215,8 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 							<input type='hidden' name='complaintId' value={complaint.id} />
 							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 rounded-md transition' disabled={isWorkTimesLoading}>
 								<Calendar className='w-4 h-4' />
-								{isWorkTimesLoading && <Loading />}
 								End Work
+								{isWorkTimesLoading && <Loading />}
 							</Button>
 						</form>
 					</div>
@@ -265,7 +266,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 														<Link href={path} target='_blank' rel='noopener noreferrer'>
 															{" "}
 															{/* Link to open image in new tab */}
-															<Image src={path} alt={`Complaint Image ${index + 1}`} fill sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
+															<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
 														</Link>
 													</div>
 												))}

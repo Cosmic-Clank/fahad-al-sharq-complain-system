@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import React from "react";
 import LoginForm from "./components/LoginForm";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 async function page() {
 	const session = await auth();
@@ -10,15 +11,16 @@ async function page() {
 	}
 	if ((session.user as any).role === "EMPLOYEE") {
 		setTimeout(() => {
-			redirect("/dashboard/employee");
-		}, 1000);
-		return <div className='text-center'>Redirecting to Employee Dashboard...</div>;
+			window.location.reload();
+		}, 1000); // Reload the page after redirecting
+		redirect("/dashboard/employee");
+		// return <div class
 	}
 	if ((session.user as any).role === "ADMIN") {
 		setTimeout(() => {
-			redirect("/dashboard/admin");
-		}, 1000);
-		return <div className='text-center'>Redirecting to Admin Dashboard...</div>;
+			window.location.reload();
+		}, 1000); // Reload the page after redirecting
+		redirect("/dashboard/admin");
 	}
 	redirect("/");
 }

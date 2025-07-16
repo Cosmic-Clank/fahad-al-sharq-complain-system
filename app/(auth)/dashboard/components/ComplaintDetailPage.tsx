@@ -4,6 +4,7 @@ import React from "react";
 import { notFound } from "next/navigation"; // For handling 404
 import prismaClient from "@/lib/prisma"; // Your Prisma client instance
 import ComplaintCard from "./ComplaintCard"; // The Client Component to display the complaint
+import { auth } from "@/auth";
 
 // Define the props that this page component will receive
 interface ComplaintDetailPageProps {
@@ -13,6 +14,7 @@ interface ComplaintDetailPageProps {
 // This is your Server Component that fetches data
 async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 	const complaintId = Number(slug);
+	const session = await auth(); // Get the current user session
 
 	// Fetch the single complaint from the database
 	const complaint = await prismaClient.complaint.findUnique({
@@ -21,9 +23,16 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		},
 		select: {
 			id: true,
+			assignedTo: {
+				select: {
+					fullName: true,
+					role: true,
+				},
+			},
 			customerName: true,
 			customerPhone: true,
 			buildingName: true,
+			apartmentNumber: true,
 			area: true,
 			description: true,
 
@@ -73,8 +82,14 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 	// JSON string imagePaths must be parsed into an array
 	const formattedComplaint = {
 		...complaint,
+		currentUser: {
+			fullName: session!.user!.name!,
+			role: (session!.user as any).role,
+		},
 		id: String(complaint.id), // Ensure ID is string if it's a number/BigInt
 		createdAt: complaint.createdAt.toLocaleString(), // Convert Date to local string
+		assignedTo: complaint.assignedTo, // Ensure assignedTo is a string or null
+		apartmentNumber: complaint.apartmentNumber, // Ensure apartmentNumber is a string
 		// IMPORTANT: Parse imagePaths if they are stored as JSON strings in the DB
 		imagePaths: complaint.imagePaths.map((imagePath) => `https://koxptzqfmeasndsaecyo.supabase.co/storage/v1/object/public/complaint-images/${imagePath}`),
 		// Format responses to match ComplaintData type

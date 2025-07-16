@@ -41,12 +41,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				// User is available during sign-in
 				token.id = user.id;
 				token.role = (user as any).role;
+				token.username = (user as any).username;
 			}
 			return token;
 		},
 		session({ session, token }) {
 			session.user.id = token.id as string;
 			(session.user as any).role = token.role as string; // Ensure role is included in the session
+			(session.user as any).username = token.username as string; // Ensure username is included in the session
 			return session;
 		},
 	},

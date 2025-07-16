@@ -2,20 +2,31 @@
 "use client"; // This component will be interactive on the client
 
 import React, { useState } from "react";
-import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User } from "lucide-react"; // Icons
+import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, Pin, House } from "lucide-react"; // Icons
 
 import ComplaintResponseForm from "./ComplaintResponseForm"; // Import the response form
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { addEndWorkTime, addStartWorkTime } from "./actions";
 import { Loading } from "@/components/ui/loading";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import AssignmentForm from "./AssignmentForm";
 
 // Define the data type for a single complaint
 interface ComplaintData {
+	currentUser: {
+		fullName: string;
+		role: string;
+	};
 	id: string;
+	assignedTo?: {
+		fullName: string;
+		role: string;
+	} | null; // Optional field for the user assigned to the complaint
 	customerName: string;
 	customerPhone: string;
 	buildingName: string;
+	apartmentNumber: string;
 	area: string;
 	description: string;
 	imagePaths: string[]; // Array of image URLs
@@ -66,12 +77,33 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			<div className='p-5 pb-3 border-b border-gray-100 bg-gray-50'>
 				<h3 className='text-xl font-semibold text-gray-800 mb-1'>{complaint.customerName}</h3>
 				<p className='text-xs text-gray-500 flex items-center'>
+					<PersonStandingIcon className='w-3.5 h-3.5 mr-1 text-gray-400' />
+					Assigned To: <span className='font-medium text-gray-700 ml-1'>{complaint.assignedTo ? complaint.assignedTo.fullName + " (" + complaint.assignedTo.role + ")" : "-"}</span>
+					{complaint.currentUser.role === "ADMIN" && (
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button variant='ghost' className='p-1 text-gray-500 hover:text-gray-700'>
+									{/* Icon for popover trigger */}
+									<PinIcon className='w-4 h-4' />
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent>
+								<AssignmentForm complaintId={Number(complaint.id)} />
+							</PopoverContent>
+						</Popover>
+					)}
+				</p>
+				<p className='text-xs text-gray-500 flex items-center'>
 					<FileText className='w-3.5 h-3.5 mr-1 text-gray-400' />
 					Building Name: <span className='font-medium text-gray-700 ml-1'>{complaint.buildingName}</span>
 				</p>
+				<p className='text-xs text-gray-500 flex items-center'>
+					<House className='w-3.5 h-3.5 mr-1 text-gray-400' />
+					Apartment Number: <span className='font-medium text-gray-700 ml-1'>{complaint.apartmentNumber}</span>
+				</p>
 			</div>
 
-			{/* Body Content - Slightly reduced padding, smaller gaps */}
+			{/* Body Content - Slightly reduced padding, smaller gap	s */}
 			<div className='p-5'>
 				<div className='grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 mb-5'>
 					{/* Phone */}
@@ -119,13 +151,13 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 							{" "}
 							{/* Reduced gap */}
 							{complaint.imagePaths.map((path, index) => (
-								<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm'>
+								<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center'>
 									{" "}
 									{/* Reduced height, less rounded */}
 									<Link href={path} target='_blank' rel='noopener noreferrer'>
 										{" "}
 										{/* Link to open image in new tab */}
-										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105 object-fill' />
+										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
 									</Link>
 								</div>
 							))}
@@ -260,12 +292,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 												{" "}
 												{/* Reduced gap */}
 												{response.imagePaths.map((path, index) => (
-													<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm'>
-														{" "}
-														{/* Reduced height, less rounded */}
+													<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center'>
 														<Link href={path} target='_blank' rel='noopener noreferrer'>
 															{" "}
-															{/* Link to open image in new tab */}
+															{/* Reduced height, less rounded */} {/* Link to open image in new tab */}
 															<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
 														</Link>
 													</div>

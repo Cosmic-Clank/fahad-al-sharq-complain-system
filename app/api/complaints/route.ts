@@ -14,6 +14,7 @@ const serverFormSchema = z.object({
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
 	buildingName: z.string({ required_error: "Building name is required" }).min(1, { message: "Building name must be at least 1 character long" }).max(20, { message: "Building name must be at most 20 characters long" }),
+	apartmentNumber: z.string({ required_error: "Apartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
 	branchArea: z.string({ required_error: "Branch area is required" }).refine((val) => ["Al Nuaimia 1 - Ajman", "Al Jerf - Ajman", "Taawun - Sharjah", "Al Nahda - Sharjah", "Al Khan - Sharjah", "Al Majaz 1 - Sharjah", "Al Majaz 2 - Sharjah", "Abu Shagara - Sharjah", "Al Qasimia - Sharjah", "Muwaileh - Sharjah", "Industrial 15 - Sharjah", "Al Nahda - Dubai", "Al Qusais - Dubai", "Al Garhoud - Dubai", "Warsan - Dubai", "Silicon - Dubai", "Ras al Khor - Dubai", "Al Barsha - Dubai", "DIP - Dubai", "DIC - Dubai"].includes(val), {
 		message: "Please select a valid branch area",
 	}),
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
 		phoneNumber: formData.get("phoneNumber"),
 		address: formData.get("address"),
 		buildingName: formData.get("buildingName"),
+		apartmentNumber: formData.get("apartmentNumber"), // Ensure this matches your schema
 		branchArea: formData.get("branchArea"),
 		description: formData.get("description"),
 	};
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
 		);
 	}
 
-	const { fullname, email, phoneNumber, address, buildingName, branchArea, description } = validatedFields.data;
+	const { fullname, email, phoneNumber, address, buildingName, apartmentNumber, branchArea, description } = validatedFields.data;
 
 	// --- Start Image Upload to Supabase ---
 	const files = formData.getAll("images") as File[]; // 'images' should match your input name
@@ -64,11 +66,11 @@ export async function POST(req: NextRequest) {
 
 	// Define the base upload directory relative to your project root.
 	// Use a slugified email for the directory name to be file-system safe
-	const directoryName = email.replace(/[^a-zA-Z0-9_-]/g, "_"); // Basic slugify
-	const uploadPath = path.join(directoryName, nanoid());
 
+	const directoryName = email.replace(/[^a-zA-Z0-9_-]/g, "_"); // Basic slugify
 	if (files.length > 0) {
 		for (const file of files) {
+			const uploadPath = path.join(directoryName, nanoid());
 			// Skip empty file inputs if any (e.g. user selected nothing for an optional upload)
 			if (file.size === 0 && file.name === "undefined") continue;
 
@@ -109,6 +111,7 @@ export async function POST(req: NextRequest) {
 				customerPhone: phoneNumber,
 				customerAddress: address,
 				buildingName: buildingName,
+				apartmentNumber: apartmentNumber,
 				area: branchArea, // Changed from 'branchArea' to 'area' to match schema
 				description: description,
 				imagePaths: uploadedImagePaths, // Assign the array of paths directly

@@ -8,6 +8,7 @@ import { nanoid } from "nanoid"; // For unique file names
 import path from "path";
 import fs from "fs/promises";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
+import { revalidatePath } from "next/cache";
 
 // Define the type for the form data you expect
 interface ResponseFormData {
@@ -157,5 +158,29 @@ export async function addEndWorkTime(formData: FormData) {
 	} catch (error) {
 		console.error("Error ending work time:", error);
 		return { success: false, message: "Failed to end work time. Please try again." };
+	}
+}
+
+export async function fetchUsers() {
+	return prismaClient.user.findMany();
+}
+
+export async function assignComplaintToUser(complaintId: number, userId: number) {
+	const session = await auth();
+	if (!session || !session.user || !session.user.id) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
+
+	try {
+		const updatedComplaint = await prismaClient.complaint.update({
+			where: { id: complaintId },
+			data: { assignedToId: userId },
+		});
+
+		revalidatePath("/dashboard/complaints"); // Revalidate the complaints page to reflect the changes
+		return { success: true, message: "Complaint assigned successfully!", complaint: updatedComplaint };
+	} catch (error) {
+		console.error("Error assigning complaint:", error);
+		return { success: false, message: "Failed to assign complaint. Please try again." };
 	}
 }

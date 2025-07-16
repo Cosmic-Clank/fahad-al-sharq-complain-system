@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 
 type RowData = {
 	id: string;
+	assignedTo?: string | null;
 	customerName: string;
 	customerEmail: string;
 	customerPhone: string;
@@ -20,101 +21,115 @@ type RowData = {
 	completedOn?: string | null;
 };
 
-const columns = [
-	{
-		name: "ID",
-		selector: (row: RowData) => row.id,
-		sortable: true,
-		grow: 0,
-	},
-	{
-		name: "Cust Name",
-		selector: (row: RowData) => row.customerName,
-		sortable: true,
-	},
-	{
-		name: "Cust Email",
-		selector: (row: RowData) => row.customerEmail,
-		sortable: true,
-	},
-	{
-		name: "Cust Phone",
-		selector: (row: RowData) => row.customerPhone,
-		sortable: true,
-	},
-	{
-		name: "Bldg Name",
-		selector: (row: RowData) => row.buildingName,
-		sortable: true,
-	},
-	{
-		name: "Area",
-		selector: (row: RowData) => row.area,
-		sortable: true,
-	},
-	{
-		name: "Description",
-		wrap: true,
-		selector: (row: RowData) => row.description,
-		format: (row: RowData) => {
-			const maxLength = 100; // Maximum length of the description to display
-			return row.description.length > maxLength ? `${row.description.substring(0, maxLength)}...` : row.description;
+function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
+	const columns = [
+		{
+			name: "ID",
+			selector: (row: RowData) => row.id,
+			sortable: true,
+			grow: 0,
 		},
-		sortable: true,
-	},
-	{
-		name: "Submitted On",
-		selector: (row: RowData) => row.createdAt,
-		sortable: true,
-	},
-	{
-		name: "Status",
-		selector: (row: RowData) => row.status,
-		sortable: true,
-		conditionalCellStyles: [
-			{
-				when: (row: RowData) => row.status === "Completed",
-				style: {
-					backgroundColor: "#d4edda",
-					color: "#155724",
+		{
+			name: "Assigned To",
+			selector: (row: RowData) => row.assignedTo || "-",
+			sortable: true,
+			conditionalCellStyles: [
+				{
+					when: (row: RowData) => row.assignedTo === currentUser.username,
+					style: {
+						backgroundColor: "#fff9c4", // dark yellow
+						color: "#155724",
+					},
 				},
+			],
+		},
+		{
+			name: "Cust Name",
+			selector: (row: RowData) => row.customerName,
+			sortable: true,
+		},
+		{
+			name: "Cust Email",
+			selector: (row: RowData) => row.customerEmail,
+			sortable: true,
+		},
+		{
+			name: "Cust Phone",
+			selector: (row: RowData) => row.customerPhone,
+			sortable: true,
+		},
+		{
+			name: "Bldg Name",
+			selector: (row: RowData) => row.buildingName,
+			sortable: true,
+		},
+		{
+			name: "Area",
+			selector: (row: RowData) => row.area,
+			sortable: true,
+		},
+		{
+			name: "Description",
+			wrap: true,
+			selector: (row: RowData) => row.description,
+			format: (row: RowData) => {
+				const maxLength = 100; // Maximum length of the description to display
+				return row.description.length > maxLength ? `${row.description.substring(0, maxLength)}...` : row.description;
 			},
-			{
-				when: (row: RowData) => row.status === "In Progress",
-				style: {
-					backgroundColor: "#fff3cd",
-					color: "#856404",
+			sortable: true,
+		},
+		{
+			name: "Submitted On",
+			selector: (row: RowData) => row.createdAt,
+			sortable: true,
+		},
+		{
+			name: "Status",
+			selector: (row: RowData) => row.status,
+			sortable: true,
+			conditionalCellStyles: [
+				{
+					when: (row: RowData) => row.status === "Completed",
+					style: {
+						backgroundColor: "#d4edda",
+						color: "#155724",
+					},
 				},
-			},
-			{
-				when: (row: RowData) => row.status === "Incomplete",
-				style: {
-					backgroundColor: "#f8d7da",
-					color: "#721c24",
+				{
+					when: (row: RowData) => row.status === "In Progress",
+					style: {
+						backgroundColor: "#fff3cd",
+						color: "#856404",
+					},
 				},
-			},
-		],
-	},
-	{
-		name: "Completed By",
-		selector: (row: RowData) => row.completedBy || "-",
-		sortable: true,
-	},
-	{
-		name: "Worked On",
-		selector: (row: RowData) => row.completedOn || "-",
-		sortable: true,
-	},
-];
+				{
+					when: (row: RowData) => row.status === "Incomplete",
+					style: {
+						backgroundColor: "#f8d7da",
+						color: "#721c24",
+					},
+				},
+			],
+		},
+		{
+			name: "Completed By",
+			selector: (row: RowData) => row.completedBy || "-",
+			sortable: true,
+		},
+		{
+			name: "Worked On",
+			selector: (row: RowData) => row.completedOn || "-",
+			sortable: true,
+		},
+	];
 
-function CustomDataTable({ data, role }: { data: RowData[]; role: "admin" | "employee" }) {
 	const [selectedArea, setSelectedArea] = React.useState<string>("all");
 	const router = useRouter();
 	const handleRowClick = (row: RowData) => {
 		router.push(`/dashboard/${role}/complaint/${row.id}`);
 	};
 	// Filter data based on selected area
-	const filteredData = selectedArea && selectedArea !== "all" ? data.filter((row) => row.area === selectedArea) : data;
+	const filteredData = selectedArea && selectedArea !== "all" ? data.filter((row) => row.area.includes(selectedArea)) : data;
 
 	return (
 		<div className=''>
@@ -125,9 +140,14 @@ function CustomDataTable({ data, role }: { data: RowData[]; role: "admin" | "emp
 					<SelectTrigger>
 						<SelectValue placeholder='Select an area' />
 					</SelectTrigger>
-
 					<SelectContent>
 						<SelectItem value='all'>All</SelectItem>
+						<SelectGroup>
+							<SelectLabel>By City</SelectLabel>
+							<SelectItem value='Ajman'>Ajman</SelectItem>
+							<SelectItem value='Sharjah'>Sharjah</SelectItem>
+							<SelectItem value='Dubai'>Dubai</SelectItem>
+						</SelectGroup>
 						<SelectGroup>
 							<SelectLabel>Ajman</SelectLabel>
 							<SelectItem value='Al Nuaimia 1 - Ajman'>Al Nuaimia 1</SelectItem>

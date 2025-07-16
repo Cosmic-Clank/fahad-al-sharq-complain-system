@@ -20,6 +20,7 @@ const formSchema = z.object({
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
 	buildingName: z.string({ required_error: "Building name is required" }).min(1, { message: "Building name must be at least 1 character long" }).max(20, { message: "Building name must be at most 20 characters long" }),
+	apartmentNumber: z.string({ required_error: "Appartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
 	branchArea: z.string({ required_error: "Branch area is required" }).refine((val) => ["Al Nuaimia 1 - Ajman", "Al Jerf - Ajman", "Taawun - Sharjah", "Al Nahda - Sharjah", "Al Khan - Sharjah", "Al Majaz 1 - Sharjah", "Al Majaz 2 - Sharjah", "Abu Shagara - Sharjah", "Al Qasimia - Sharjah", "Muwaileh - Sharjah", "Industrial 15 - Sharjah", "Al Nahda - Dubai", "Al Qusais - Dubai", "Al Garhoud - Dubai", "Warsan - Dubai", "Silicon - Dubai", "Ras al Khor - Dubai", "Al Barsha - Dubai", "DIP - Dubai", "DIC - Dubai"].includes(val), {
 		message: "Please select a valid branch area",
 	}),
@@ -40,6 +41,7 @@ function ComplaintForm() {
 			phoneNumber: "",
 			address: "",
 			buildingName: "",
+			apartmentNumber: "",
 			branchArea: "",
 			description: "",
 		},
@@ -83,6 +85,7 @@ function ComplaintForm() {
 		formData.append("phoneNumber", values.phoneNumber);
 		formData.append("address", values.address);
 		formData.append("buildingName", values.buildingName);
+		formData.append("apartmentNumber", values.apartmentNumber);
 		formData.append("branchArea", values.branchArea);
 		formData.append("description", values.description);
 
@@ -182,7 +185,7 @@ function ComplaintForm() {
 						</FormItem>
 					)}
 				/>
-				{/* Bill Number */}
+				{/* Building Name */}
 				<FormField
 					control={form.control}
 					name='buildingName' // This name must match the schema and formData key
@@ -191,6 +194,20 @@ function ComplaintForm() {
 							<FormLabel>Building Name</FormLabel>
 							<FormControl>
 								<Input placeholder='Enter the building name' {...field} />
+							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				{/* Apartment Number */}
+				<FormField
+					control={form.control}
+					name='apartmentNumber' // This name must match the schema and formData key
+					render={({ field }) => (
+						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+							<FormLabel>Apartment Number</FormLabel>
+							<FormControl>
+								<Input placeholder='Enter your apartment number' {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

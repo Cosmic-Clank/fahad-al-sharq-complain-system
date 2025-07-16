@@ -11,9 +11,8 @@ export function LogoutForm() {
 					redirectTo: "/",
 				});
 			}}>
-			<LogOut />
-
-			<button type='submit' className='hover:cursor-pointer'>
+			<button type='submit' className='hover:cursor-pointer flex items-center gap-2'>
+				<LogOut size={15} />
 				Logout
 			</button>
 		</form>

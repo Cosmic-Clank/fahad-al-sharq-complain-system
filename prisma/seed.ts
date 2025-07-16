@@ -6,7 +6,7 @@ const userData: Prisma.UserCreateInput[] = [
 	{
 		fullName: "Administrator",
 		username: "admin",
-		passwordHash: "$2a$12$1wGz5mSp8KeypLDY0T2oXe604EXab87Sus.5Jhc1vBw1EkYwU4faK",
+		passwordHash: "$2a$12$9HsM3ZxU69yVYeKDuxFYquumvQ3yc2WqBFLO1RmNllM0BAOXqIJAu",
 		role: "ADMIN",
 	},
 	{

@@ -8,7 +8,6 @@ generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
   previewFeatures = ["driverAdapters"]
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -27,6 +26,7 @@ model User {
   updatedAt DateTime @updatedAt
   complaintResponses ComplaintResponse[]
   workTimes WorkTimes[]
+  complaintsAssigned Complaint[] @relation("AssignedComplaints")
 }
 
 enum Role {
@@ -41,14 +41,17 @@ model Complaint {
   customerPhone   String
   customerAddress String
   buildingName    String
+  apartmentNumber String // Optional field for apartment number
   area            String
   description     String
   imagePaths      String[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  assignedToId   Int?
 
   responses       ComplaintResponse[]
   workTimes       WorkTimes[]
+  assignedTo     User? @relation("AssignedComplaints", fields: [assignedToId], references: [id], onDelete: SetNull)
 }
 
 model ComplaintResponse {

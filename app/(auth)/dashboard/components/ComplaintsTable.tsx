@@ -13,6 +13,7 @@ async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
 			customerEmail: true,
 			customerPhone: true,
 			buildingName: true,
+			apartmentNumber: true,
 			area: true,
 			description: true,
 			createdAt: true,

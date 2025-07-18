@@ -127,6 +127,15 @@ function ComplaintForm() {
 				<div className='p-6 bg-white rounded-sm border-t-4 border-primary '>
 					<h2 className='text-2xl font-bold mb-4'>Complaint Form</h2>
 					<p className='text-gray-600 mb-4'>Please fill out the form below to submit your complaint.</p>
+					<div className='mb-4'>
+						<p className='text-sm font-medium text-gray-700 mb-2'>Best working hours for follow-up:</p>
+						<ul className='list-disc list-inside text-gray-600 space-y-1'>
+							<li>8 AM to 10 AM</li>
+							<li>10 AM to 12 PM</li>
+							<li>12 PM to 2 PM</li>
+							<li>2 PM to 4 PM</li>
+						</ul>
+					</div>
 				</div>
 				{/* Full Name */}
 				<FormField

@@ -13,6 +13,7 @@ type RowData = {
 	customerEmail: string;
 	customerPhone: string;
 	buildingName: string;
+	apartmentNumber: string;
 	area: string;
 	description: string;
 	createdAt: string;
@@ -61,6 +62,11 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 		{
 			name: "Bldg Name",
 			selector: (row: RowData) => row.buildingName,
+			sortable: true,
+		},
+		{
+			name: "Apt Number",
+			selector: (row: RowData) => row.apartmentNumber,
 			sortable: true,
 		},
 		{

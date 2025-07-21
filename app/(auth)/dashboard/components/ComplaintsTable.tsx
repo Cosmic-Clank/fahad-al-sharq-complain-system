@@ -52,6 +52,7 @@ async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
 	const formattedData = data.map((item) => ({
 		...item,
 		id: String(item.id),
+		customerEmail: item.customerEmail || "-",
 
 		createdAt: item.createdAt.toDateString(),
 		assignedTo: item.assignedTo ? item.assignedTo.username : null,

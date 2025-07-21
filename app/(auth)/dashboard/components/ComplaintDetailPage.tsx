@@ -33,6 +33,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			customerPhone: true,
 			buildingName: true,
 			apartmentNumber: true,
+			convenientTime: true,
 			area: true,
 			description: true,
 
@@ -77,6 +78,13 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		notFound(); // Renders Next.js's default 404 page
 	}
 
+	const timeLabels = {
+		EIGHT_AM_TO_TEN_AM: "8am to 10am",
+		TEN_AM_TO_TWELVE_PM: "10am to 12pm",
+		TWELVE_PM_TO_TWO_PM: "12pm to 2pm",
+		TWO_PM_TO_FOUR_PM: "2pm to 4pm",
+	};
+
 	// Serialize the data for the Client Component
 	// Date objects must be converted to strings (e.g., ISO string)
 	// JSON string imagePaths must be parsed into an array
@@ -90,6 +98,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		createdAt: complaint.createdAt.toLocaleString(), // Convert Date to local string
 		assignedTo: complaint.assignedTo, // Ensure assignedTo is a string or null
 		apartmentNumber: complaint.apartmentNumber, // Ensure apartmentNumber is a string
+		convenientTime: timeLabels[complaint.convenientTime], // Ensure convenientTime is a string
 		// IMPORTANT: Parse imagePaths if they are stored as JSON strings in the DB
 		imagePaths: complaint.imagePaths.map((imagePath) => `https://koxptzqfmeasndsaecyo.supabase.co/storage/v1/object/public/complaint-images/${imagePath}`),
 		// Format responses to match ComplaintData type

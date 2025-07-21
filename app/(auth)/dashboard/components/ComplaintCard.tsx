@@ -27,6 +27,7 @@ interface ComplaintData {
 	customerPhone: string;
 	buildingName: string;
 	apartmentNumber: string;
+	convenientTime: string; // Ensure this matches your schema
 	area: string;
 	description: string;
 	imagePaths: string[]; // Array of image URLs
@@ -100,6 +101,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				<p className='text-xs text-gray-500 flex items-center'>
 					<House className='w-3.5 h-3.5 mr-1 text-gray-400' />
 					Apartment Number: <span className='font-medium text-gray-700 ml-1'>{complaint.apartmentNumber}</span>
+				</p>
+				<p className='text-xs text-gray-500 flex items-center'>
+					<House className='w-3.5 h-3.5 mr-1 text-gray-400' />
+					Convenient Time: <span className='font-medium text-gray-700 ml-1'>{complaint.convenientTime}</span>
 				</p>
 			</div>
 

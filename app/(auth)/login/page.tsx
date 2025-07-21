@@ -10,16 +10,12 @@ async function page() {
 		return <LoginForm />;
 	}
 	if ((session.user as any).role === "EMPLOYEE") {
-		setTimeout(() => {
-			window.location.reload();
-		}, 1000); // Reload the page after redirecting
+		// Reload the page after redirecting
 		redirect("/dashboard/employee");
 		// return <div class
 	}
 	if ((session.user as any).role === "ADMIN") {
-		setTimeout(() => {
-			window.location.reload();
-		}, 1000); // Reload the page after redirecting
+		// Reload the page after redirecting
 		redirect("/dashboard/admin");
 	}
 	redirect("/");

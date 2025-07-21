@@ -14,6 +14,7 @@ async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
 			customerPhone: true,
 			buildingName: true,
 			apartmentNumber: true,
+			convenientTime: true,
 			area: true,
 			description: true,
 			createdAt: true,
@@ -41,12 +42,20 @@ async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
 		username: (session!.user as any).username,
 	};
 
+	const timeLabels = {
+		EIGHT_AM_TO_TEN_AM: "8am to 10am",
+		TEN_AM_TO_TWELVE_PM: "10am to 12pm",
+		TWELVE_PM_TO_TWO_PM: "12pm to 2pm",
+		TWO_PM_TO_FOUR_PM: "2pm to 4pm",
+	};
+
 	const formattedData = data.map((item) => ({
 		...item,
 		id: String(item.id),
 
 		createdAt: item.createdAt.toDateString(),
 		assignedTo: item.assignedTo ? item.assignedTo.username : null,
+		convenientTime: timeLabels[item.convenientTime],
 
 		status: item.workTimes.length > 0 ? (item.workTimes[item.workTimes.length - 1].endTime ? "Completed" : "In Progress") : "Incomplete",
 		completedBy: item.workTimes.length > 0 ? item.workTimes[item.workTimes.length - 1].user.fullName : null,

@@ -34,10 +34,18 @@ enum Role {
   ADMIN
 }
 
+enum ConvenientTime {
+  EIGHT_AM_TO_TEN_AM
+  TEN_AM_TO_TWELVE_PM
+  TWELVE_PM_TO_TWO_PM
+  TWO_PM_TO_FOUR_PM
+}
+
+
 model Complaint {
   id              Int      @id @default(autoincrement())
   customerName    String
-  customerEmail   String
+  customerEmail   String?
   customerPhone   String
   customerAddress String
   buildingName    String
@@ -48,6 +56,8 @@ model Complaint {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   assignedToId   Int?
+
+  convenientTime ConvenientTime // Default value for convenient time
 
   responses       ComplaintResponse[]
   workTimes       WorkTimes[]

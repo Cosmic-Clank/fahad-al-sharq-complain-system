@@ -16,11 +16,14 @@ import { useRouter } from "next/navigation";
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 const formSchema = z.object({
 	fullname: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long" }).max(50, { message: "Full name must be at most 50 characters long" }),
-	email: z.string({ required_error: "Email is required" }).email({ message: "Enter a valid email address" }),
+	email: z.string().email({ message: "Enter a valid email address" }).optional().or(z.literal("")),
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
 	buildingName: z.string({ required_error: "Building name is required" }).min(1, { message: "Building name must be at least 1 character long" }).max(20, { message: "Building name must be at most 20 characters long" }),
 	apartmentNumber: z.string({ required_error: "Appartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
+	convenientTime: z.enum(["EIGHT_AM_TO_TEN_AM", "TEN_AM_TO_TWELVE_PM", "TWELVE_PM_TO_TWO_PM", "TWO_PM_TO_FOUR_PM"], {
+		required_error: "Convenient time is required",
+	}),
 	branchArea: z.string({ required_error: "Branch area is required" }).refine((val) => ["Al Nuaimia 1 - Ajman", "Al Jerf - Ajman", "Taawun - Sharjah", "Al Nahda - Sharjah", "Al Khan - Sharjah", "Al Majaz 1 - Sharjah", "Al Majaz 2 - Sharjah", "Abu Shagara - Sharjah", "Al Qasimia - Sharjah", "Muwaileh - Sharjah", "Industrial 15 - Sharjah", "Al Nahda - Dubai", "Al Qusais - Dubai", "Al Garhoud - Dubai", "Warsan - Dubai", "Silicon - Dubai", "Ras al Khor - Dubai", "Al Barsha - Dubai", "DIP - Dubai", "DIC - Dubai"].includes(val), {
 		message: "Please select a valid branch area",
 	}),
@@ -42,6 +45,7 @@ function ComplaintForm() {
 			address: "",
 			buildingName: "",
 			apartmentNumber: "",
+			convenientTime: "EIGHT_AM_TO_TEN_AM", // Default value for convenient time
 			branchArea: "",
 			description: "",
 		},
@@ -81,11 +85,12 @@ function ComplaintForm() {
 		// The keys here (fullname, email, etc.) must match the names expected
 		// by `formData.get()` in your Server Action.
 		formData.append("fullname", values.fullname);
-		formData.append("email", values.email);
+		formData.append("email", values.email || ""); // Handle optional email
 		formData.append("phoneNumber", values.phoneNumber);
 		formData.append("address", values.address);
 		formData.append("buildingName", values.buildingName);
 		formData.append("apartmentNumber", values.apartmentNumber);
+		formData.append("convenientTime", values.convenientTime);
 		formData.append("branchArea", values.branchArea);
 		formData.append("description", values.description);
 
@@ -127,15 +132,6 @@ function ComplaintForm() {
 				<div className='p-6 bg-white rounded-sm border-t-4 border-primary '>
 					<h2 className='text-2xl font-bold mb-4'>Complaint Form</h2>
 					<p className='text-gray-600 mb-4'>Please fill out the form below to submit your complaint.</p>
-					<div className='mb-4'>
-						<p className='text-sm font-medium text-gray-700 mb-2'>Best working hours for follow-up:</p>
-						<ul className='list-disc list-inside text-gray-600 space-y-1'>
-							<li>8 AM to 10 AM</li>
-							<li>10 AM to 12 PM</li>
-							<li>12 PM to 2 PM</li>
-							<li>2 PM to 4 PM</li>
-						</ul>
-					</div>
 				</div>
 				{/* Full Name */}
 				<FormField
@@ -157,7 +153,7 @@ function ComplaintForm() {
 					name='email' // This name must match the schema and formData key
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Email</FormLabel>
+							<FormLabel>Email (optional)</FormLabel>
 							<FormControl>
 								<Input placeholder='Enter your email' {...field} />
 							</FormControl>
@@ -218,6 +214,33 @@ function ComplaintForm() {
 							<FormControl>
 								<Input placeholder='Enter your apartment number' {...field} />
 							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+				{/* Convenient Time */}
+				<FormField
+					control={form.control}
+					name='convenientTime' // This name must match the schema and formData key
+					render={({ field }) => (
+						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+							<FormLabel>Convenient</FormLabel>
+
+							<Select onValueChange={field.onChange} defaultValue={field.value}>
+								<FormControl>
+									<SelectTrigger>
+										<SelectValue placeholder='Select a convenient time' />
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									<SelectGroup>
+										<SelectItem value='EIGHT_AM_TO_TEN_AM'>8 AM to 10 AM</SelectItem>
+										<SelectItem value='TEN_AM_TO_TWELVE_PM'>10 AM to 12 PM</SelectItem>
+										<SelectItem value='TWELVE_PM_TO_TWO_PM'>12 PM to 2 PM</SelectItem>
+										<SelectItem value='TWO_PM_TO_FOUR_PM'>2 PM to 4 PM</SelectItem>
+									</SelectGroup>
+								</SelectContent>
+							</Select>
 							<FormMessage />
 						</FormItem>
 					)}

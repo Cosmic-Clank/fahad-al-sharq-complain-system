@@ -5,15 +5,17 @@ import prismaClient from "@/lib/prisma"; // Your Prisma client singleton
 import path from "path"; // Import Node.js path module
 import { nanoid } from "nanoid"; // For unique file names
 import supabaseAdminClient from "@/lib/supabaseAdmin";
+import { buildings } from "@/lib/constants";
 
 // IMPORTANT: Re-define your Zod schema on the server for validation!
 // Match this with your client-side formSchema, but enforce server-side validation.
+
 const serverFormSchema = z.object({
 	fullname: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long" }).max(50, { message: "Full name must be at most 50 characters long" }),
 	email: z.string({ required_error: "Email is required" }).email({ message: "Enter a valid email address" }).or(z.literal("")),
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
-	buildingName: z.string({ required_error: "Building name is required" }).min(1, { message: "Building name must be at least 1 character long" }).max(20, { message: "Building name must be at most 20 characters long" }),
+	buildingName: z.string({ required_error: "Building name is required" }).refine((val) => buildings.includes(val)),
 	apartmentNumber: z.string({ required_error: "Apartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
 	convenientTime: z.enum(["EIGHT_AM_TO_TEN_AM", "TEN_AM_TO_TWELVE_PM", "TWELVE_PM_TO_TWO_PM", "TWO_PM_TO_FOUR_PM"], {
 		required_error: "Convenient time is required",

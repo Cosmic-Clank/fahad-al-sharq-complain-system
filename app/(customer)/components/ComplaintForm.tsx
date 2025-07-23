@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { buildingOptions, buildings } from "@/lib/constants";
+import { BuildingsCombobox } from "../../../components/BuildingsCombobox";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 const formSchema = z.object({
@@ -19,7 +21,7 @@ const formSchema = z.object({
 	email: z.string().email({ message: "Enter a valid email address" }).optional().or(z.literal("")),
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
-	buildingName: z.string({ required_error: "Building name is required" }).min(1, { message: "Building name must be at least 1 character long" }).max(20, { message: "Building name must be at most 20 characters long" }),
+	buildingName: z.string({ required_error: "Building name is required" }).refine((val) => buildings.includes(val)),
 	apartmentNumber: z.string({ required_error: "Appartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
 	convenientTime: z.enum(["EIGHT_AM_TO_TEN_AM", "TEN_AM_TO_TWELVE_PM", "TWELVE_PM_TO_TWO_PM", "TWO_PM_TO_FOUR_PM"], {
 		required_error: "Convenient time is required",
@@ -198,7 +200,7 @@ function ComplaintForm() {
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Building Name</FormLabel>
 							<FormControl>
-								<Input placeholder='Enter the building name' {...field} />
+								<BuildingsCombobox options={buildingOptions} value={field.value} onChange={field.onChange} placeholder='Select Building' />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

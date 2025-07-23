@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { buildingOptions, buildings } from "@/lib/constants";
+import { buildings } from "@/lib/constants";
 import { BuildingsCombobox } from "../../../components/BuildingsCombobox";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
@@ -200,7 +200,7 @@ function ComplaintForm() {
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Building Name</FormLabel>
 							<FormControl>
-								<BuildingsCombobox options={buildingOptions} value={field.value} onChange={field.onChange} placeholder='Select Building' />
+								<BuildingsCombobox options={buildings.map((b) => ({ value: b, label: b }))} value={field.value} onChange={field.onChange} placeholder='Select Building' />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

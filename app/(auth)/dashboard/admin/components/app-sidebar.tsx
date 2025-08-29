@@ -1,13 +1,23 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book } from "lucide-react";
+import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
 const items = [
 	{
-		title: "Complaints",
+		title: "All",
 		url: "/dashboard/admin",
 		icon: Home,
+	},
+	{
+		title: "Complete",
+		url: "/dashboard/admin/complete",
+		icon: Check,
+	},
+	{
+		title: "Incomplete",
+		url: "/dashboard/admin/incomplete",
+		icon: Cross,
 	},
 	{
 		title: "Employees",

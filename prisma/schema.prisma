@@ -39,6 +39,7 @@ enum ConvenientTime {
   TEN_AM_TO_TWELVE_PM
   TWELVE_PM_TO_TWO_PM
   TWO_PM_TO_FOUR_PM
+  TWENTY_FOUR_HOURS
 }
 
 

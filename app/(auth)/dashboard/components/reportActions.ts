@@ -506,3 +506,132 @@ export async function generateComplaintsPdf(params: { criterion: PreviewCriterio
 	const base64 = Buffer.from(bytes).toString("base64");
 	return { fileName, base64 };
 }
+
+// helper: build Supabase public URL
+
+// server action: generate a PDF for a single complaint
+export async function generateComplaintPdfById(complaintId: string): Promise<{ fileName: string; base64: string }> {
+	const complaint = await prisma.complaint.findUnique({
+		where: { id: Number(complaintId) },
+		select: {
+			id: true,
+			customerName: true,
+			customerEmail: true,
+			customerPhone: true,
+			customerAddress: true,
+			buildingName: true,
+			apartmentNumber: true,
+			area: true,
+			description: true,
+			createdAt: true,
+			imagePaths: true,
+		},
+	});
+
+	if (!complaint) throw new Error("Complaint not found");
+
+	const images = normalizeImagePaths((complaint as any).imagePaths);
+
+	const doc = await PDFDocument.create();
+	const font = await doc.embedFont(StandardFonts.Helvetica);
+	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+	const W = 595.28; // A4 width
+	const H = 841.89; // A4 height
+	const M = 32;
+	const lineHeight = 14;
+
+	const slate900 = rgb(0.06, 0.09, 0.16);
+	const gray100 = rgb(0.95, 0.96, 0.98);
+	const grayBorder = rgb(0.9, 0.91, 0.93);
+
+	const page = doc.addPage([W, H]);
+
+	const drawText = (text: string, x: number, y: number, size = 11, bold = false, color = slate900) => {
+		page.drawText(text, { x, y, size, font: bold ? fontBold : font, color });
+	};
+
+	const wrapText = (text: string, maxWidth: number, size = 11) => {
+		const words = (text || "").split(/\s+/);
+		const lines: string[] = [];
+		let line = "";
+		for (const w of words) {
+			const test = line ? `${line} ${w}` : w;
+			if (font.widthOfTextAtSize(test, size) > maxWidth) {
+				if (line) lines.push(line);
+				line = w;
+			} else line = test;
+		}
+		if (line) lines.push(line);
+		return lines;
+	};
+
+	// Header
+	drawText("Complaint Report", M, H - M - 20, 18, true);
+	drawText(`Complaint #${complaint.id}`, M, H - M - 50, 12);
+	drawText(`Created: ${complaint.createdAt.toISOString()}`, M, H - M - 70, 10);
+
+	let y = H - M - 100;
+
+	// Fields
+	const fields: [string, string | null][] = [
+		["Customer Name", complaint.customerName],
+		["Customer Email", complaint.customerEmail],
+		["Customer Phone", complaint.customerPhone],
+		["Customer Address", complaint.customerAddress],
+		["Building", complaint.buildingName],
+		["Apartment", complaint.apartmentNumber],
+		["Area", complaint.area],
+	];
+
+	for (const [label, val] of fields) {
+		page.drawRectangle({
+			x: M,
+			y: y - 44,
+			width: W - 2 * M,
+			height: 44,
+			color: gray100,
+			borderColor: grayBorder,
+			borderWidth: 1,
+		});
+		drawText(label, M + 8, y - 14, 9, false, rgb(0.42, 0.45, 0.5));
+		const lines = wrapText(val || "—", W - 2 * M - 16, 11);
+		let ly = y - 30;
+		for (const line of lines) {
+			drawText(line, M + 8, ly, 11, false, slate900);
+			ly -= lineHeight;
+		}
+		y -= 60;
+	}
+
+	if (complaint.description) {
+		drawText("Description:", M, y, 11, true);
+		y -= 20;
+		const lines = wrapText(complaint.description, W - 2 * M - 16, 11);
+		for (const line of lines) {
+			drawText(line, M, y, 11);
+			y -= lineHeight;
+		}
+		y -= 20;
+	}
+
+	// Images
+	if (images.length > 0) {
+		for (let i = 0; i < images.length; i++) {
+			const bytes = await fetchJpgBytes(images[i]);
+			if (!bytes) continue;
+			const jpg = await doc.embedJpg(bytes);
+			const { width, height } = jpg.size();
+			const scale = Math.min((W - 2 * M) / width, 200 / height, 1);
+			const w = width * scale;
+			const h = height * scale;
+			page.drawImage(jpg, { x: M, y: y - h, width: w, height: h });
+			drawText(`Image ${i + 1}`, M, y - h - 12, 9, false, rgb(0.42, 0.45, 0.5));
+			y -= h + 40;
+		}
+	}
+
+	const bytes = await doc.save();
+	const base64 = Buffer.from(bytes).toString("base64");
+	return { fileName: `complaint_${complaint.id}.pdf`, base64 };
+}

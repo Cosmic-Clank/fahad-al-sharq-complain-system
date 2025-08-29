@@ -2,7 +2,7 @@
 "use client"; // This component will be interactive on the client
 
 import React, { useState } from "react";
-import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, Pin, House } from "lucide-react"; // Icons
+import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, Pin, House, Download } from "lucide-react"; // Icons
 
 import ComplaintResponseForm from "./ComplaintResponseForm"; // Import the response form
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { addEndWorkTime, addStartWorkTime } from "./actions";
 import { Loading } from "@/components/ui/loading";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import AssignmentForm from "./AssignmentForm";
+import { generateComplaintPdfById } from "./reportActions";
 
 // Define the data type for a single complaint
 interface ComplaintData {
@@ -320,6 +321,22 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				{" "}
 				{/* Reduced padding */}
 				<ComplaintResponseForm complaintId={complaint.id} />
+				<Button
+					className='mt-4 text-sm text-white w-full hover:cursor-pointer'
+					onClick={async (event) => {
+						const { base64, fileName } = await generateComplaintPdfById(complaint.id);
+						const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+						const blob = new Blob([byteArray], { type: "application/pdf" });
+						const url = URL.createObjectURL(blob);
+						const a = document.createElement("a");
+						a.href = url;
+						a.download = fileName;
+						a.click();
+						URL.revokeObjectURL(url);
+					}}>
+					<Download className='w-4 h-4 mr-2' />
+					Download PDF
+				</Button>
 			</div>
 
 			{/* Footer (Created At) - Reduced padding, smaller text */}

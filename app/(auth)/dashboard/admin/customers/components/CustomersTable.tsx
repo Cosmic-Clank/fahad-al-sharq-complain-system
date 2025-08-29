@@ -35,7 +35,13 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 			sortable: true,
 			conditionalCellStyles: [
 				{
-					when: (row: RowData) => row.complaintCount > 3,
+					when: (row: RowData) => {
+						// Assuming latestComplaintAt is an ISO string
+						const latestDate = new Date(row.latestComplaintAt);
+						const oneMonthAgo = new Date();
+						oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+						return row.complaintCount > 1 && latestDate >= oneMonthAgo;
+					},
 					style: {
 						backgroundColor: "#f8d7da",
 					},

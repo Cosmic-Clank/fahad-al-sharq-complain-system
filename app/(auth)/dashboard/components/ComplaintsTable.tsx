@@ -3,7 +3,7 @@ import CustomDataTable from "./data-table";
 import prismaClient from "@/lib/prisma";
 import { auth } from "@/auth";
 
-async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
+async function ComplaintsTable({ role, complete }: { role: "admin" | "employee"; complete?: boolean }) {
 	const session = await auth(); // Get the current user session
 	const data = await prismaClient.complaint.findMany({
 		select: {
@@ -68,6 +68,20 @@ async function ComplaintsTable({ role }: { role: "admin" | "employee" }) {
 		if (isCurrentUserA === isCurrentUserB) return 0;
 		return isCurrentUserA ? -1 : 1;
 	});
+	if (complete === true) {
+		return (
+			<>
+				<CustomDataTable data={formattedData.filter((item) => (complete ? item.status === "Completed" : item.status !== "Completed"))} role={role} currentUser={currentUser} />
+			</>
+		);
+	}
+	if (complete === false) {
+		return (
+			<>
+				<CustomDataTable data={formattedData.filter((item) => (complete ? item.status === "Incomplete" : item.status !== "Completed"))} role={role} currentUser={currentUser} />
+			</>
+		);
+	}
 	return (
 		<>
 			<CustomDataTable data={formattedData} role={role} currentUser={currentUser} />

@@ -47,6 +47,7 @@ async function ComplaintsTable({ role, complete }: { role: "admin" | "employee";
 		TEN_AM_TO_TWELVE_PM: "10am to 12pm",
 		TWELVE_PM_TO_TWO_PM: "12pm to 2pm",
 		TWO_PM_TO_FOUR_PM: "2pm to 4pm",
+		TWENTY_FOUR_HOURS: "24 Hours",
 	};
 
 	const formattedData = data.map((item) => ({

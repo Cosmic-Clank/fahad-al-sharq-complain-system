@@ -1,7 +1,8 @@
+// components/ReportGenerator.tsx
 "use client";
 
 import * as React from "react";
-import { FileDown, FileText, Filter, ChevronsUpDown, Check, Loader2 } from "lucide-react";
+import { FileDown, ChevronsUpDown, Check, Loader2, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,14 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+
 import type { ComplaintColumn, PreviewCriterion, ComplaintPreviewRow } from "./reportActions";
-import { getUniqueOptions, previewComplaints } from "./reportActions";
+import { getUniqueOptions, previewComplaints, generateComplaintsPdf } from "./reportActions";
 
 type Criterion = PreviewCriterion;
+type Option = { value: string; label: string };
 
 const criterionLabel: Record<Criterion, string> = {
 	customerName: "Customer Name",
@@ -29,52 +31,53 @@ const criterionLabel: Record<Criterion, string> = {
 	createdAt: "Created At (Date Range)",
 };
 
-type Option = { value: string; label: string };
-
 export default function ReportGenerator() {
 	const [criterion, setCriterion] = React.useState<Criterion>("customerName");
 
+	// combobox options/state
 	const [options, setOptions] = React.useState<Option[]>([]);
 	const [selected, setSelected] = React.useState<Option | null>(null);
 	const [comboOpen, setComboOpen] = React.useState(false);
 
-	const [startDate, setStartDate] = React.useState<string>("");
-	const [endDate, setEndDate] = React.useState<string>("");
+	// date range
+	const [startDate, setStartDate] = React.useState("");
+	const [endDate, setEndDate] = React.useState("");
 
-	const [isPreviewing, setIsPreviewing] = React.useState(false);
+	// preview state
 	const [rows, setRows] = React.useState<ComplaintPreviewRow[] | null>(null);
-
-	const [loadingOptions, startTransition] = React.useTransition();
+	const [loadingOptions, startOptionsTransition] = React.useTransition();
 	const [loadingPreview, startPreviewTransition] = React.useTransition();
+
+	// download state
+	const [downloading, startDownloadTransition] = React.useTransition();
 
 	const isDateMode = criterion === "createdAt";
 	const canGenerate = isDateMode ? Boolean(startDate && endDate) : Boolean(selected?.value);
 
-	// Fetch unique options for selected column
+	// fetch uniques when non-date column chosen
 	React.useEffect(() => {
 		if (isDateMode) {
 			setOptions([]);
 			setSelected(null);
+			setRows(null);
 			return;
 		}
 		setSelected(null);
 		setOptions([]);
 		setRows(null);
-		setIsPreviewing(false);
 
-		startTransition(async () => {
+		startOptionsTransition(async () => {
 			const data = await getUniqueOptions(criterion as ComplaintColumn);
 			setOptions(data);
 		});
 	}, [criterion, isDateMode]);
 
 	const handlePreview = () => {
+		if (!canGenerate) return;
 		setRows(null);
-		setIsPreviewing(true);
-
 		startPreviewTransition(async () => {
 			try {
-				const data = await previewComplaints(isDateMode ? { criterion: "createdAt", startDate, endDate, limit: 100 } : { criterion: criterion as ComplaintColumn, value: selected!.value, limit: 100 });
+				const data = await previewComplaints(isDateMode ? { criterion: "createdAt", startDate, endDate, limit: 200 } : { criterion: criterion as ComplaintColumn, value: selected!.value, limit: 200 });
 				setRows(data);
 			} catch (e) {
 				console.error(e);
@@ -84,10 +87,38 @@ export default function ReportGenerator() {
 	};
 
 	const handleDownloadPdf = () => {
-		alert("PDF generation not implemented yet — hook this to a server action when ready.");
+		if (!canGenerate) return;
+
+		startDownloadTransition(async () => {
+			try {
+				const result = await generateComplaintsPdf(isDateMode ? { criterion: "createdAt", startDate, endDate, limit: 1000 } : { criterion: criterion as ComplaintColumn, value: selected!.value, limit: 1000 });
+
+				const byteArray = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+				const blob = new Blob([byteArray], { type: "application/pdf" });
+
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = result.fileName;
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+				URL.revokeObjectURL(url);
+			} catch (e) {
+				console.error(e);
+				alert("Failed to generate PDF. Check server logs.");
+			}
+		});
 	};
 
-	const formatDate = (iso: string) => new Date(iso).toLocaleString();
+	const formatDateTime = (iso: string) =>
+		new Date(iso).toLocaleString(undefined, {
+			year: "numeric",
+			month: "short",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+		});
 
 	return (
 		<div className='mx-auto max-w-5xl p-6'>
@@ -95,7 +126,7 @@ export default function ReportGenerator() {
 				<CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
 					<div>
 						<CardTitle className='text-2xl'>Report Generator</CardTitle>
-						<p className='text-sm text-muted-foreground'>Pick a column, choose a value (or date range), then preview or download.</p>
+						<p className='text-sm text-muted-foreground'>Pick a column & value (or a date range), preview matching complaints, or download a styled PDF (one complaint per page, images at bottom).</p>
 					</div>
 					<Badge variant='secondary' className='uppercase tracking-wide'>
 						Complaints
@@ -116,7 +147,6 @@ export default function ReportGenerator() {
 									setSelected(null);
 									setStartDate("");
 									setEndDate("");
-									setIsPreviewing(false);
 									setRows(null);
 								}}>
 								<SelectTrigger>
@@ -135,7 +165,7 @@ export default function ReportGenerator() {
 							</Select>
 						</div>
 
-						{/* Value selector (combobox) */}
+						{/* Value selector / Date range */}
 						{!isDateMode ? (
 							<div className='space-y-2 md:col-span-2'>
 								<Label>{criterionLabel[criterion]}</Label>
@@ -168,7 +198,6 @@ export default function ReportGenerator() {
 															onSelect={() => {
 																setSelected(opt);
 																setComboOpen(false);
-																setIsPreviewing(false);
 																setRows(null);
 															}}>
 															<Check className={cn("mr-2 h-4 w-4", selected?.value === opt.value ? "opacity-100" : "opacity-0")} />
@@ -198,9 +227,6 @@ export default function ReportGenerator() {
 										</Button>
 									)}
 								</div>
-								<p className='text-xs text-muted-foreground'>
-									Showing unique values from <b>{criterionLabel[criterion]}</b>.
-								</p>
 							</div>
 						) : (
 							<div className='space-y-2 md:col-span-2'>
@@ -211,7 +237,6 @@ export default function ReportGenerator() {
 										value={startDate}
 										onChange={(e) => {
 											setStartDate(e.target.value);
-											setIsPreviewing(false);
 											setRows(null);
 										}}
 										className='sm:max-w-xs'
@@ -221,7 +246,6 @@ export default function ReportGenerator() {
 										value={endDate}
 										onChange={(e) => {
 											setEndDate(e.target.value);
-											setIsPreviewing(false);
 											setRows(null);
 										}}
 										className='sm:max-w-xs'
@@ -231,19 +255,14 @@ export default function ReportGenerator() {
 										Preview
 									</Button>
 								</div>
-								<p className='text-xs text-muted-foreground'>Pick a start and end date (inclusive).</p>
 							</div>
 						)}
 					</div>
 
 					{/* Actions */}
 					<div className='mt-6 flex flex-wrap items-center gap-3'>
-						<Button type='button' className='gap-2' disabled={!canGenerate || loadingPreview} onClick={handlePreview} variant='outline'>
-							{loadingPreview ? <Loader2 className='h-4 w-4 animate-spin' /> : <FileText className='h-4 w-4' />}
-							Generate Preview
-						</Button>
-						<Button type='button' className='gap-2' disabled={!canGenerate} onClick={handleDownloadPdf}>
-							<FileDown className='h-4 w-4' />
+						<Button type='button' className='gap-2' disabled={!canGenerate || downloading} onClick={handleDownloadPdf}>
+							{downloading ? <Loader2 className='h-4 w-4 animate-spin' /> : <FileDown className='h-4 w-4' />}
 							Download PDF
 						</Button>
 
@@ -259,58 +278,58 @@ export default function ReportGenerator() {
 						)}
 					</div>
 
-					{/* Preview Table */}
-					<div className='mt-6 rounded-md border'>
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Customer Name</TableHead>
-									<TableHead>Email</TableHead>
-									<TableHead>Phone</TableHead>
-									<TableHead>Address</TableHead>
-									<TableHead>Building</TableHead>
-									<TableHead>Apt</TableHead>
-									<TableHead>Area</TableHead>
-									<TableHead>Created At</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{!isPreviewing ? (
-									<TableRow>
-										<TableCell colSpan={8} className='text-center text-muted-foreground'>
-											No preview yet. Choose a criterion and value/date, then click <b>Preview</b>.
-										</TableCell>
-									</TableRow>
-								) : loadingPreview ? (
-									<TableRow>
-										<TableCell colSpan={8} className='text-center'>
-											<span className='inline-flex items-center gap-2 text-muted-foreground'>
-												<Loader2 className='h-4 w-4 animate-spin' /> Loading preview…
+					{/* Preview table */}
+					<div className='mt-6 rounded-md border overflow-x-auto'>
+						<table className='w-full text-sm'>
+							<thead className='bg-muted/50'>
+								<tr className='[&>th]:text-left [&>th]:px-3 [&>th]:py-2'>
+									<th>Customer Name</th>
+									<th>Email</th>
+									<th>Phone</th>
+									<th>Address</th>
+									<th>Building</th>
+									<th>Apt</th>
+									<th>Area</th>
+									<th>Created At</th>
+								</tr>
+							</thead>
+							<tbody className='[&>tr>td]:px-3 [&>tr>td]:py-2'>
+								{loadingPreview ? (
+									<tr>
+										<td colSpan={8} className='text-center text-muted-foreground'>
+											<span className='inline-flex items-center gap-2'>
+												<Loader2 className='h-4 w-4 animate-spin' /> Loading…
 											</span>
-										</TableCell>
-									</TableRow>
-								) : rows && rows.length > 0 ? (
-									rows.map((r) => (
-										<TableRow key={r.id}>
-											<TableCell className='font-medium'>{r.customerName}</TableCell>
-											<TableCell>{r.customerEmail ?? "-"}</TableCell>
-											<TableCell>{r.customerPhone}</TableCell>
-											<TableCell>{r.customerAddress}</TableCell>
-											<TableCell>{r.buildingName}</TableCell>
-											<TableCell>{r.apartmentNumber ?? "-"}</TableCell>
-											<TableCell>{r.area}</TableCell>
-											<TableCell>{formatDate(r.createdAt)}</TableCell>
-										</TableRow>
-									))
+										</td>
+									</tr>
+								) : rows == null ? (
+									<tr>
+										<td colSpan={8} className='text-center text-muted-foreground'>
+											No preview yet. Choose filters and click <b>Preview</b>.
+										</td>
+									</tr>
+								) : rows.length === 0 ? (
+									<tr>
+										<td colSpan={8} className='text-center text-muted-foreground'>
+											No results for the chosen filter.
+										</td>
+									</tr>
 								) : (
-									<TableRow>
-										<TableCell colSpan={8} className='text-center text-muted-foreground'>
-											No results found for the chosen filter.
-										</TableCell>
-									</TableRow>
+									rows.map((r) => (
+										<tr key={r.id} className='border-t'>
+											<td className='font-medium'>{r.customerName}</td>
+											<td>{r.customerEmail ?? "—"}</td>
+											<td>{r.customerPhone}</td>
+											<td>{r.customerAddress}</td>
+											<td>{r.buildingName}</td>
+											<td>{r.apartmentNumber ?? "—"}</td>
+											<td>{r.area}</td>
+											<td>{formatDateTime(r.createdAt)}</td>
+										</tr>
+									))
 								)}
-							</TableBody>
-						</Table>
+							</tbody>
+						</table>
 					</div>
 				</CardContent>
 			</Card>

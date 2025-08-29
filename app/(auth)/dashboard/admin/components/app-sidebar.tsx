@@ -5,7 +5,7 @@ import Image from "next/image";
 
 const items = [
 	{
-		title: "Incomplete",
+		title: "Complaints",
 		url: "/dashboard/admin",
 		icon: Home,
 	},

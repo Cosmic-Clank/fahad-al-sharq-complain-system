@@ -6,7 +6,6 @@ import DataTable from "react-data-table-component";
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { BuildingsCombobox } from "@/components/BuildingsCombobox";
-import { buildings } from "@/lib/constants";
 
 type RowData = {
 	id: string;
@@ -143,7 +142,7 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 					</SelectContent>
 				</Select>
 
-				<Label className='mb-2'>Filter by Building:</Label>
+				{/* <Label className='mb-2'>Filter by Building:</Label>
 				<BuildingsCombobox
 					options={buildings.map((building) => ({ label: building, value: building }))}
 					value={selectedBuilding}
@@ -153,7 +152,7 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 					}}
 					placeholder='Select a building'
 					className='w-2xl'
-				/>
+				/> */}
 			</div>
 		</div>
 	);

@@ -1,7 +1,7 @@
 // components/ComplaintForm.tsx
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { buildings } from "@/lib/constants";
 import { BuildingsCombobox } from "../../../components/BuildingsCombobox";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
@@ -21,7 +20,7 @@ const formSchema = z.object({
 	email: z.string().email({ message: "Enter a valid email address" }).optional().or(z.literal("")),
 	phoneNumber: z.string({ required_error: "Phone number is required" }).min(5, { message: "Phone number must be at least 5 characters long" }).max(15, { message: "Phone number must be at most 15 characters long" }),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
-	buildingName: z.string({ required_error: "Building name is required" }).refine((val) => buildings.includes(val)),
+	buildingName: z.string({ required_error: "Building name is required" }),
 	apartmentNumber: z.string({ required_error: "Appartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
 	convenientTime: z.enum(["EIGHT_AM_TO_TEN_AM", "TEN_AM_TO_TWELVE_PM", "TWELVE_PM_TO_TWO_PM", "TWO_PM_TO_FOUR_PM"], {
 		required_error: "Convenient time is required",
@@ -36,7 +35,23 @@ function ComplaintForm() {
 	const [images, setImages] = React.useState<File[]>([]);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [submitError, setSubmitError] = React.useState<string | null>(null);
+	const [buildings, setBuildings] = React.useState<string[]>([]);
 	const router = useRouter();
+
+	useEffect(() => {
+		// Fetch building names from the server or any other source
+		const fetchBuildings = async () => {
+			try {
+				const response = await fetch("/api/buildings");
+				const data = await response.json();
+				setBuildings(Array.isArray(data) ? data.map((item) => item.buildingName) : []);
+			} catch (error) {
+				console.error("Error fetching buildings:", error);
+			}
+		};
+
+		fetchBuildings();
+	}, []);
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -125,6 +140,10 @@ function ComplaintForm() {
 			form.reset(); // Reset the form fields
 		}
 	};
+
+	if (buildings.length === 0) {
+		return <div>Loading...</div>;
+	}
 
 	return (
 		<Form {...form}>

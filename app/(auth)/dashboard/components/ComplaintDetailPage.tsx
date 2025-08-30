@@ -83,7 +83,14 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		TEN_AM_TO_TWELVE_PM: "10am to 12pm",
 		TWELVE_PM_TO_TWO_PM: "12pm to 2pm",
 		TWO_PM_TO_FOUR_PM: "2pm to 4pm",
-		TWENTY_FOUR_HOURS: "24 Hours",
+		FOUR_PM_TO_SIX_PM: "4pm to 6pm",
+		SIX_PM_TO_EIGHT_PM: "6pm to 8pm",
+		EIGHT_PM_TO_TEN_PM: "8pm to 10pm",
+		TEN_PM_TO_TWELVE_AM: "10pm to 12am",
+		TWELVE_AM_TO_TWO_AM: "12am to 2am",
+		TWO_AM_TO_FOUR_AM: "2am to 4am",
+		FOUR_AM_TO_SIX_AM: "4am to 6am",
+		SIX_AM_TO_EIGHT_AM: "6am to 8am",
 	};
 
 	// Serialize the data for the Client Component

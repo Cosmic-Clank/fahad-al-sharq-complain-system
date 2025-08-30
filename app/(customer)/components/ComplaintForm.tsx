@@ -250,7 +250,14 @@ function ComplaintForm() {
 										<SelectItem value='TEN_AM_TO_TWELVE_PM'>10 AM to 12 PM</SelectItem>
 										<SelectItem value='TWELVE_PM_TO_TWO_PM'>12 PM to 2 PM</SelectItem>
 										<SelectItem value='TWO_PM_TO_FOUR_PM'>2 PM to 4 PM</SelectItem>
-										<SelectItem value='TWENTY_FOUR_HOURS'>24 Hours</SelectItem>
+										<SelectItem value='FOUR_PM_TO_SIX_PM'>4 PM to 6 PM</SelectItem>
+										<SelectItem value='SIX_PM_TO_EIGHT_PM'>6 PM to 8 PM</SelectItem>
+										<SelectItem value='EIGHT_PM_TO_TEN_PM'>8 PM to 10 PM</SelectItem>
+										<SelectItem value='TEN_PM_TO_TWELVE_AM'>10 PM to 12 AM</SelectItem>
+										<SelectItem value='TWELVE_AM_TO_TWO_AM'>12 AM to 2 AM</SelectItem>
+										<SelectItem value='TWO_AM_TO_FOUR_AM'>2 AM to 4 AM</SelectItem>
+										<SelectItem value='FOUR_AM_TO_SIX_AM'>4 AM to 6 AM</SelectItem>
+										<SelectItem value='SIX_AM_TO_EIGHT_AM'>6 AM to 8 AM</SelectItem>
 									</SelectGroup>
 								</SelectContent>
 							</Select>

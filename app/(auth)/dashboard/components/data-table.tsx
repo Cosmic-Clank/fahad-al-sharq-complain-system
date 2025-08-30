@@ -132,6 +132,18 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 		router.push(`/dashboard/${role}/complaint/${row.id}`);
 	};
 
+	// Status counts (based on currently filtered data)
+	const { completedCount, incompleteCount, totalCount } = React.useMemo(() => {
+		const total = filteredData.length;
+		let completed = 0;
+		let incomplete = 0;
+		for (const r of filteredData) {
+			if (r.status === "Completed") completed++;
+			if (r.status === "Incomplete") incomplete++;
+		}
+		return { completedCount: completed, incompleteCount: incomplete, totalCount: total };
+	}, [filteredData]);
+
 	return (
 		<div className='space-y-4'>
 			{/* Layer 1: Emirate */}
@@ -203,6 +215,20 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 					</div>
 				</div>
 			)}
+
+			{/* Status summary */}
+			<div className='rounded-md border p-3 flex items-center justify-between'>
+				<div>
+					<Label className='text-sm font-semibold'>Status Summary</Label>
+					<div className='mt-1 flex gap-2 items-center'>
+						<Badge className='bg-green-100 text-green-800'>Completed: {completedCount}</Badge>
+						<Badge className='bg-red-100 text-red-800'>Incomplete: {incompleteCount}</Badge>
+						<Badge variant='secondary'>Total: {totalCount}</Badge>
+					</div>
+				</div>
+				{/* small legend for other statuses */}
+				<div className='text-sm text-gray-600'>Showing counts for the current filters</div>
+			</div>
 
 			{/* Table */}
 			<DataTable columns={columns} data={filteredData} pagination sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />

@@ -4,11 +4,19 @@ import { unstable_noStore as noStore } from "next/cache";
 import BuildingsClient from "./BuildingsClient";
 
 export default async function BuildingsPage() {
-	noStore(); // always fresh on request
+	noStore(); // always fresh
 	const buildings = await prisma.buildings.findMany({
 		orderBy: { buildingName: "asc" },
+		select: { id: true, buildingName: true, emirate: true },
 	});
 
-	// Only pass plain JSON data down to the client component
-	return <BuildingsClient buildings={buildings.map((b) => ({ id: String(b.id), buildingName: b.buildingName }))} />;
+	return (
+		<BuildingsClient
+			buildings={buildings.map((b) => ({
+				id: String(b.id),
+				buildingName: b.buildingName,
+				emirate: b.emirate,
+			}))}
+		/>
+	);
 }

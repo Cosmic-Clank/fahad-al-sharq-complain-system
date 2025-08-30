@@ -128,7 +128,12 @@ function ComplaintForm() {
 	};
 
 	if (buildings.length === 0) {
-		return <div>Loading...</div>;
+		<div className='w-full h-screen flex justify-center items-center'>
+			<svg className='animate-spin h-10 w-10 text-primary' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
+				<circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
+				<path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'></path>
+			</svg>
+		</div>;
 	}
 
 	return (
@@ -231,7 +236,7 @@ function ComplaintForm() {
 					name='convenientTime' // This name must match the schema and formData key
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Convenient</FormLabel>
+							<FormLabel>Convenient Time</FormLabel>
 
 							<Select onValueChange={field.onChange} defaultValue={field.value}>
 								<FormControl>

@@ -1,11 +1,13 @@
 "use client";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SortDescIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+
+import * as React from "react";
 import DataTable from "react-data-table-component";
-import React from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { BuildingsCombobox } from "@/components/BuildingsCombobox";
+import { SortDescIcon } from "lucide-react";
+import { getEmirates, getBuildingsByEmirate, type Building } from "./buildingActions";
 
 type RowData = {
 	id: string;
@@ -16,7 +18,7 @@ type RowData = {
 	buildingName: string;
 	apartmentNumber: string;
 	convenientTime: string;
-	area: string;
+	area: string; // still exists in Complaint, but NOT used for filtering here
 	description: string;
 	createdAt: string;
 	status: string;
@@ -24,10 +26,62 @@ type RowData = {
 	completedOn?: string | null;
 };
 
-function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
+export default function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
 	const router = useRouter();
-	const [selectedArea, setSelectedArea] = React.useState("all");
-	const [selectedBuilding, setSelectedBuilding] = React.useState("");
+
+	// Selections
+	const [selectedEmirate, setSelectedEmirate] = React.useState<string | null>(null);
+	const [selectedBuilding, setSelectedBuilding] = React.useState<string | null>(null);
+
+	// Emirate & building data (from Buildings table)
+	const [emirates, setEmirates] = React.useState<string[]>([]);
+	const [buildings, setBuildings] = React.useState<Building[]>([]);
+	const [loadingEmirates, startEmiratesTransition] = React.useTransition();
+	const [loadingBuildings, startBuildingsTransition] = React.useTransition();
+
+	// Load all emirates once
+	React.useEffect(() => {
+		startEmiratesTransition(async () => {
+			try {
+				const list = await getEmirates();
+				setEmirates(list);
+			} catch (e) {
+				console.error("Failed to fetch emirates", e);
+				setEmirates([]);
+			}
+		});
+	}, []);
+
+	// Load buildings when an emirate is chosen
+	React.useEffect(() => {
+		if (!selectedEmirate) {
+			setBuildings([]);
+			setSelectedBuilding(null);
+			return;
+		}
+		startBuildingsTransition(async () => {
+			try {
+				const rows = await getBuildingsByEmirate(selectedEmirate);
+				setBuildings(rows);
+			} catch (e) {
+				console.error("Failed to fetch buildings for emirate:", selectedEmirate, e);
+				setBuildings([]);
+			}
+		});
+	}, [selectedEmirate]);
+
+	// Filter complaints using buildingName based on emirate selection
+	const filteredData = React.useMemo(() => {
+		let out = data;
+		if (selectedEmirate) {
+			const namesInEmirate = new Set(buildings.map((b) => b.buildingName));
+			out = out.filter((row) => namesInEmirate.has(row.buildingName));
+		}
+		if (selectedBuilding) {
+			out = out.filter((row) => row.buildingName === selectedBuilding);
+		}
+		return out;
+	}, [data, selectedEmirate, selectedBuilding, buildings]);
 
 	const columns = [
 		{ name: "ID", selector: (row: RowData) => row.id, sortable: true, grow: 0 },
@@ -48,7 +102,7 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 		{ name: "Bldg Name", selector: (row: RowData) => row.buildingName, sortable: true },
 		{ name: "Apt Number", selector: (row: RowData) => row.apartmentNumber, sortable: true },
 		{ name: "Convenient Time", selector: (row: RowData) => row.convenientTime, sortable: true },
-		{ name: "Area", selector: (row: RowData) => row.area, sortable: true },
+		{ name: "Area", selector: (row: RowData) => row.area, sortable: true }, // shown but not used for filter
 		{
 			name: "Description",
 			wrap: true,
@@ -74,88 +128,84 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 		{ name: "Worked On", selector: (row: RowData) => row.completedOn || "-", sortable: true },
 	];
 
-	const filteredData = React.useMemo(() => {
-		if (selectedBuilding) {
-			return data.filter((row) => row.buildingName === selectedBuilding);
-		} else if (selectedArea && selectedArea !== "all") {
-			return data.filter((row) => row.area.includes(selectedArea));
-		}
-		return data;
-	}, [data, selectedArea, selectedBuilding]);
-
 	const handleRowClick = (row: RowData) => {
 		router.push(`/dashboard/${role}/complaint/${row.id}`);
 	};
 
 	return (
-		<div>
-			<DataTable columns={columns} data={filteredData} pagination sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />
-
-			<div className='ml-2 flex flex-row gap-4 items-center mb-1'>
-				<Label className='mb-2'>Filter by Area:</Label>
-				<Select
-					onValueChange={(value) => {
-						setSelectedArea(value);
-						setSelectedBuilding("");
-					}}
-					value={selectedArea}>
-					<SelectTrigger>
-						<SelectValue placeholder='Select an area' />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value='all'>All</SelectItem>
-						<SelectGroup>
-							<SelectLabel>By City</SelectLabel>
-							<SelectItem value='Ajman'>Ajman</SelectItem>
-							<SelectItem value='Sharjah'>Sharjah</SelectItem>
-							<SelectItem value='Dubai'>Dubai</SelectItem>
-						</SelectGroup>
-						<SelectGroup>
-							<SelectLabel>Ajman</SelectLabel>
-							<SelectItem value='Al Nuaimia 1 - Ajman'>Al Nuaimia 1</SelectItem>
-							<SelectItem value='Al Jerf - Ajman'>Al Jerf</SelectItem>
-						</SelectGroup>
-						<SelectGroup>
-							<SelectLabel>Sharjah</SelectLabel>
-							<SelectItem value='Taawun - Sharjah'>Taawun</SelectItem>
-							<SelectItem value='Al Nahda - Sharjah'>Al Nahda</SelectItem>
-							<SelectItem value='Al Khan - Sharjah'>Al Khan</SelectItem>
-							<SelectItem value='Al Majaz 1 - Sharjah'>Al Majaz 1</SelectItem>
-							<SelectItem value='Al Majaz 2 - Sharjah'>Al Majaz 2</SelectItem>
-							<SelectItem value='Abu Shagara - Sharjah'>Abu Shagara</SelectItem>
-							<SelectItem value='Al Qasimia - Sharjah'>Al Qasimia</SelectItem>
-							<SelectItem value='Muwaileh - Sharjah'>Muwaileh</SelectItem>
-							<SelectItem value='Industrial 15 - Sharjah'>Industrial 15</SelectItem>
-						</SelectGroup>
-						<SelectGroup>
-							<SelectLabel>Dubai</SelectLabel>
-							<SelectItem value='Al Nahda - Dubai'>Al Nahda</SelectItem>
-							<SelectItem value='Al Qusais - Dubai'>Al Qusais</SelectItem>
-							<SelectItem value='Al Garhoud - Dubai'>Al Garhoud</SelectItem>
-							<SelectItem value='Warsan - Dubai'>Warsan</SelectItem>
-							<SelectItem value='Silicon - Dubai'>Silicon</SelectItem>
-							<SelectItem value='Ras al Khor - Dubai'>Ras al Khor</SelectItem>
-							<SelectItem value='Al Barsha - Dubai'>Al Barsha</SelectItem>
-							<SelectItem value='DIP - Dubai'>DIP</SelectItem>
-							<SelectItem value='DIC - Dubai'>DIC</SelectItem>
-						</SelectGroup>
-					</SelectContent>
-				</Select>
-
-				{/* <Label className='mb-2'>Filter by Building:</Label>
-				<BuildingsCombobox
-					options={buildings.map((building) => ({ label: building, value: building }))}
-					value={selectedBuilding}
-					onChange={(val) => {
-						setSelectedBuilding(val);
-						setSelectedArea("all");
-					}}
-					placeholder='Select a building'
-					className='w-2xl'
-				/> */}
+		<div className='space-y-4'>
+			{/* Layer 1: Emirate */}
+			<div className='rounded-md border p-3 space-y-2'>
+				<Label className='text-sm font-semibold'>Select Emirate</Label>
+				<div className='flex flex-wrap gap-2'>
+					<Button
+						variant={!selectedEmirate ? "default" : "outline"}
+						onClick={() => {
+							setSelectedEmirate(null);
+							setSelectedBuilding(null);
+						}}
+						disabled={loadingEmirates}>
+						All Emirates
+					</Button>
+					{loadingEmirates ? (
+						<Button variant='outline' disabled>
+							Loading…
+						</Button>
+					) : emirates.length === 0 ? (
+						<Button variant='outline' disabled>
+							No emirates
+						</Button>
+					) : (
+						emirates.map((e) => (
+							<Button
+								key={e}
+								variant={selectedEmirate === e ? "default" : "outline"}
+								onClick={() => {
+									setSelectedEmirate(e);
+									setSelectedBuilding(null);
+								}}>
+								{e}
+							</Button>
+						))
+					)}
+				</div>
 			</div>
+
+			{/* Layer 2: Buildings (from the Buildings table for the selected emirate) */}
+			{selectedEmirate && (
+				<div className='rounded-md border p-3 space-y-2'>
+					<Label className='text-sm font-semibold'>Buildings in {selectedEmirate}</Label>
+					<div className='flex flex-wrap gap-2'>
+						<Button variant={!selectedBuilding ? "default" : "outline"} onClick={() => setSelectedBuilding(null)}>
+							All {selectedEmirate}
+						</Button>
+
+						{loadingBuildings ? (
+							<Button variant='outline' disabled>
+								Loading…
+							</Button>
+						) : buildings.length === 0 ? (
+							<Button variant='outline' disabled>
+								No buildings
+							</Button>
+						) : (
+							buildings.map((b) => (
+								<Button key={`${b.emirate}:${b.buildingName}`} variant={selectedBuilding === b.buildingName ? "default" : "outline"} onClick={() => setSelectedBuilding(b.buildingName)}>
+									{b.buildingName}
+								</Button>
+							))
+						)}
+					</div>
+
+					<div className='mt-1 flex gap-2 flex-wrap'>
+						<Badge variant='secondary'>{selectedEmirate}</Badge>
+						{selectedBuilding && <Badge variant='outline'>{selectedBuilding}</Badge>}
+					</div>
+				</div>
+			)}
+
+			{/* Table */}
+			<DataTable columns={columns} data={filteredData} pagination sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />
 		</div>
 	);
 }
-
-export default CustomDataTable;

@@ -1,25 +1,29 @@
-// components/buildings/BuildingsClient.tsx
 "use client";
 
 import * as React from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { createBuilding, deleteBuilding } from "./actions"; // ✅ importing server actions is allowed for form actions
+import { createBuilding, deleteBuilding } from "./actions";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Building = { id: string; buildingName: string };
+type Building = { id: string; buildingName: string; emirate: string };
+
+// Emirates list
+const EMIRATE_OPTIONS = ["Ajman", "Sharjah", "Dubai"];
 
 export default function BuildingsClient({ buildings }: { buildings: Building[] }) {
 	const [openAdd, setOpenAdd] = React.useState(false);
 	const [name, setName] = React.useState("");
+	const [emirate, setEmirate] = React.useState("");
+
+	const canSave = Boolean(name.trim()) && Boolean(emirate.trim());
 
 	return (
 		<div className='mx-auto max-w-3xl p-6 space-y-6'>
@@ -29,7 +33,7 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 						<CardTitle className='text-2xl'>Buildings</CardTitle>
 					</div>
 
-					{/* Add building — enter name in Dialog, confirm in AlertDialog, submit server action */}
+					{/* Add building */}
 					<Dialog open={openAdd} onOpenChange={setOpenAdd}>
 						<DialogTrigger asChild>
 							<Button className='gap-2'>
@@ -40,19 +44,37 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 						<DialogContent className='sm:max-w-md'>
 							<DialogHeader>
 								<DialogTitle>Add a new building</DialogTitle>
-								<DialogDescription>Type the name, then confirm before saving.</DialogDescription>
+								<DialogDescription>Both fields are required.</DialogDescription>
 							</DialogHeader>
 
 							<div className='grid gap-4'>
+								{/* Building name */}
 								<div className='grid gap-2'>
 									<Label htmlFor='buildingName'>Building Name</Label>
 									<Input id='buildingName' placeholder='e.g., Al Barsha 1' value={name} onChange={(e) => setName(e.target.value)} />
 								</div>
 
+								{/* Emirate selection */}
+								<div className='grid gap-2'>
+									<Label>Emirate</Label>
+									<Select value={emirate} onValueChange={setEmirate}>
+										<SelectTrigger>
+											<SelectValue placeholder='Select an emirate' />
+										</SelectTrigger>
+										<SelectContent className='max-h-80'>
+											{EMIRATE_OPTIONS.map((opt) => (
+												<SelectItem key={opt} value={opt}>
+													{opt}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
 								<div className='flex justify-end'>
 									<AlertDialog>
 										<AlertDialogTrigger asChild>
-											<Button type='button' disabled={!name.trim()}>
+											<Button type='button' disabled={!canSave}>
 												Save
 											</Button>
 										</AlertDialogTrigger>
@@ -60,18 +82,20 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 											<AlertDialogHeader>
 												<AlertDialogTitle>Confirm addition</AlertDialogTitle>
 												<AlertDialogDescription>
-													Add <span className='font-semibold'>{name || "this building"}</span> to the database?
+													Add <span className='font-semibold'>{name || "this building"}</span> in <span className='font-semibold'>{emirate || "selected emirate"}</span>?
 												</AlertDialogDescription>
 											</AlertDialogHeader>
 											<AlertDialogFooter>
 												<AlertDialogCancel>Cancel</AlertDialogCancel>
 
-												{/* Actual submit to server action */}
+												{/* Actual submit */}
 												<form
 													action={async (formData: FormData) => {
 														formData.set("buildingName", name);
+														formData.set("emirate", emirate);
 														await createBuilding(formData);
 														setName("");
+														setEmirate("");
 														setOpenAdd(false);
 													}}>
 													<AlertDialogAction asChild>
@@ -96,13 +120,14 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 								<TableRow>
 									<TableHead className='w-[60px] text-center'>#</TableHead>
 									<TableHead>Building Name</TableHead>
+									<TableHead>Emirate</TableHead>
 									<TableHead className='w-[120px] text-right'>Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{buildings.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={3} className='text-center text-muted-foreground'>
+										<TableCell colSpan={4} className='text-center text-muted-foreground'>
 											No buildings yet. Click “Add Building”.
 										</TableCell>
 									</TableRow>
@@ -111,6 +136,7 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 										<TableRow key={b.id}>
 											<TableCell className='text-center align-middle'>{idx + 1}</TableCell>
 											<TableCell className='font-medium'>{b.buildingName}</TableCell>
+											<TableCell>{b.emirate || "—"}</TableCell>
 											<TableCell className='text-right'>
 												<DeleteButton id={b.id} name={b.buildingName} />
 											</TableCell>

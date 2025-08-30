@@ -510,9 +510,46 @@ export async function generateComplaintsPdf(params: { criterion: PreviewCriterio
 // helper: build Supabase public URL
 
 // server action: generate a PDF for a single complaint
+
+/** Fetch JPG/PNG bytes; returns Uint8Array or null */
+async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
+	try {
+		const res = await fetch(url, { cache: "no-store" });
+		if (!res.ok) return null;
+		return new Uint8Array(await res.arrayBuffer());
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Optionally downscale image bytes using sharp if present.
+ * This keeps PDFs much smaller on serverless (no-op if sharp isn't installed).
+ */
+async function maybeDownscaleJpeg(bytes: Uint8Array, maxW = 900, maxH = 900): Promise<Uint8Array> {
+	try {
+		// dynamic import so function still works if sharp isn't installed
+		const sharpMod = await import("sharp").catch(() => null as any);
+		if (!sharpMod?.default) return bytes;
+		const sharp = sharpMod.default;
+		const out = await sharp(bytes).rotate().resize({ width: maxW, height: maxH, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 72, mozjpeg: true }).toBuffer();
+		return new Uint8Array(out);
+	} catch {
+		return bytes; // fall back
+	}
+}
+
+function hoursBetween(a: Date, b: Date) {
+	const ms = b.getTime() - a.getTime();
+	return Math.max(0, ms / (1000 * 60 * 60));
+}
+
 export async function generateComplaintPdfById(complaintId: string): Promise<{ fileName: string; base64: string }> {
+	const id = Number(complaintId);
+
+	// Pull richer info
 	const complaint = await prisma.complaint.findUnique({
-		where: { id: Number(complaintId) },
+		where: { id },
 		select: {
 			id: true,
 			customerName: true,
@@ -523,113 +560,248 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 			apartmentNumber: true,
 			area: true,
 			description: true,
-			createdAt: true,
 			imagePaths: true,
+			convenientTime: true,
+			createdAt: true,
+			assignedTo: { select: { fullName: true, username: true } },
+			workTimes: {
+				select: {
+					startTime: true,
+					endTime: true,
+					user: { select: { fullName: true } },
+				},
+				orderBy: { startTime: "asc" },
+			},
+			responses: {
+				select: {
+					id: true,
+					createdAt: true,
+					responder: { select: { fullName: true } },
+				},
+				orderBy: { createdAt: "asc" },
+			},
 		},
 	});
 
 	if (!complaint) throw new Error("Complaint not found");
 
-	const images = normalizeImagePaths((complaint as any).imagePaths);
+	// Derive completion + metrics
+	const finishedEntries = complaint.workTimes.filter((wt) => wt.endTime);
+	const isCompleted = finishedEntries.length > 0;
+	const latestEnd = isCompleted ? finishedEntries.reduce((max, wt) => (wt.endTime! > max ? wt.endTime! : max), finishedEntries[0].endTime!) : null;
 
+	const completedOn = latestEnd ? new Date(latestEnd) : null;
+	const completedBy = completedOn ? complaint.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === completedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
+
+	// total hours (use now for any open shifts)
+	const now = new Date();
+	const totalHours = complaint.workTimes.reduce((sum, wt) => {
+		const end = wt.endTime ?? now;
+		return sum + hoursBetween(wt.startTime, end);
+	}, 0);
+
+	const responsesCount = complaint.responses.length;
+	const firstResponseAt = responsesCount ? complaint.responses[0].createdAt : null;
+	const lastResponseAt = responsesCount ? complaint.responses[responsesCount - 1].createdAt : null;
+	const uniqueResponders = Array.from(new Set(complaint.responses.map((r) => r.responder.fullName))).join(", ");
+
+	const images = normalizeImagePaths(complaint.imagePaths);
+
+	// ——— PDF (compact, nicer) ———
 	const doc = await PDFDocument.create();
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-	const W = 595.28; // A4 width
-	const H = 841.89; // A4 height
-	const M = 32;
-	const lineHeight = 14;
+	// A4
+	const W = 595.28;
+	const H = 841.89;
+	const M = 28;
+	const LH = 13;
 
-	const slate900 = rgb(0.06, 0.09, 0.16);
-	const gray100 = rgb(0.95, 0.96, 0.98);
-	const grayBorder = rgb(0.9, 0.91, 0.93);
+	// palette
+	const ink = rgb(0.1, 0.12, 0.16);
+	const subt = rgb(0.42, 0.45, 0.5);
+	const chipBg = rgb(0.93, 0.95, 0.98);
+	const panel = rgb(1, 1, 1);
+	const panelBorder = rgb(0.9, 0.92, 0.94);
+	const band = rgb(0.14, 0.44, 0.78);
 
 	const page = doc.addPage([W, H]);
 
-	const drawText = (text: string, x: number, y: number, size = 11, bold = false, color = slate900) => {
-		page.drawText(text, { x, y, size, font: bold ? fontBold : font, color });
+	const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
+		page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
 	};
 
-	const wrapText = (text: string, maxWidth: number, size = 11) => {
-		const words = (text || "").split(/\s+/);
+	const wrap = (t: string, maxW: number, size = 10, f = font) => {
+		const words = (t || "").split(/\s+/);
 		const lines: string[] = [];
 		let line = "";
 		for (const w of words) {
-			const test = line ? `${line} ${w}` : w;
-			if (font.widthOfTextAtSize(test, size) > maxWidth) {
+			const trial = line ? `${line} ${w}` : w;
+			if (f.widthOfTextAtSize(trial, size) > maxW) {
 				if (line) lines.push(line);
 				line = w;
-			} else line = test;
+			} else line = trial;
 		}
 		if (line) lines.push(line);
 		return lines;
 	};
 
-	// Header
-	drawText("Complaint Report", M, H - M - 20, 18, true);
-	drawText(`Complaint #${complaint.id}`, M, H - M - 50, 12);
-	drawText(`Created: ${complaint.createdAt.toISOString()}`, M, H - M - 70, 10);
+	// Header band
+	page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
+	text("Complaint Report", M, H - 38, 20, true, rgb(1, 1, 1));
+	text(`#${complaint.id}`, M, H - 58, 12, false, rgb(1, 1, 1));
+	const genAt = fmtDubai(new Date());
+	text(`Generated: ${genAt} (Asia/Dubai)`, W - M - font.widthOfTextAtSize(`Generated: ${genAt} (Asia/Dubai)`, 10), H - 58, 10, false, rgb(1, 1, 1));
 
-	let y = H - M - 100;
+	// Chips row
+	let chipX = M;
+	const chips = [`Created: ${fmtDubai(complaint.createdAt)}`, complaint.assignedTo ? `Assigned to: ${complaint.assignedTo.fullName}` : "Unassigned", isCompleted ? `Completed: ${fmtDubai(completedOn!)}` : "Not completed"];
+	const chipH = 18,
+		chipPadX = 6;
+	const chipsY = H - 88;
+	for (const c of chips) {
+		const cw = font.widthOfTextAtSize(c, 9) + chipPadX * 2;
+		page.drawRectangle({ x: chipX, y: chipsY, width: cw, height: chipH, color: chipBg, borderColor: panelBorder, borderWidth: 1 });
+		text(c, chipX + chipPadX, chipsY + 4, 9, false, ink);
+		chipX += cw + 6;
+	}
 
-	// Fields
-	const fields: [string, string | null][] = [
-		["Customer Name", complaint.customerName],
-		["Customer Email", complaint.customerEmail],
-		["Customer Phone", complaint.customerPhone],
-		["Customer Address", complaint.customerAddress],
-		["Building", complaint.buildingName],
-		["Apartment", complaint.apartmentNumber],
-		["Area", complaint.area],
+	// Panel: Key details (2 cols)
+	const panelTop = H - 112;
+	const panelH = 210;
+	page.drawRectangle({ x: M, y: panelTop - panelH, width: W - 2 * M, height: panelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+
+	const colGap = 18;
+	const colW = (W - 2 * M - colGap - 24) / 2; // padding inside
+	let y = panelTop - 24;
+
+	const drawField = (label: string, value: string | null, col: 0 | 1) => {
+		const x = M + 12 + (col === 1 ? colW + colGap : 0);
+		text(label, x, y, 9, false, subt);
+		const lines = wrap(value || "—", colW, 10);
+		let ly = y - 14;
+		for (const ln of lines) {
+			text(ln, x, ly, 10);
+			ly -= LH;
+		}
+	};
+
+	// Left column
+	drawField("Customer Name", complaint.customerName, 0);
+	y -= 40;
+	drawField("Customer Email", complaint.customerEmail ?? "—", 0);
+	y -= 40;
+	drawField("Customer Phone", complaint.customerPhone, 0);
+	y -= 40;
+	drawField("Convenient Time", String(complaint.convenientTime).replace(/_/g, " "), 0);
+	y -= 40;
+
+	// Reset y for right column
+	y = panelTop - 24;
+	drawField("Address", complaint.customerAddress, 1);
+	y -= 40;
+	drawField("Area", complaint.area, 1);
+	y -= 40;
+	drawField("Building", complaint.buildingName, 1);
+	y -= 40;
+	drawField("Apartment", complaint.apartmentNumber ?? "—", 1);
+	y -= 40;
+
+	// Panel: Progress & responses
+	const progTop = panelTop - panelH - 12;
+	const progH = 96;
+	page.drawRectangle({ x: M, y: progTop - progH, width: W - 2 * M, height: progH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+
+	text("Progress", M + 12, progTop - 18, 11, true);
+	let py = progTop - 36;
+	const progressPairs: [string, string][] = [
+		["Status", isCompleted ? "Completed" : "In Progress"],
+		["Total Time", `${totalHours.toFixed(1)} h`],
+		["Completed On", completedOn ? fmtDubai(completedOn) : "—"],
+		["Completed By", completedBy ?? "—"],
 	];
+	progressPairs.forEach(([k, v]) => {
+		text(k, M + 12, py, 9, false, subt);
+		text(v, M + 120, py, 10, true);
+		py -= 18;
+	});
 
-	for (const [label, val] of fields) {
-		page.drawRectangle({
-			x: M,
-			y: y - 44,
-			width: W - 2 * M,
-			height: 44,
-			color: gray100,
-			borderColor: grayBorder,
-			borderWidth: 1,
-		});
-		drawText(label, M + 8, y - 14, 9, false, rgb(0.42, 0.45, 0.5));
-		const lines = wrapText(val || "—", W - 2 * M - 16, 11);
-		let ly = y - 30;
-		for (const line of lines) {
-			drawText(line, M + 8, ly, 11, false, slate900);
-			ly -= lineHeight;
+	const rx = W / 2 + 6;
+	text("Responses", rx, progTop - 18, 11, true);
+	let ry = progTop - 36;
+	const respPairs: [string, string][] = [
+		["Count", String(responsesCount)],
+		["First", firstResponseAt ? fmtDubai(firstResponseAt) : "—"],
+		["Last", lastResponseAt ? fmtDubai(lastResponseAt) : "—"],
+		["By", uniqueResponders || "—"],
+	];
+	respPairs.forEach(([k, v]) => {
+		text(k, rx, ry, 9, false, subt);
+		const maxW = W - M - rx - 12;
+		const lines = wrap(v, maxW, 10);
+		let ly = ry;
+		for (const ln of lines) {
+			text(ln, rx + 80, ly, 10, true);
+			ly -= LH;
 		}
-		y -= 60;
+		ry -= 18;
+	});
+
+	// Description panel (compact)
+	const descTop = progTop - progH - 12;
+	const descH = 120;
+	page.drawRectangle({ x: M, y: descTop - descH, width: W - 2 * M, height: descH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+	text("Description", M + 12, descTop - 18, 11, true);
+	if (complaint.description && complaint.description.trim()) {
+		const lines = wrap(complaint.description.trim(), W - 2 * M - 24, 10);
+		let dy = descTop - 36;
+		for (const ln of lines) {
+			text(ln, M + 12, dy, 10);
+			dy -= LH;
+			if (dy < M + 80) break; // avoid colliding with images section
+		}
+	} else {
+		text("—", M + 12, descTop - 36, 10, false, subt);
 	}
 
-	if (complaint.description) {
-		drawText("Description:", M, y, 11, true);
-		y -= 20;
-		const lines = wrapText(complaint.description, W - 2 * M - 16, 11);
-		for (const line of lines) {
-			drawText(line, M, y, 11);
-			y -= lineHeight;
-		}
-		y -= 20;
-	}
+	// Images (compact thumbs to keep size small)
+	const imgsTop = descTop - descH - 12;
+	page.drawRectangle({ x: M, y: M + 70, width: W - 2 * M, height: imgsTop - (M + 70), color: panel, borderColor: panelBorder, borderWidth: 1 });
+	text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
-	// Images
 	if (images.length > 0) {
+		const pad = 10;
+		const thumbW = (W - 2 * M - 24 - pad * 2) / 3; // 3 per row
+		const thumbH = 110; // keep small to reduce size
+		let ix = M + 12,
+			iy = imgsTop - 36 - thumbH;
+
 		for (let i = 0; i < images.length; i++) {
-			const bytes = await fetchJpgBytes(images[i]);
-			if (!bytes) continue;
-			const jpg = await doc.embedJpg(bytes);
-			const { width, height } = jpg.size();
-			const scale = Math.min((W - 2 * M) / width, 200 / height, 1);
-			const w = width * scale;
-			const h = height * scale;
-			page.drawImage(jpg, { x: M, y: y - h, width: w, height: h });
-			drawText(`Image ${i + 1}`, M, y - h - 12, 9, false, rgb(0.42, 0.45, 0.5));
-			y -= h + 40;
+			const raw = await fetchImageBytes(images[i]);
+			if (!raw) continue;
+			const down = await maybeDownscaleJpeg(raw, 900, 900); // keeps size in check
+			const jpg = await doc.embedJpg(down);
+			const dims = jpg.scale(Math.min(thumbW / jpg.width, thumbH / jpg.height));
+
+			page.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy), width: dims.width, height: dims.height });
+			text(`Image ${i + 1}`, ix, Math.max(M + 64, iy - 10), 8, false, subt);
+
+			// advance grid
+			ix += thumbW + pad;
+			if (ix + thumbW > W - M - 12) {
+				ix = M + 12;
+				iy -= thumbH + 34;
+				if (iy < M + 90) break; // stop if out of page space
+			}
 		}
+	} else {
+		text("No images attached.", M + 12, imgsTop - 36, 10, false, subt);
 	}
+
+	// Footer
+	text(`Complaint #${complaint.id}`, M, 40, 9, false, subt);
+	text(`Page 1 of 1`, W - M - font.widthOfTextAtSize("Page 1 of 1", 9), 40, 9, false, subt);
 
 	const bytes = await doc.save();
 	const base64 = Buffer.from(bytes).toString("base64");

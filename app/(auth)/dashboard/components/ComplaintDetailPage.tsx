@@ -34,7 +34,6 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			buildingName: true,
 			apartmentNumber: true,
 			convenientTime: true,
-			area: true,
 			description: true,
 
 			imagePaths: true, // Prisma will return the JSON string

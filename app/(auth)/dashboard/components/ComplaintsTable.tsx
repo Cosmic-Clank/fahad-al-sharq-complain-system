@@ -15,7 +15,6 @@ async function ComplaintsTable({ role, complete }: { role: "admin" | "employee";
 			buildingName: true,
 			apartmentNumber: true,
 			convenientTime: true,
-			area: true,
 			description: true,
 			createdAt: true,
 			workTimes: {
@@ -35,6 +34,8 @@ async function ComplaintsTable({ role, complete }: { role: "admin" | "employee";
 			},
 		},
 	});
+
+	data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
 	const currentUser = {
 		fullName: session!.user!.name!,

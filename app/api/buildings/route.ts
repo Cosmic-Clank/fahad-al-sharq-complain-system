@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
-import prismaClient from "@/lib/prisma";
+// adjust the import path to your prisma client instance
+import prisma from "@/lib/prisma";
 
 export async function GET() {
 	try {
-		const rows = await prismaClient.buildings.findMany({
-			select: { buildingName: true, emirate: true },
-			orderBy: { buildingName: "asc" },
-		});
-
-		return NextResponse.json(rows, { status: 200 });
+		const buildings = await prisma.buildings.findMany();
+		return NextResponse.json(buildings, { status: 200 });
 	} catch (error) {
-		console.error("Error fetching buildings:", error);
-		return NextResponse.json({ message: "Failed to fetch buildings" }, { status: 500 });
+		console.error("Failed to fetch buildings:", error);
+		return NextResponse.json({ error: "Failed to fetch buildings" }, { status: 500 });
 	}
 }

@@ -58,7 +58,6 @@ model Complaint {
   customerAddress String
   buildingName    String
   apartmentNumber String // Optional field for apartment number
-  area            String
   description     String
   imagePaths      String[]
   createdAt      DateTime @default(now())

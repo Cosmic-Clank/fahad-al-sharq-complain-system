@@ -18,7 +18,6 @@ type RowData = {
 	buildingName: string;
 	apartmentNumber: string;
 	convenientTime: string;
-	area: string; // still exists in Complaint, but NOT used for filtering here
 	description: string;
 	createdAt: string;
 	status: string;
@@ -102,7 +101,6 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 		{ name: "Bldg Name", selector: (row: RowData) => row.buildingName, sortable: true },
 		{ name: "Apt Number", selector: (row: RowData) => row.apartmentNumber, sortable: true },
 		{ name: "Convenient Time", selector: (row: RowData) => row.convenientTime, sortable: true },
-		{ name: "Area", selector: (row: RowData) => row.area, sortable: true }, // shown but not used for filter
 		{
 			name: "Description",
 			wrap: true,

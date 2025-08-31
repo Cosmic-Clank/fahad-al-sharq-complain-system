@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 import type { ComplaintColumn, PreviewCriterion, ComplaintPreviewRow } from "./reportActions";
-import { getUniqueOptions, previewComplaints, generateComplaintsPdf } from "./reportActions";
+import { getUniqueOptions, previewComplaints, generateComplaintsPdfByFilter, generateComplaintsPdfByDateRange } from "./reportActions";
 
 type Criterion = PreviewCriterion;
 type Option = { value: string; label: string };
@@ -27,7 +27,6 @@ const criterionLabel: Record<Criterion, string> = {
 	customerAddress: "Customer Address",
 	buildingName: "Building Name",
 	apartmentNumber: "Apartment Number",
-	area: "Area",
 	createdAt: "Created At (Date Range)",
 };
 
@@ -91,8 +90,42 @@ export default function ReportGenerator() {
 
 		startDownloadTransition(async () => {
 			try {
-				const result = await generateComplaintsPdf(isDateMode ? { criterion: "createdAt", startDate, endDate, limit: 1000 } : { criterion: criterion as ComplaintColumn, value: selected!.value, limit: 1000 });
+				let result: { fileName: string; base64: string };
 
+				if (isDateMode) {
+					if (!startDate || !endDate) {
+						alert("Pick a start and end date first.");
+						return;
+					}
+
+					// Optional: quick guard to ensure correct order
+					const s = new Date(startDate);
+					const e = new Date(endDate);
+					if (isNaN(+s) || isNaN(+e)) {
+						alert("Invalid date(s).");
+						return;
+					}
+					if (s > e) {
+						alert("Start date must be before end date.");
+						return;
+					}
+
+					// 🔹 NEW: call the date-range generator
+					result = await generateComplaintsPdfByDateRange(startDate, endDate, 1000);
+				} else {
+					if (!selected?.value) {
+						alert("Pick a value to filter by first.");
+						return;
+					}
+
+					// 🔹 Existing: call the column/value filter generator
+					result = await generateComplaintsPdfByFilter(
+						criterion as string, // column name
+						selected.value // column value
+					);
+				}
+
+				// ---- download (unchanged)
 				const byteArray = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
 				const blob = new Blob([byteArray], { type: "application/pdf" });
 
@@ -159,7 +192,6 @@ export default function ReportGenerator() {
 									<SelectItem value='customerAddress'>{criterionLabel.customerAddress}</SelectItem>
 									<SelectItem value='buildingName'>{criterionLabel.buildingName}</SelectItem>
 									<SelectItem value='apartmentNumber'>{criterionLabel.apartmentNumber}</SelectItem>
-									<SelectItem value='area'>{criterionLabel.area}</SelectItem>
 									<SelectItem value='createdAt'>{criterionLabel.createdAt}</SelectItem>
 								</SelectContent>
 							</Select>
@@ -289,7 +321,6 @@ export default function ReportGenerator() {
 									<th>Address</th>
 									<th>Building</th>
 									<th>Apt</th>
-									<th>Area</th>
 									<th>Created At</th>
 								</tr>
 							</thead>
@@ -323,7 +354,6 @@ export default function ReportGenerator() {
 											<td>{r.customerAddress}</td>
 											<td>{r.buildingName}</td>
 											<td>{r.apartmentNumber ?? "—"}</td>
-											<td>{r.area}</td>
 											<td>{formatDateTime(r.createdAt)}</td>
 										</tr>
 									))

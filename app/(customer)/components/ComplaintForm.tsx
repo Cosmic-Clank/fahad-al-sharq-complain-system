@@ -49,7 +49,6 @@ function ComplaintForm() {
 			buildingName: "",
 			apartmentNumber: "",
 			convenientTime: "EIGHT_AM_TO_TEN_AM", // Default value for convenient time
-			branchArea: "",
 			description: "",
 		},
 	});
@@ -94,7 +93,6 @@ function ComplaintForm() {
 		formData.append("buildingName", values.buildingName);
 		formData.append("apartmentNumber", values.apartmentNumber);
 		formData.append("convenientTime", values.convenientTime);
-		formData.append("branchArea", values.branchArea);
 		formData.append("description", values.description);
 
 		// Append image files to the FormData object
@@ -261,58 +259,6 @@ function ComplaintForm() {
 									</SelectGroup>
 								</SelectContent>
 							</Select>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-				{/* Branch Area */}
-				<FormField
-					control={form.control}
-					name='branchArea' // This name must match the schema and formData key
-					render={({ field }) => (
-						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Branch Area</FormLabel>
-
-							<Select onValueChange={field.onChange} defaultValue={field.value}>
-								<FormControl>
-									<SelectTrigger>
-										<SelectValue placeholder='Select an area' />
-									</SelectTrigger>
-								</FormControl>
-
-								<SelectContent>
-									<SelectGroup>
-										<SelectLabel>Ajman</SelectLabel>
-										<SelectItem value='Al Nuaimia 1 - Ajman'>Al Nuaimia 1</SelectItem>
-										<SelectItem value='Al Jerf - Ajman'>Al Jerf</SelectItem>
-									</SelectGroup>
-									<SelectGroup>
-										<SelectLabel>Sharjah</SelectLabel>
-										<SelectItem value='Taawun - Sharjah'>Taawun</SelectItem>
-										<SelectItem value='Al Nahda - Sharjah'>Al Nahda</SelectItem>
-										<SelectItem value='Al Khan - Sharjah'>Al Khan</SelectItem>
-										<SelectItem value='Al Majaz 1 - Sharjah'>Al Majaz 1</SelectItem>
-										<SelectItem value='Al Majaz 2 - Sharjah'>Al Majaz 2</SelectItem>
-										<SelectItem value='Abu Shagara - Sharjah'>Abu Shagara</SelectItem>
-										<SelectItem value='Al Qasimia - Sharjah'>Al Qasimia</SelectItem>
-										<SelectItem value='Muwaileh - Sharjah'>Muwaileh</SelectItem>
-										<SelectItem value='Industrial 15 - Sharjah'>Industrial 15</SelectItem>
-									</SelectGroup>
-									<SelectGroup>
-										<SelectLabel>Dubai</SelectLabel>
-										<SelectItem value='Al Nahda - Dubai'>Al Nahda</SelectItem>
-										<SelectItem value='Al Qusais - Dubai'>Al Qusais</SelectItem>
-										<SelectItem value='Al Garhoud - Dubai'>Al Garhoud</SelectItem>
-										<SelectItem value='Warsan - Dubai'>Warsan</SelectItem>
-										<SelectItem value='Silicon - Dubai'>Silicon</SelectItem>
-										<SelectItem value='Ras al Khor - Dubai'>Ras al Khor</SelectItem>
-										<SelectItem value='Al Barsha - Dubai'>Al Barsha</SelectItem>
-										<SelectItem value='DIP - Dubai'>DIP</SelectItem>
-										<SelectItem value='DIC - Dubai'>DIC</SelectItem>
-									</SelectGroup>
-								</SelectContent>
-							</Select>
-							<FormDescription>Please select the branch area where you would like to submit your complaint.</FormDescription>
 							<FormMessage />
 						</FormItem>
 					)}

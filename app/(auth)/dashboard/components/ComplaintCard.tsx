@@ -29,7 +29,6 @@ interface ComplaintData {
 	buildingName: string;
 	apartmentNumber: string;
 	convenientTime: string; // Ensure this matches your schema
-	area: string;
 	description: string;
 	imagePaths: string[]; // Array of image URLs
 	createdAt: String; // ISO string from the server
@@ -117,12 +116,6 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 						<Phone className='w-3 h-3 mr-1 text-blue-500 ' /> {/* Slightly smaller icon, slightly toned-down blue */}
 						<span className='font-medium text-sm mr-1'>Phone:</span> {/* Reduced font weight */}
 						<span className='text-sm'>{complaint.customerPhone}</span> {/* Reduced size */}
-					</div>
-					{/* Area */}
-					<div className='flex items-center text-gray-700'>
-						<MapPin className='w-3 h-3 mr-1 text-green-500' /> {/* Slightly smaller icon, slightly toned-down green */}
-						<span className='font-medium text-sm mr-1'>Area:</span> {/* Reduced font weight */}
-						<span className='text-sm'>{complaint.area}</span> {/* Reduced size */}
 					</div>
 				</div>
 

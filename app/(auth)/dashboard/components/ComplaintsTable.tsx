@@ -3,7 +3,9 @@ import CustomDataTable from "./data-table";
 import prismaClient from "@/lib/prisma";
 import { auth } from "@/auth";
 
-async function ComplaintsTable({ role, complete }: { role: "admin" | "employee"; complete?: boolean }) {
+type StatusFilter = "Completed" | "Incomplete" | "In Progress";
+
+async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; status?: StatusFilter }) {
 	const session = await auth(); // Get the current user session
 	const data = await prismaClient.complaint.findMany({
 		select: {
@@ -35,6 +37,7 @@ async function ComplaintsTable({ role, complete }: { role: "admin" | "employee";
 		},
 	});
 
+	// newest first
 	data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
 	const currentUser = {
@@ -43,7 +46,7 @@ async function ComplaintsTable({ role, complete }: { role: "admin" | "employee";
 		username: (session!.user as any).username,
 	};
 
-	const timeLabels = {
+	const timeLabels: Record<string, string> = {
 		EIGHT_AM_TO_TEN_AM: "8am to 10am",
 		TEN_AM_TO_TWELVE_PM: "10am to 12pm",
 		TWELVE_PM_TO_TWO_PM: "12pm to 2pm",
@@ -58,44 +61,35 @@ async function ComplaintsTable({ role, complete }: { role: "admin" | "employee";
 		SIX_AM_TO_EIGHT_AM: "6am to 8am",
 	};
 
-	const formattedData = data.map((item) => ({
-		...item,
-		id: String(item.id),
-		customerEmail: item.customerEmail || "-",
+	const formattedData = data.map((item) => {
+		const latestWT = item.workTimes[item.workTimes.length - 1];
+		const statusComputed = item.workTimes.length > 0 ? (latestWT.endTime ? "Completed" : "In Progress") : "Incomplete";
 
-		createdAt: item.createdAt.toDateString(),
-		assignedTo: item.assignedTo ? item.assignedTo.username : null,
-		convenientTime: timeLabels[item.convenientTime],
-
-		status: item.workTimes.length > 0 ? (item.workTimes[item.workTimes.length - 1].endTime ? "Completed" : "In Progress") : "Incomplete",
-		completedBy: item.workTimes.length > 0 ? item.workTimes[item.workTimes.length - 1].user.fullName : null,
-		completedOn: item.workTimes.length > 0 ? item.workTimes[item.workTimes.length - 1].date.toDateString() : null,
-	}));
-	formattedData.sort((a, b) => {
-		const isCurrentUserA = a.assignedTo === currentUser.username;
-		const isCurrentUserB = b.assignedTo === currentUser.username;
-		if (isCurrentUserA === isCurrentUserB) return 0;
-		return isCurrentUserA ? -1 : 1;
+		return {
+			...item,
+			id: String(item.id),
+			customerEmail: item.customerEmail || "-",
+			createdAt: item.createdAt.toDateString(),
+			assignedTo: item.assignedTo ? item.assignedTo.username : null,
+			convenientTime: timeLabels[String(item.convenientTime)] ?? String(item.convenientTime),
+			status: statusComputed as StatusFilter,
+			completedBy: item.workTimes.length > 0 ? latestWT.user.fullName : null,
+			completedOn: item.workTimes.length > 0 ? latestWT.date.toDateString() : null,
+		};
 	});
-	if (complete === true) {
-		return (
-			<>
-				<CustomDataTable data={formattedData.filter((item) => (complete ? item.status === "Completed" : item.status !== "Completed"))} role={role} currentUser={currentUser} />
-			</>
-		);
-	}
-	if (complete === false) {
-		return (
-			<>
-				<CustomDataTable data={formattedData.filter((item) => (complete ? item.status === "Incomplete" : item.status !== "Completed"))} role={role} currentUser={currentUser} />
-			</>
-		);
-	}
-	return (
-		<>
-			<CustomDataTable data={formattedData} role={role} currentUser={currentUser} />
-		</>
-	);
+
+	// Put items assigned to current user on top
+	formattedData.sort((a, b) => {
+		const aMine = a.assignedTo === currentUser.username;
+		const bMine = b.assignedTo === currentUser.username;
+		if (aMine === bMine) return 0;
+		return aMine ? -1 : 1;
+	});
+
+	// Apply status filter if provided
+	const filtered = status ? formattedData.filter((row) => row.status === status) : formattedData;
+
+	return <CustomDataTable data={filtered} role={role} currentUser={currentUser} />;
 }
 
 export default ComplaintsTable;

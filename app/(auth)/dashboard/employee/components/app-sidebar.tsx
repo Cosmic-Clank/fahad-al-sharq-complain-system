@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Book, Check, Cross, Home, LucideOctagon } from "lucide-react";
+import { AlertCircle, Book, Check, Cross, Home, LucideOctagon } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 
 const items = [
@@ -17,6 +17,11 @@ const items = [
 		title: "Incomplete",
 		url: "/dashboard/employee/incomplete",
 		icon: Cross,
+	},
+	{
+		title: "Pending",
+		url: "/dashboard/employee/pending",
+		icon: AlertCircle,
 	},
 	{
 		title: "Reports",

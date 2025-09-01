@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check } from "lucide-react";
+import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check, AlertCircle } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -18,6 +18,11 @@ const items = [
 		title: "Incomplete",
 		url: "/dashboard/admin/incomplete",
 		icon: Cross,
+	},
+	{
+		title: "Pending",
+		url: "/dashboard/admin/pending",
+		icon: AlertCircle,
 	},
 	{
 		title: "Employees",

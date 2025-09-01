@@ -106,6 +106,14 @@ function hoursBetween(a: Date, b: Date) {
 	return Math.max(0, ms / (1000 * 60 * 60));
 }
 
+// NEW: human readable duration "X hours and Y minutes"
+function humanizeHoursMinutes(totalMs: number) {
+	const totalMinutes = Math.max(0, Math.floor(totalMs / 60000));
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	return `${hours} ${hours === 1 ? "hour" : "hours"} and ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+
 // Map convenientTime enum -> human-friendly time range (PDF only)
 const CONVENIENT_TIME_LABELS: Record<string, string> = {
 	EIGHT_AM_TO_TEN_AM: "8 AM – 10 AM",
@@ -395,19 +403,25 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
 		};
 
-		// derive metrics
-		const finishedEntries = c.workTimes.filter((wt) => wt.endTime);
-		const isCompleted = finishedEntries.length > 0;
-		const latestEnd = isCompleted ? finishedEntries.reduce((max, wt) => (wt.endTime! > max ? wt.endTime! : max), finishedEntries[0].endTime!) : null;
-
-		const completedOn = latestEnd ? new Date(latestEnd) : null;
-		const completedBy = completedOn ? c.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === completedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
-
+		// ── work metrics (reworked for the new progress section)
 		const now = new Date();
-		const totalHours = c.workTimes.reduce((sum, wt) => {
+
+		const startedOn = c.workTimes.length > 0 ? new Date(Math.min(...c.workTimes.map((wt) => wt.startTime.getTime()))) : null;
+
+		const finishedEntries = c.workTimes.filter((wt) => wt.endTime);
+		const endedOn = finishedEntries.length > 0 ? new Date(Math.max(...finishedEntries.map((wt) => wt.endTime!.getTime()))) : null;
+
+		const hasOpenIntervals = c.workTimes.some((wt) => !wt.endTime);
+		const status = endedOn && !hasOpenIntervals ? "Completed" : c.workTimes.length > 0 ? "In Progress" : "Not started";
+
+		const completedBy = endedOn ? c.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
+
+		const totalMs = c.workTimes.reduce((sum, wt) => {
 			const end = wt.endTime ?? now;
-			return sum + hoursBetween(wt.startTime, end);
+			return sum + Math.max(0, end.getTime() - wt.startTime.getTime());
 		}, 0);
+
+		const timeWorkedFor = humanizeHoursMinutes(totalMs);
 
 		const responsesCount = c.responses.length;
 		const firstResponseAt = responsesCount ? c.responses[0].createdAt : null;
@@ -426,7 +440,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		// chips
 		let chipX = M;
-		const chips = [`Created: ${fmtDubai(c.createdAt)}`, c.assignedTo ? `Assigned to: ${c.assignedTo.fullName}` : "Unassigned", isCompleted ? `Completed: ${fmtDubai(completedOn!)}` : "Not completed"];
+		const chips = [`Created: ${fmtDubai(c.createdAt)}`, c.assignedTo ? `Assigned to: ${c.assignedTo.fullName}` : "Unassigned", endedOn ? `Completed: ${fmtDubai(endedOn)}` : "Not completed"];
 		const chipH = 18;
 		const chipPadX = 6;
 		const chipsY = H - 88;
@@ -492,9 +506,9 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		drawField("Apartment", c.apartmentNumber ?? "—", 1);
 		y -= 40;
 
-		// progress & responses
+		// progress (REWORKED)
 		const progTop = panelTop - panelH - 12;
-		const progH = 96;
+		const progH = 112;
 		page.drawRectangle({
 			x: M,
 			y: progTop - progH,
@@ -509,14 +523,15 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		let py = progTop - 36;
 		(
 			[
-				["Status", isCompleted ? "Completed" : "In Progress"],
-				["Total Time", `${totalHours.toFixed(1)} h`],
-				["Completed On", completedOn ? fmtDubai(completedOn) : "—"],
-				["Completed By", completedBy ?? "—"],
+				["Status", status],
+				["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
+				["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
+				["Work completed by", endedOn ? completedBy ?? "—" : "—"],
+				["Time worked for", timeWorkedFor],
 			] as [string, string][]
 		).forEach(([k, v]) => {
 			text(k, M + 12, py, 9, false, subt);
-			text(v, M + 120, py, 10, true);
+			text(v, M + 140, py, 10, true);
 			py -= 18;
 		});
 
@@ -671,19 +686,25 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	if (!complaint) throw new Error("Complaint not found");
 
-	// metrics
-	const finishedEntries = complaint.workTimes.filter((wt) => wt.endTime);
-	const isCompleted = finishedEntries.length > 0;
-	const latestEnd = isCompleted ? finishedEntries.reduce((max, wt) => (wt.endTime! > max ? wt.endTime! : max), finishedEntries[0].endTime!) : null;
-
-	const completedOn = latestEnd ? new Date(latestEnd) : null;
-	const completedBy = completedOn ? complaint.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === completedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
-
+	// work metrics (same logic as above)
 	const now = new Date();
-	const totalHours = complaint.workTimes.reduce((sum, wt) => {
+
+	const startedOn = complaint.workTimes.length > 0 ? new Date(Math.min(...complaint.workTimes.map((wt) => wt.startTime.getTime()))) : null;
+
+	const finishedEntries = complaint.workTimes.filter((wt) => wt.endTime);
+	const endedOn = finishedEntries.length > 0 ? new Date(Math.max(...finishedEntries.map((wt) => wt.endTime!.getTime()))) : null;
+
+	const hasOpenIntervals = complaint.workTimes.some((wt) => !wt.endTime);
+	const status = endedOn && !hasOpenIntervals ? "Completed" : complaint.workTimes.length > 0 ? "In Progress" : "Not started";
+
+	const completedBy = endedOn ? complaint.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
+
+	const totalMs = complaint.workTimes.reduce((sum, wt) => {
 		const end = wt.endTime ?? now;
-		return sum + hoursBetween(wt.startTime, end);
+		return sum + Math.max(0, end.getTime() - wt.startTime.getTime());
 	}, 0);
+
+	const timeWorkedFor = humanizeHoursMinutes(totalMs);
 
 	const responsesCount = complaint.responses.length;
 	const firstResponseAt = responsesCount ? complaint.responses[0].createdAt : null;
@@ -739,7 +760,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	// chips
 	let chipX = M;
-	const chips = [`Created: ${fmtDubai(complaint.createdAt)}`, complaint.assignedTo ? `Assigned to: ${complaint.assignedTo.fullName}` : "Unassigned", isCompleted ? `Completed: ${fmtDubai(completedOn!)}` : "Not completed"];
+	const chips = [`Created: ${fmtDubai(complaint.createdAt)}`, complaint.assignedTo ? `Assigned to: ${complaint.assignedTo.fullName}` : "Unassigned", endedOn ? `Completed: ${fmtDubai(endedOn)}` : "Not completed"];
 	const chipH = 18,
 		chipPadX = 6;
 	const chipsY = H - 88;
@@ -778,7 +799,6 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	drawField("Customer Phone", complaint.customerPhone, 0);
 	y -= 40;
 	drawField("Convenient Time", prettyConvenientTime(complaint.convenientTime), 0);
-
 	y -= 40;
 
 	// right
@@ -790,23 +810,24 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	drawField("Apartment", complaint.apartmentNumber ?? "—", 1);
 	y -= 40;
 
-	// progress & responses
+	// progress (REWORKED)
 	const progTop = panelTop - panelH - 12;
-	const progH = 96;
+	const progH = 112;
 	page.drawRectangle({ x: M, y: progTop - progH, width: W - 2 * M, height: progH, color: panel, borderColor: panelBorder, borderWidth: 1 });
 
 	text("Progress", M + 12, progTop - 18, 11, true);
 	let py = progTop - 36;
 	(
 		[
-			["Status", isCompleted ? "Completed" : "In Progress"],
-			["Total Time", `${totalHours.toFixed(1)} h`],
-			["Completed On", completedOn ? fmtDubai(completedOn) : "—"],
-			["Completed By", completedBy ?? "—"],
+			["Status", status],
+			["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
+			["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
+			["Work completed by", endedOn ? completedBy ?? "—" : "—"],
+			["Time worked for", timeWorkedFor],
 		] as [string, string][]
 	).forEach(([k, v]) => {
 		text(k, M + 12, py, 9, false, subt);
-		text(v, M + 120, py, 10, true);
+		text(v, M + 140, py, 10, true);
 		py -= 18;
 	});
 

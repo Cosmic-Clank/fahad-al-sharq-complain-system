@@ -20,7 +20,7 @@ type RowData = {
 	convenientTime: string;
 	description: string;
 	createdAt: string;
-	status: string;
+	status: string; // "Completed" | "In Progress" | "Incomplete"
 	completedBy?: string | null;
 	completedOn?: string | null;
 };
@@ -131,15 +131,19 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 	};
 
 	// Status counts (based on currently filtered data)
-	const { completedCount, incompleteCount, totalCount } = React.useMemo(() => {
+	const { completedCount, pendingCount, incompleteCount, totalCount } = React.useMemo(() => {
 		const total = filteredData.length;
 		let completed = 0;
+		let pending = 0; // "In Progress"
 		let incomplete = 0;
+
 		for (const r of filteredData) {
 			if (r.status === "Completed") completed++;
-			if (r.status === "Incomplete") incomplete++;
+			else if (r.status === "In Progress") pending++;
+			else if (r.status === "Incomplete") incomplete++;
 		}
-		return { completedCount: completed, incompleteCount: incomplete, totalCount: total };
+
+		return { completedCount: completed, pendingCount: pending, incompleteCount: incomplete, totalCount: total };
 	}, [filteredData]);
 
 	return (
@@ -181,7 +185,7 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 				</div>
 			</div>
 
-			{/* Layer 2: Buildings (from the Buildings table for the selected emirate) */}
+			{/* Layer 2: Buildings */}
 			{selectedEmirate && (
 				<div className='rounded-md border p-3 space-y-2'>
 					<Label className='text-sm font-semibold'>Buildings in {selectedEmirate}</Label>
@@ -220,12 +224,12 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 					<Label className='text-sm font-semibold'>Status Summary</Label>
 					<div className='mt-1 flex gap-2 items-center'>
 						<Badge className='bg-green-100 text-green-800'>Completed: {completedCount}</Badge>
+						<Badge className='bg-yellow-100 text-yellow-800'>Pending: {pendingCount}</Badge>
 						<Badge className='bg-red-100 text-red-800'>Incomplete: {incompleteCount}</Badge>
 						<Badge variant='secondary'>Total: {totalCount}</Badge>
 					</div>
 				</div>
-				{/* small legend for other statuses */}
-				<div className='text-sm text-gray-600'>Showing counts for the current filters</div>
+				<div className='text-sm text-gray-600'>Counts reflect current filters</div>
 			</div>
 
 			{/* Table */}

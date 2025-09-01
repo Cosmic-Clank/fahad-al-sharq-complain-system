@@ -106,6 +106,35 @@ function hoursBetween(a: Date, b: Date) {
 	return Math.max(0, ms / (1000 * 60 * 60));
 }
 
+// Map convenientTime enum -> human-friendly time range (PDF only)
+const CONVENIENT_TIME_LABELS: Record<string, string> = {
+	EIGHT_AM_TO_TEN_AM: "8 AM – 10 AM",
+	TEN_AM_TO_TWELVE_PM: "10 AM – 12 PM",
+	TWELVE_PM_TO_TWO_PM: "12 PM – 2 PM",
+	TWO_PM_TO_FOUR_PM: "2 PM – 4 PM",
+	FOUR_PM_TO_SIX_PM: "4 PM – 6 PM",
+	SIX_PM_TO_EIGHT_PM: "6 PM – 8 PM",
+	EIGHT_PM_TO_TEN_PM: "8 PM – 10 PM",
+	TEN_PM_TO_TWELVE_AM: "10 PM – 12 AM",
+	TWELVE_AM_TO_TWO_AM: "12 AM – 2 AM",
+	TWO_AM_TO_FOUR_AM: "2 AM – 4 AM",
+	FOUR_AM_TO_SIX_AM: "4 AM – 6 AM",
+	SIX_AM_TO_EIGHT_AM: "6 AM – 8 AM",
+};
+
+function prettyConvenientTime(value: unknown): string {
+	if (!value) return "—";
+	const key = String(value);
+	return CONVENIENT_TIME_LABELS[key] ?? "—";
+}
+
+type DateCriterion = "createdAt";
+
+// type-guard: narrows PreviewCriterion to the "createdAt" branch
+function isDateCriterion(c?: PreviewCriterion): c is DateCriterion {
+	return c === "createdAt";
+}
+
 // Prisma where-builder for combined filters
 function buildWhere(
 	input: {
@@ -119,28 +148,23 @@ function buildWhere(
 	const where: any = {};
 
 	// primary criterion
-	if (criterion === "createdAt") {
+	if (isDateCriterion(criterion)) {
 		if (!startDate || !endDate) throw new Error("startDate and endDate are required for createdAt");
 		const { start, endExclusive } = toUtcDayRange(startDate, endDate);
 		where.createdAt = { gte: start, lt: endExclusive };
 	} else if (criterion) {
-		// allow 'createdAt' above; for others enforce ALLOWED or "__ANY__" bypass when we rely on apartmentNumbers
-		if (criterion !== "createdAt") {
-			if (!ALLOWED.has(criterion as ComplaintColumn)) throw new Error("Invalid column");
-			if (value != null && String(value).trim() !== "" && value !== "__ANY__") {
-				(where as any)[criterion] = value;
-			}
+		// here TS now knows criterion is ComplaintColumn (not "createdAt")
+		if (!ALLOWED.has(criterion)) throw new Error("Invalid column");
+		if (value != null && String(value).trim() !== "" && value !== "__ANY__") {
+			(where as any)[criterion] = value;
 		}
 	}
 
-	// AND: buildingName (if given)
 	if (buildingName && String(buildingName).trim() !== "") {
 		where.buildingName = buildingName;
 	}
 
-	// AND: apartmentNumber IN apartmentNumbers (if provided)
 	if (Array.isArray(apartmentNumbers) && apartmentNumbers.length > 0) {
-		// normalize & dedupe
 		const vals = Array.from(new Set(apartmentNumbers.map((v) => String(v).trim()).filter((v) => v.length > 0)));
 		if (vals.length > 0) {
 			where.apartmentNumber = { in: vals };
@@ -456,7 +480,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		y -= 40;
 		drawField("Customer Phone", c.customerPhone, 0);
 		y -= 40;
-		drawField("Convenient Time", String(c.convenientTime).replace(/_/g, " "), 0);
+		drawField("Convenient Time", prettyConvenientTime(c.convenientTime), 0);
 		y -= 40;
 
 		// right
@@ -753,7 +777,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	y -= 40;
 	drawField("Customer Phone", complaint.customerPhone, 0);
 	y -= 40;
-	drawField("Convenient Time", String(complaint.convenientTime).replace(/_/g, " "), 0);
+	drawField("Convenient Time", prettyConvenientTime(complaint.convenientTime), 0);
+
 	y -= 40;
 
 	// right

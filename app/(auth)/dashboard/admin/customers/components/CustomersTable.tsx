@@ -10,6 +10,7 @@ type RowData = {
 	buildingName: string;
 	apartmentNumber: string;
 	complaintCount: number;
+	thisMonthCount: number; // NEW
 	latestComplaintAt: string;
 	customerName: string;
 	customerEmail: string;
@@ -33,17 +34,19 @@ function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "
 			name: "Complaint Count",
 			selector: (row: RowData) => row.complaintCount,
 			sortable: true,
+		},
+		{
+			// NEW column
+			name: "This Month",
+			selector: (row: RowData) => row.thisMonthCount,
+			sortable: true,
 			conditionalCellStyles: [
 				{
-					when: (row: RowData) => {
-						// Assuming latestComplaintAt is an ISO string
-						const latestDate = new Date(row.latestComplaintAt);
-						const oneMonthAgo = new Date();
-						oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-						return row.complaintCount > 1 && latestDate >= oneMonthAgo;
-					},
+					when: (row: RowData) => row.thisMonthCount >= 2,
 					style: {
-						backgroundColor: "#f8d7da",
+						backgroundColor: "#f8d7da", // red alert background
+						color: "#842029",
+						fontWeight: 600,
 					},
 				},
 			],

@@ -36,7 +36,6 @@ type ExtraFilters = {
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
-// ALLOWED = only DB columns we can safely query distinct on
 const ALLOWED = new Set<ComplaintColumn>(["customerPhone", "buildingName", "apartmentNumber"]);
 
 function fmtDubai(d: Date) {
@@ -54,7 +53,6 @@ function toUtcDayRange(startDate: string, endDate: string) {
 	return { start, endExclusive };
 }
 
-// Build full Supabase public URL(s) from DB value (string | string[] | CSV)
 function normalizeImagePaths(raw: unknown): string[] {
 	const base = "https://koxptzqfmeasndsaecyo.supabase.co/storage/v1/object/public/complaint-images";
 	if (!raw) return [];
@@ -76,7 +74,6 @@ function normalizeImagePaths(raw: unknown): string[] {
 	return [];
 }
 
-/** Fetch image bytes (jpg/png) */
 async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
 	try {
 		const res = await fetch(url, { cache: "no-store" });
@@ -87,17 +84,15 @@ async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
 	}
 }
 
-/** Optionally downscale image bytes using sharp if present. */
 async function maybeDownscaleJpeg(bytes: Uint8Array, maxW = 900, maxH = 900): Promise<Uint8Array> {
 	try {
-		// dynamic import so function still works if sharp isn't installed
 		const sharpMod = await import("sharp").catch(() => null as any);
 		if (!sharpMod?.default) return bytes;
 		const sharp = sharpMod.default;
 		const out = await sharp(bytes).rotate().resize({ width: maxW, height: maxH, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 72, mozjpeg: true }).toBuffer();
 		return new Uint8Array(out);
 	} catch {
-		return bytes; // fall back
+		return bytes;
 	}
 }
 
@@ -106,7 +101,6 @@ function hoursBetween(a: Date, b: Date) {
 	return Math.max(0, ms / (1000 * 60 * 60));
 }
 
-// NEW: human readable duration "X hours and Y minutes"
 function humanizeHoursMinutes(totalMs: number) {
 	const totalMinutes = Math.max(0, Math.floor(totalMs / 60000));
 	const hours = Math.floor(totalMinutes / 60);
@@ -114,7 +108,6 @@ function humanizeHoursMinutes(totalMs: number) {
 	return `${hours} ${hours === 1 ? "hour" : "hours"} and ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
 }
 
-// Map convenientTime enum -> human-friendly time range (PDF only)
 const CONVENIENT_TIME_LABELS: Record<string, string> = {
 	EIGHT_AM_TO_TEN_AM: "8 AM – 10 AM",
 	TEN_AM_TO_TWELVE_PM: "10 AM – 12 PM",
@@ -137,13 +130,10 @@ function prettyConvenientTime(value: unknown): string {
 }
 
 type DateCriterion = "createdAt";
-
-// type-guard: narrows PreviewCriterion to the "createdAt" branch
 function isDateCriterion(c?: PreviewCriterion): c is DateCriterion {
 	return c === "createdAt";
 }
 
-// Prisma where-builder for combined filters
 function buildWhere(
 	input: {
 		criterion?: PreviewCriterion;
@@ -155,13 +145,11 @@ function buildWhere(
 	const { criterion, value, startDate, endDate, buildingName, apartmentNumbers } = input;
 	const where: any = {};
 
-	// primary criterion
 	if (isDateCriterion(criterion)) {
 		if (!startDate || !endDate) throw new Error("startDate and endDate are required for createdAt");
 		const { start, endExclusive } = toUtcDayRange(startDate, endDate);
 		where.createdAt = { gte: start, lt: endExclusive };
 	} else if (criterion) {
-		// here TS now knows criterion is ComplaintColumn (not "createdAt")
 		if (!ALLOWED.has(criterion)) throw new Error("Invalid column");
 		if (value != null && String(value).trim() !== "" && value !== "__ANY__") {
 			(where as any)[criterion] = value;
@@ -189,7 +177,6 @@ function buildWhere(
 export async function getUniqueOptions(column: ComplaintColumn, filters?: Record<string, any>): Promise<UniqueOption[]> {
 	if (!ALLOWED.has(column)) throw new Error("Invalid column");
 
-	// translate special filter: apartmentNumbers[] → { apartmentNumber: { in: [...] } }
 	const where: any = {};
 	if (filters) {
 		for (const [k, v] of Object.entries(filters)) {
@@ -216,21 +203,7 @@ export async function getUniqueOptions(column: ComplaintColumn, filters?: Record
 		.map((v) => ({ value: v, label: v }));
 }
 
-/**
- * Preview with combined filters:
- * - Phone only
- * - Building (AND optional apartments)
- * - CreatedAt (AND optional building/apartments)
- */
-export async function previewComplaints(params: {
-	criterion: PreviewCriterion;
-	value?: string;
-	startDate?: string; // YYYY-MM-DD
-	endDate?: string; // YYYY-MM-DD
-	buildingName?: string;
-	apartmentNumbers?: string[];
-	limit?: number; // default 50
-}): Promise<ComplaintPreviewRow[]> {
+export async function previewComplaints(params: { criterion: PreviewCriterion; value?: string; startDate?: string; endDate?: string; buildingName?: string; apartmentNumbers?: string[]; limit?: number }): Promise<ComplaintPreviewRow[]> {
 	const limit = Math.min(Math.max(Number(params.limit ?? 50), 1), 500);
 	const where = buildWhere(params);
 
@@ -266,7 +239,6 @@ export async function previewComplaints(params: {
 	}));
 }
 
-// Internal fetch for PDF (bigger default limit)
 async function fetchComplaints(params: { criterion?: PreviewCriterion; value?: string; startDate?: string; endDate?: string; buildingName?: string; apartmentNumbers?: string[]; limit?: number }): Promise<ComplaintPreviewRow[]> {
 	const limit = Math.min(Math.max(Number(params.limit ?? 300), 1), 1000);
 	const where = buildWhere(params);
@@ -309,9 +281,8 @@ async function fetchComplaints(params: { criterion?: PreviewCriterion; value?: s
 
 type ComplaintsPdfResult = { fileName: string; base64: string };
 
-// AND-able filter: column=value + extra (building/apartments/date-range)
+// ===== MULTI-PAGE =====
 export async function generateComplaintsPdfByFilter(column: string, value: unknown, extra?: ExtraFilters & { startDate?: string; endDate?: string }): Promise<ComplaintsPdfResult> {
-	// Build where with combined logic
 	const where = buildWhere({
 		criterion: column as any,
 		value: typeof value === "string" ? value : String(value),
@@ -321,7 +292,6 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		apartmentNumbers: extra?.apartmentNumbers,
 	});
 
-	// Pull rich data
 	const complaints = await prisma.complaint.findMany({
 		where,
 		select: {
@@ -361,16 +331,14 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		throw new Error("No complaints found for the given filter.");
 	}
 
-	// PDF setup
 	const doc = await PDFDocument.create();
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-	const W = 595.28;
-	const H = 841.89;
-	const M = 28;
-	const LH = 13;
-
+	const W = 595.28,
+		H = 841.89,
+		M = 28,
+		LH = 13;
 	const ink = rgb(0.1, 0.12, 0.16);
 	const subt = rgb(0.42, 0.45, 0.5);
 	const chipBg = rgb(0.93, 0.95, 0.98);
@@ -389,9 +357,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			if (f.widthOfTextAtSize(trial, size) > maxW) {
 				if (line) lines.push(line);
 				line = w;
-			} else {
-				line = trial;
-			}
+			} else line = trial;
 		}
 		if (line) lines.push(line);
 		return lines;
@@ -403,13 +369,14 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
 		};
 
-		// ── work metrics (reworked for the new progress section)
+		// metrics
 		const now = new Date();
-
-		const startedOn = c.workTimes.length > 0 ? new Date(Math.min(...c.workTimes.map((wt) => wt.startTime.getTime()))) : null;
+		const firstStart = c.workTimes.length ? c.workTimes.reduce((min, wt) => (wt.startTime < min.startTime ? wt : min), c.workTimes[0]) : null;
+		const startedOn = firstStart ? firstStart.startTime : null;
+		const startedBy = firstStart ? firstStart.user.fullName : null;
 
 		const finishedEntries = c.workTimes.filter((wt) => wt.endTime);
-		const endedOn = finishedEntries.length > 0 ? new Date(Math.max(...finishedEntries.map((wt) => wt.endTime!.getTime()))) : null;
+		const endedOn = finishedEntries.length ? new Date(Math.max(...finishedEntries.map((wt) => wt.endTime!.getTime()))) : null;
 
 		const hasOpenIntervals = c.workTimes.some((wt) => !wt.endTime);
 		const status = endedOn && !hasOpenIntervals ? "Completed" : c.workTimes.length > 0 ? "In Progress" : "Not started";
@@ -420,14 +387,12 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			const end = wt.endTime ?? now;
 			return sum + Math.max(0, end.getTime() - wt.startTime.getTime());
 		}, 0);
-
 		const timeWorkedFor = humanizeHoursMinutes(totalMs);
 
 		const responsesCount = c.responses.length;
 		const firstResponseAt = responsesCount ? c.responses[0].createdAt : null;
 		const lastResponseAt = responsesCount ? c.responses[responsesCount - 1].createdAt : null;
 		const uniqueResponders = Array.from(new Set(c.responses.map((r) => r.responder.fullName))).join(", ");
-
 		const images = normalizeImagePaths(c.imagePaths);
 
 		// header
@@ -441,36 +406,23 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		// chips
 		let chipX = M;
 		const chips = [`Created: ${fmtDubai(c.createdAt)}`, c.assignedTo ? `Assigned to: ${c.assignedTo.fullName}` : "Unassigned", endedOn ? `Completed: ${fmtDubai(endedOn)}` : "Not completed"];
-		const chipH = 18;
-		const chipPadX = 6;
-		const chipsY = H - 88;
+		const chipH = 18,
+			chipPadX = 6,
+			chipsY = H - 88;
 		for (const chip of chips) {
 			const cw = font.widthOfTextAtSize(chip, 9) + chipPadX * 2;
-			page.drawRectangle({
-				x: chipX,
-				y: chipsY,
-				width: cw,
-				height: chipH,
-				color: chipBg,
-				borderColor: panelBorder,
-				borderWidth: 1,
-			});
+			page.drawRectangle({ x: chipX, y: chipsY, width: cw, height: chipH, color: chipBg, borderColor: panelBorder, borderWidth: 1 });
 			text(chip, chipX + chipPadX, chipsY + 4, 9, false, ink);
 			chipX += cw + 6;
 		}
 
-		// details panel
+		// details (smaller)
+		const DETAILS_PANEL_H = 186;
+		const FIELD_SPACING = 34;
+
 		const panelTop = H - 112;
-		const panelH = 210;
-		page.drawRectangle({
-			x: M,
-			y: panelTop - panelH,
-			width: W - 2 * M,
-			height: panelH,
-			color: panel,
-			borderColor: panelBorder,
-			borderWidth: 1,
-		});
+		const panelH = DETAILS_PANEL_H;
+		page.drawRectangle({ x: M, y: panelTop - panelH, width: W - 2 * M, height: panelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
 
 		const colGap = 18;
 		const colW = (W - 2 * M - colGap - 24) / 2;
@@ -487,57 +439,53 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			}
 		};
 
-		// left
 		drawField("Customer Name", c.customerName, 0);
-		y -= 40;
+		y -= FIELD_SPACING;
 		drawField("Customer Email", c.customerEmail ?? "—", 0);
-		y -= 40;
+		y -= FIELD_SPACING;
 		drawField("Customer Phone", c.customerPhone, 0);
-		y -= 40;
+		y -= FIELD_SPACING;
 		drawField("Convenient Time", prettyConvenientTime(c.convenientTime), 0);
-		y -= 40;
+		y -= FIELD_SPACING;
 
-		// right
 		y = panelTop - 24;
 		drawField("Address", c.customerAddress, 1);
-		y -= 40;
+		y -= FIELD_SPACING;
 		drawField("Building", c.buildingName, 1);
-		y -= 40;
+		y -= FIELD_SPACING;
 		drawField("Apartment", c.apartmentNumber ?? "—", 1);
-		y -= 40;
+		y -= FIELD_SPACING;
 
-		// progress (REWORKED)
+		// progress (DYNAMIC HEIGHT)
+		const PROGRESS_ROWS: [string, string][] = [
+			["Status", status],
+			["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
+			["Work started by", startedBy ?? "—"],
+			["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
+			["Work completed by", endedOn ? completedBy ?? "—" : "—"],
+			["Time worked for", timeWorkedFor],
+		];
+		const ROW_SPACING = 18;
+		const TOP_PADDING = 36; // header (18) + gap (18)
+		const BOTTOM_PADDING = 16;
+		const requiredProgH = TOP_PADDING + PROGRESS_ROWS.length * ROW_SPACING + BOTTOM_PADDING;
+		const progH = Math.max(112, requiredProgH); // never smaller than legacy
+
 		const progTop = panelTop - panelH - 12;
-		const progH = 112;
-		page.drawRectangle({
-			x: M,
-			y: progTop - progH,
-			width: W - 2 * M,
-			height: progH,
-			color: panel,
-			borderColor: panelBorder,
-			borderWidth: 1,
-		});
+		page.drawRectangle({ x: M, y: progTop - progH, width: W - 2 * M, height: progH, color: panel, borderColor: panelBorder, borderWidth: 1 });
 
 		text("Progress", M + 12, progTop - 18, 11, true);
-		let py = progTop - 36;
-		(
-			[
-				["Status", status],
-				["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
-				["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
-				["Work completed by", endedOn ? completedBy ?? "—" : "—"],
-				["Time worked for", timeWorkedFor],
-			] as [string, string][]
-		).forEach(([k, v]) => {
+		let py = progTop - TOP_PADDING;
+		PROGRESS_ROWS.forEach(([k, v]) => {
 			text(k, M + 12, py, 9, false, subt);
 			text(v, M + 140, py, 10, true);
-			py -= 18;
+			py -= ROW_SPACING;
 		});
 
+		// responses
 		const rx = W / 2 + 6;
 		text("Responses", rx, progTop - 18, 11, true);
-		let ry = progTop - 36;
+		let ry = progTop - TOP_PADDING;
 		(
 			[
 				["Count", String(responsesCount)],
@@ -554,21 +502,13 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 				text(ln, rx + 80, ly, 10, true);
 				ly -= LH;
 			}
-			ry -= 18;
+			ry -= ROW_SPACING;
 		});
 
 		// description
 		const descTop = progTop - progH - 12;
 		const descH = 120;
-		page.drawRectangle({
-			x: M,
-			y: descTop - descH,
-			width: W - 2 * M,
-			height: descH,
-			color: panel,
-			borderColor: panelBorder,
-			borderWidth: 1,
-		});
+		page.drawRectangle({ x: M, y: descTop - descH, width: W - 2 * M, height: descH, color: panel, borderColor: panelBorder, borderWidth: 1 });
 		text("Description", M + 12, descTop - 18, 11, true);
 		if (c.description && c.description.trim()) {
 			const lines = wrap(c.description.trim(), W - 2 * M - 24, 10);
@@ -584,36 +524,25 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		// images
 		const imgsTop = descTop - descH - 12;
-		page.drawRectangle({
-			x: M,
-			y: M + 70,
-			width: W - 2 * M,
-			height: imgsTop - (M + 70),
-			color: panel,
-			borderColor: panelBorder,
-			borderWidth: 1,
-		});
+		page.drawRectangle({ x: M, y: M + 70, width: W - 2 * M, height: imgsTop - (M + 70), color: panel, borderColor: panelBorder, borderWidth: 1 });
 		text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
 		if (images.length > 0) {
-			const pad = 10;
-			const thumbW = (W - 2 * M - 24 - pad * 2) / 3;
-			const thumbH = 110;
+			const pad = 10,
+				thumbW = (W - 2 * M - 24 - pad * 2) / 3,
+				thumbH = 110;
 			let ix = M + 12,
 				iy = imgsTop - 36 - thumbH;
-
 			for (let i = 0; i < images.length; i++) {
 				const raw = await fetchImageBytes(images[i]);
 				if (!raw) continue;
 				const down = await maybeDownscaleJpeg(raw, 900, 900);
 				const jpg = await doc.embedJpg(down);
 				const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
-				const w = jpg.width * scale;
-				const h = jpg.height * scale;
-
+				const w = jpg.width * scale,
+					h = jpg.height * scale;
 				page.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy), width: w, height: h });
 				text(`Image ${i + 1}`, ix, Math.max(M + 64, iy - 10), 8, false, subt);
-
 				ix += thumbW + pad;
 				if (ix + thumbW > W - M - 12) {
 					ix = M + 12;
@@ -633,20 +562,17 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 	};
 
 	for (let i = 0; i < complaints.length; i++) {
-		// eslint-disable-next-line no-await-in-loop
 		await drawComplaintPage(complaints[i], i);
 	}
 
 	const bytes = await doc.save();
 	const base64 = Buffer.from(bytes).toString("base64");
-
 	const safeVal = typeof value === "string" ? value.replace(/[^\w.-]+/g, "_").slice(0, 40) : String(value);
 	const fileName = `complaints_${column}_${safeVal}.pdf`;
-
 	return { fileName, base64 };
 }
 
-// Single complaint (same renderer metrics)
+// ===== SINGLE PAGE BY ID =====
 export async function generateComplaintPdfById(complaintId: string): Promise<{ fileName: string; base64: string }> {
 	const id = Number(complaintId);
 
@@ -666,19 +592,11 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 			createdAt: true,
 			assignedTo: { select: { fullName: true, username: true } },
 			workTimes: {
-				select: {
-					startTime: true,
-					endTime: true,
-					user: { select: { fullName: true } },
-				},
+				select: { startTime: true, endTime: true, user: { select: { fullName: true } } },
 				orderBy: { startTime: "asc" },
 			},
 			responses: {
-				select: {
-					id: true,
-					createdAt: true,
-					responder: { select: { fullName: true } },
-				},
+				select: { id: true, createdAt: true, responder: { select: { fullName: true } } },
 				orderBy: { createdAt: "asc" },
 			},
 		},
@@ -686,13 +604,13 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	if (!complaint) throw new Error("Complaint not found");
 
-	// work metrics (same logic as above)
 	const now = new Date();
-
-	const startedOn = complaint.workTimes.length > 0 ? new Date(Math.min(...complaint.workTimes.map((wt) => wt.startTime.getTime()))) : null;
+	const firstStart = complaint.workTimes.length ? complaint.workTimes.reduce((min, wt) => (wt.startTime < min.startTime ? wt : min), complaint.workTimes[0]) : null;
+	const startedOn = firstStart ? firstStart.startTime : null;
+	const startedBy = firstStart ? firstStart.user.fullName : null;
 
 	const finishedEntries = complaint.workTimes.filter((wt) => wt.endTime);
-	const endedOn = finishedEntries.length > 0 ? new Date(Math.max(...finishedEntries.map((wt) => wt.endTime!.getTime()))) : null;
+	const endedOn = finishedEntries.length ? new Date(Math.max(...finishedEntries.map((wt) => wt.endTime!.getTime()))) : null;
 
 	const hasOpenIntervals = complaint.workTimes.some((wt) => !wt.endTime);
 	const status = endedOn && !hasOpenIntervals ? "Completed" : complaint.workTimes.length > 0 ? "In Progress" : "Not started";
@@ -703,26 +621,22 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		const end = wt.endTime ?? now;
 		return sum + Math.max(0, end.getTime() - wt.startTime.getTime());
 	}, 0);
-
 	const timeWorkedFor = humanizeHoursMinutes(totalMs);
 
 	const responsesCount = complaint.responses.length;
 	const firstResponseAt = responsesCount ? complaint.responses[0].createdAt : null;
 	const lastResponseAt = responsesCount ? complaint.responses[responsesCount - 1].createdAt : null;
 	const uniqueResponders = Array.from(new Set(complaint.responses.map((r) => r.responder.fullName))).join(", ");
-
 	const images = normalizeImagePaths(complaint.imagePaths);
 
-	// PDF
 	const doc = await PDFDocument.create();
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-	const W = 595.28;
-	const H = 841.89;
-	const M = 28;
-	const LH = 13;
-
+	const W = 595.28,
+		H = 841.89,
+		M = 28,
+		LH = 13;
 	const ink = rgb(0.1, 0.12, 0.16);
 	const subt = rgb(0.42, 0.45, 0.5);
 	const chipBg = rgb(0.93, 0.95, 0.98);
@@ -731,11 +645,9 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const band = rgb(0.14, 0.44, 0.78);
 
 	const page = doc.addPage([W, H]);
-
 	const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
 		page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
 	};
-
 	const wrap = (t: string, maxW: number, size = 10, f = font) => {
 		const words = (t || "").split(/\s+/);
 		const lines: string[] = [];
@@ -762,8 +674,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	let chipX = M;
 	const chips = [`Created: ${fmtDubai(complaint.createdAt)}`, complaint.assignedTo ? `Assigned to: ${complaint.assignedTo.fullName}` : "Unassigned", endedOn ? `Completed: ${fmtDubai(endedOn)}` : "Not completed"];
 	const chipH = 18,
-		chipPadX = 6;
-	const chipsY = H - 88;
+		chipPadX = 6,
+		chipsY = H - 88;
 	for (const c of chips) {
 		const cw = font.widthOfTextAtSize(c, 9) + chipPadX * 2;
 		page.drawRectangle({ x: chipX, y: chipsY, width: cw, height: chipH, color: chipBg, borderColor: panelBorder, borderWidth: 1 });
@@ -771,9 +683,12 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		chipX += cw + 6;
 	}
 
-	// details panel
+	// details (smaller)
+	const DETAILS_PANEL_H = 186;
+	const FIELD_SPACING = 34;
+
 	const panelTop = H - 112;
-	const panelH = 210;
+	const panelH = DETAILS_PANEL_H;
 	page.drawRectangle({ x: M, y: panelTop - panelH, width: W - 2 * M, height: panelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
 
 	const colGap = 18;
@@ -791,49 +706,52 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		}
 	};
 
-	// left
 	drawField("Customer Name", complaint.customerName, 0);
-	y -= 40;
+	y -= FIELD_SPACING;
 	drawField("Customer Email", complaint.customerEmail ?? "—", 0);
-	y -= 40;
+	y -= FIELD_SPACING;
 	drawField("Customer Phone", complaint.customerPhone, 0);
-	y -= 40;
+	y -= FIELD_SPACING;
 	drawField("Convenient Time", prettyConvenientTime(complaint.convenientTime), 0);
-	y -= 40;
+	y -= FIELD_SPACING;
 
-	// right
 	y = panelTop - 24;
 	drawField("Address", complaint.customerAddress, 1);
-	y -= 40;
+	y -= FIELD_SPACING;
 	drawField("Building", complaint.buildingName, 1);
-	y -= 40;
+	y -= FIELD_SPACING;
 	drawField("Apartment", complaint.apartmentNumber ?? "—", 1);
-	y -= 40;
+	y -= FIELD_SPACING;
 
-	// progress (REWORKED)
+	// progress (DYNAMIC HEIGHT)
+	const PROGRESS_ROWS: [string, string][] = [
+		["Status", status],
+		["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
+		["Work started by", startedBy ?? "—"],
+		["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
+		["Work completed by", endedOn ? completedBy ?? "—" : "—"],
+		["Time worked for", timeWorkedFor],
+	];
+	const ROW_SPACING = 18;
+	const TOP_PADDING = 36;
+	const BOTTOM_PADDING = 16;
+	const requiredProgH = TOP_PADDING + PROGRESS_ROWS.length * ROW_SPACING + BOTTOM_PADDING;
+	const progH = Math.max(112, requiredProgH);
+
 	const progTop = panelTop - panelH - 12;
-	const progH = 112;
 	page.drawRectangle({ x: M, y: progTop - progH, width: W - 2 * M, height: progH, color: panel, borderColor: panelBorder, borderWidth: 1 });
 
 	text("Progress", M + 12, progTop - 18, 11, true);
-	let py = progTop - 36;
-	(
-		[
-			["Status", status],
-			["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
-			["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
-			["Work completed by", endedOn ? completedBy ?? "—" : "—"],
-			["Time worked for", timeWorkedFor],
-		] as [string, string][]
-	).forEach(([k, v]) => {
+	let py = progTop - TOP_PADDING;
+	PROGRESS_ROWS.forEach(([k, v]) => {
 		text(k, M + 12, py, 9, false, subt);
 		text(v, M + 140, py, 10, true);
-		py -= 18;
+		py -= ROW_SPACING;
 	});
 
 	const rx = W / 2 + 6;
 	text("Responses", rx, progTop - 18, 11, true);
-	let ry = progTop - 36;
+	let ry = progTop - TOP_PADDING;
 	(
 		[
 			["Count", String(responsesCount)],
@@ -850,7 +768,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 			text(ln, rx + 80, ly, 10, true);
 			ly -= LH;
 		}
-		ry -= 18;
+		ry -= ROW_SPACING;
 	});
 
 	// description
@@ -876,24 +794,21 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
 	if (images.length > 0) {
-		const pad = 10;
-		const thumbW = (W - 2 * M - 24 - pad * 2) / 3;
-		const thumbH = 110;
+		const pad = 10,
+			thumbW = (W - 2 * M - 24 - pad * 2) / 3,
+			thumbH = 110;
 		let ix = M + 12,
 			iy = imgsTop - 36 - thumbH;
-
 		for (let i = 0; i < images.length; i++) {
 			const raw = await fetchImageBytes(images[i]);
 			if (!raw) continue;
 			const down = await maybeDownscaleJpeg(raw, 900, 900);
 			const jpg = await doc.embedJpg(down);
 			const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
-			const w = jpg.width * scale;
-			const h = jpg.height * scale;
-
+			const w = jpg.width * scale,
+				h = jpg.height * scale;
 			page.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy), width: w, height: h });
 			text(`Image ${i + 1}`, ix, Math.max(M + 64, iy - 10), 8, false, subt);
-
 			ix += thumbW + pad;
 			if (ix + thumbW > W - M - 12) {
 				ix = M + 12;
@@ -914,13 +829,12 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	return { fileName: `complaint_${complaint.id}.pdf`, base64 };
 }
 
-// Date-range PDF (supports extra AND filters for building/apartments)
+// Date-range PDF (reuses the filter generator)
 export async function generateComplaintsPdfByDateRange(startDate: string | Date, endDate: string | Date, limit = 1000, extra?: ExtraFilters): Promise<{ fileName: string; base64: string }> {
 	const s = startDate instanceof Date ? startDate : new Date(startDate);
 	const e = endDate instanceof Date ? endDate : new Date(endDate);
 	if (isNaN(+s) || isNaN(+e)) throw new Error("Invalid start or end date");
 
-	// Reuse the filter-based generator with 'createdAt' criterion and extras
 	return generateComplaintsPdfByFilter("createdAt", `${s.toISOString().slice(0, 10)}_${e.toISOString().slice(0, 10)}`, {
 		startDate: s.toISOString().slice(0, 10),
 		endDate: e.toISOString().slice(0, 10),

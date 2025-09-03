@@ -180,7 +180,7 @@ function ComplaintForm() {
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Phone Number</FormLabel>
 							<FormControl>
-								<Input placeholder='Enter your phone number' {...field} />
+								<Input placeholder='Enter your phone number, eg. 05XXXXXXXX' {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

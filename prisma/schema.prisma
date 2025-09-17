@@ -93,6 +93,8 @@ model WorkTimes {
   endTime     DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  workerInitials String?
+  customerInitials String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)

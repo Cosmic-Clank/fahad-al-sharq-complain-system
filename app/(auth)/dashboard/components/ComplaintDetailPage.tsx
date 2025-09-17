@@ -66,6 +66,8 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 							role: true, // Assuming you have a role field in your user model
 						},
 					},
+					customerInitials: true,
+					workerInitials: true,
 				},
 				orderBy: { date: "asc" }, // Order by date ascending
 			},
@@ -128,6 +130,8 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 				fullName: wt.user.fullName,
 				role: wt.user.role, // Ensure role is a string
 			},
+			customerInitials: wt.customerInitials,
+			workerInitials: wt.workerInitials,
 		}))[0],
 	};
 

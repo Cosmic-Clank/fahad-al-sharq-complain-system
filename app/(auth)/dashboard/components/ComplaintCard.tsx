@@ -1,10 +1,10 @@
 // components/ComplaintCard.tsx
-"use client"; // This component will be interactive on the client
+"use client";
 
 import React, { useState } from "react";
-import { Phone, FileText, MapPin, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, Pin, House, Download } from "lucide-react"; // Icons
+import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download } from "lucide-react";
 
-import ComplaintResponseForm from "./ComplaintResponseForm"; // Import the response form
+import ComplaintResponseForm from "./ComplaintResponseForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { addEndWorkTime, addStartWorkTime } from "./actions";
@@ -13,45 +13,39 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import AssignmentForm from "./AssignmentForm";
 import { generateComplaintPdfById } from "./reportActions";
 
+// NEW: shadcn dialog + inputs
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 // Define the data type for a single complaint
 interface ComplaintData {
-	currentUser: {
-		fullName: string;
-		role: string;
-	};
+	currentUser: { fullName: string; role: string };
 	id: string;
-	assignedTo?: {
-		fullName: string;
-		role: string;
-	} | null; // Optional field for the user assigned to the complaint
+	assignedTo?: { fullName: string; role: string } | null;
 	customerName: string;
 	customerPhone: string;
 	buildingName: string;
 	apartmentNumber: string;
-	convenientTime: string; // Ensure this matches your schema
+	convenientTime: string;
 	description: string;
-	imagePaths: string[]; // Array of image URLs
-	createdAt: String; // ISO string from the server
+	imagePaths: string[];
+	createdAt: String;
 	responses: {
 		id: string;
-		response: string; // The actual response text
-		createdAt: String; // When this specific response was created (ISO string)
-		responder: {
-			// Details of the user who made the response
-			fullName: string;
-			role: string;
-		};
-		imagePaths: string[]; // Array of image URLs for the response
+		response: string;
+		createdAt: String;
+		responder: { fullName: string; role: string };
+		imagePaths: string[];
 	}[];
 	workTimes: {
-		id: string; // Unique identifier for the work time entry
-		date: string; // Date of the work time entry
-		startTime: string; // Start time of the work
-		endTime: string; // End time of the work
-		user: {
-			fullName: string; // Name of the user who worked on the complaint
-			role: string; // Role of the user (e.g., EMPLOYEE, ADMIN)
-		};
+		id: string;
+		date: string;
+		startTime: string;
+		endTime: string;
+		user: { fullName: string; role: string };
+		customerInitials: string | null;
+		workerInitials: string | null;
 	};
 }
 
@@ -61,30 +55,62 @@ interface ComplaintCardProps {
 
 const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 	const [showFullDescription, setShowFullDescription] = useState(false);
-	const maxDescriptionLength = 150; // Max characters before truncation
+	const maxDescriptionLength = 150;
 
 	const [isWorkTimesLoading, setIsWorkTimesLoading] = useState(false);
 
-	const toggleDescription = () => {
-		setShowFullDescription(!showFullDescription);
-	};
+	// NEW: dialog state + initials
+	const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
+	const [workerInitials, setWorkerInitials] = useState("");
+	const [customerInitials, setCustomerInitials] = useState("");
+	const [endError, setEndError] = useState<string | null>(null);
+
+	const toggleDescription = () => setShowFullDescription(!showFullDescription);
 
 	const displayDescription = complaint.description.length > maxDescriptionLength && !showFullDescription ? `${complaint.description.substring(0, maxDescriptionLength)}...` : complaint.description;
 
+	// NEW: confirm handler (mimics the original form submit)
+	const handleConfirmEndWork = async () => {
+		setEndError(null);
+		if (!workerInitials.trim() || !customerInitials.trim()) {
+			setEndError("Please enter both initials.");
+			return;
+		}
+		setIsWorkTimesLoading(true);
+		try {
+			const fd = new FormData();
+			fd.append("complaintId", complaint.id);
+			// If you later want to pass initials to the server, just append them here:
+			fd.append("workerInitials", workerInitials.trim());
+			fd.append("customerInitials", customerInitials.trim());
+
+			const result = await addEndWorkTime(fd);
+
+			if (result.success) {
+				window.location.reload();
+			} else {
+				setEndError(result.message || "Could not end work. Please try again.");
+			}
+		} catch (e) {
+			setEndError("Something went wrong. Please try again.");
+		} finally {
+			setIsWorkTimesLoading(false);
+		}
+	};
+
 	return (
-		// Softer shadow, slightly reduced hover effect, less prominent overall.
 		<div className='bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden'>
-			{/* Header - Flat, lighter background instead of gradient, smaller text */}
+			{/* Header */}
 			<div className='p-5 pb-3 border-b border-gray-100 bg-gray-50'>
 				<h3 className='text-xl font-semibold text-gray-800 mb-1'>{complaint.customerName}</h3>
 				<p className='text-xs text-gray-500 flex items-center'>
 					<PersonStandingIcon className='w-3.5 h-3.5 mr-1 text-gray-400' />
-					Assigned To: <span className='font-medium text-gray-700 ml-1'>{complaint.assignedTo ? complaint.assignedTo.fullName + " (" + complaint.assignedTo.role + ")" : "-"}</span>
+					Assigned To:
+					<span className='font-medium text-gray-700 ml-1'>{complaint.assignedTo ? complaint.assignedTo.fullName + " (" + complaint.assignedTo.role + ")" : "-"}</span>
 					{complaint.currentUser.role === "ADMIN" && (
 						<Popover>
 							<PopoverTrigger asChild>
 								<Button variant='ghost' className='p-1 text-gray-500 hover:text-gray-700'>
-									{/* Icon for popover trigger */}
 									<PinIcon className='w-4 h-4' />
 								</Button>
 							</PopoverTrigger>
@@ -108,54 +134,41 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				</p>
 			</div>
 
-			{/* Body Content - Slightly reduced padding, smaller gap	s */}
+			{/* Body */}
 			<div className='p-5'>
 				<div className='grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 mb-5'>
-					{/* Phone */}
 					<div className='flex items-center text-gray-700'>
-						<Phone className='w-3 h-3 mr-1 text-blue-500 ' /> {/* Slightly smaller icon, slightly toned-down blue */}
-						<span className='font-medium text-sm mr-1'>Phone:</span> {/* Reduced font weight */}
-						<span className='text-sm'>{complaint.customerPhone}</span> {/* Reduced size */}
+						<Phone className='w-3 h-3 mr-1 text-blue-500 ' />
+						<span className='font-medium text-sm mr-1'>Phone:</span>
+						<span className='text-sm'>{complaint.customerPhone}</span>
 					</div>
 				</div>
 
-				{/* Description - Smaller header, smaller text */}
 				<div className='mb-5 text-gray-700 leading-relaxed'>
 					<p className='font-semibold text-gray-800 mb-2 flex items-center text-sm'>
-						<CornerDownRight className='w-4 h-4 mr-2 text-purple-500' /> {/* Smaller icon, slightly toned-down purple */}
+						<CornerDownRight className='w-4 h-4 mr-2 text-purple-500' />
 						Description:
 					</p>
 					<p className='whitespace-pre-wrap text-sm'>
-						{" "}
-						{/* Reduced text size */}
 						{displayDescription}
 						{complaint.description.length > maxDescriptionLength && (
 							<button onClick={toggleDescription} className='text-blue-600 hover:text-blue-800 font-medium ml-1 inline-flex items-center text-xs'>
-								{" "}
-								{/* Smaller text for button */}
 								{showFullDescription ? "Read Less" : "Read More"}
 							</button>
 						)}
 					</p>
 				</div>
 
-				{/* Images - Smaller header, smaller grid gap, smaller image height, less rounded */}
 				{complaint.imagePaths && complaint.imagePaths.length > 0 && (
 					<div className='mb-5'>
 						<p className='font-semibold text-gray-800 mb-3 flex items-center text-sm'>
-							<ImageIcon className='w-3 h-3 mr-1 text-orange-500' /> {/* Smaller icon, slightly toned-down orange */}
+							<ImageIcon className='w-3 h-3 mr-1 text-orange-500' />
 							Attached Images:
 						</p>
 						<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-3xl'>
-							{" "}
-							{/* Reduced gap */}
 							{complaint.imagePaths.map((path, index) => (
 								<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center'>
-									{" "}
-									{/* Reduced height, less rounded */}
 									<Link href={path} target='_blank' rel='noopener noreferrer'>
-										{" "}
-										{/* Link to open image in new tab */}
 										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
 									</Link>
 								</div>
@@ -165,8 +178,6 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				)}
 				{complaint.imagePaths && complaint.imagePaths.length === 0 && (
 					<div className='mb-5 text-gray-500 flex items-center justify-center py-3 border rounded-md bg-gray-50 text-sm'>
-						{" "}
-						{/* Reduced padding, smaller text */}
 						<XCircle className='w-4 h-4 mr-2' /> No images attached for this complaint.
 					</div>
 				)}
@@ -178,7 +189,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 					<div className='bg-green-50 border border-green-200 rounded-md p-4 mb-4'>
 						<div className='text-green-700 font-semibold flex items-center mb-2'>
 							<Calendar className='w-4 h-4 mr-2 text-green-500' />
-							Work Completed: {complaint.workTimes.user.fullName} ({complaint.workTimes.user.role})
+							Work Completed: {complaint.workTimes.user.fullName} ({complaint.workTimes.user.role}) Signature: {complaint.workTimes.workerInitials} / {complaint.workTimes.customerInitials}
 						</div>
 						<div className='text-sm text-gray-700 mb-1'>
 							<span className='font-medium'>Date:</span> <span>{complaint.workTimes.date}</span>
@@ -191,6 +202,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 						</div>
 					</div>
 				)}
+
 				{!complaint.workTimes && (
 					<div className='bg-blue-50 border border-blue-200 rounded-md p-4 mb-4'>
 						<form
@@ -198,14 +210,11 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 								event.preventDefault();
 								setIsWorkTimesLoading(true);
 								const formData = new FormData(event.currentTarget as HTMLFormElement);
-								// Call the server action directly
 								const result = await addStartWorkTime(formData);
-
 								if (result.success) {
-									// Optionally, you can refresh the page or update the state to reflect the new work time
-									window.location.reload(); // Reloads the page to show updated work times
+									window.location.reload();
 								} else {
-									alert(result.message); // Show error message
+									alert(result.message);
 								}
 							}}>
 							<input type='hidden' name='complaintId' value={complaint.id} />
@@ -230,93 +239,106 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 						<div className='text-sm text-gray-700 mb-3'>
 							<span className='font-medium'>Start Time:</span> <span>{complaint.workTimes.startTime}</span>
 						</div>
-						<form
-							onSubmit={async (event) => {
-								event.preventDefault();
-								setIsWorkTimesLoading(true);
-								const formData = new FormData(event.currentTarget as HTMLFormElement);
-								const result = await addEndWorkTime(formData);
 
-								if (result.success) {
-									window.location.reload(); // Reloads the page to show updated work times
-								} else {
-									alert(result.message); // Show error message
-								}
-							}}>
-							<input type='hidden' name='complaintId' value={complaint.id} />
-							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 rounded-md transition' disabled={isWorkTimesLoading}>
-								<Calendar className='w-4 h-4' />
-								End Work
-								{isWorkTimesLoading && <Loading />}
-							</Button>
-						</form>
+						{/* NEW: End Work flow via dialog */}
+						<Dialog open={isEndDialogOpen} onOpenChange={setIsEndDialogOpen}>
+							<DialogTrigger asChild>
+								<Button className='w-full flex items-center justify-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 rounded-md transition' onClick={() => setIsEndDialogOpen(true)} disabled={isWorkTimesLoading}>
+									<Calendar className='w-4 h-4' />
+									End Work
+									{isWorkTimesLoading && <Loading />}
+								</Button>
+							</DialogTrigger>
+
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Confirm work completion</DialogTitle>
+									<DialogDescription className='text-xs'>Please enter initials before completing. This is just a UI step; the initials aren’t stored yet.</DialogDescription>
+								</DialogHeader>
+
+								<div className='space-y-4 mt-2'>
+									<div className='grid gap-2'>
+										<Label htmlFor='worker-initials'>Worker initials</Label>
+										<Input id='worker-initials' placeholder='e.g., SA' value={workerInitials} onChange={(e) => setWorkerInitials(e.target.value)} maxLength={6} />
+									</div>
+
+									<div className='grid gap-2'>
+										<Label htmlFor='customer-initials'>Customer initials</Label>
+										<Input id='customer-initials' placeholder='e.g., MK' value={customerInitials} onChange={(e) => setCustomerInitials(e.target.value)} maxLength={6} />
+									</div>
+
+									{endError && <p className='text-xs text-red-600 border border-red-200 bg-red-50 rounded px-2 py-1'>{endError}</p>}
+								</div>
+
+								<DialogFooter className='mt-4'>
+									<Button
+										variant='outline'
+										onClick={() => {
+											setIsEndDialogOpen(false);
+											setEndError(null);
+										}}
+										disabled={isWorkTimesLoading}>
+										Cancel
+									</Button>
+									<Button className='text-white' onClick={handleConfirmEndWork} disabled={isWorkTimesLoading || !workerInitials.trim() || !customerInitials.trim()}>
+										{isWorkTimesLoading ? (
+											<span className='inline-flex items-center gap-2'>
+												<Loading /> Finishing…
+											</span>
+										) : (
+											"Confirm & End Work"
+										)}
+									</Button>
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
 					</div>
 				)}
 			</div>
 
-			{/* NEW: Past Responses Section - Slightly reduced padding, smaller text elements, lighter borders */}
+			{/* Past Responses */}
 			<div className='p-5 pt-0 border-t border-gray-100 bg-white'>
-				{" "}
-				{/* Toned down background, consistent border */}
 				<h4 className='text-base font-semibold text-gray-800 mb-3 flex items-center'>
-					{" "}
-					{/* Reduced size */}
-					<MessageSquare className='w-3 h-3 mr-1 text-indigo-500' /> Past Responses ({complaint.responses.length}) {/* Smaller icon, toned-down indigo */}
+					<MessageSquare className='w-3 h-3 mr-1 text-indigo-500' /> Past Responses ({complaint.responses.length})
 				</h4>
 				{complaint.responses.length > 0 ? (
 					<div className='space-y-3'>
-						{" "}
-						{/* Reduced vertical space */}
-						{complaint.responses
-							// .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort by oldest first
-							.map((response) => {
-								if (response.response)
-									return (
-										<div key={response.id} className='bg-gray-50 p-3 rounded-md border border-gray-200 shadow-sm'>
-											{" "}
-											{/* Reduced padding, less rounded */}
-											<div className='flex items-center justify-between text-xs text-gray-600 mb-1.5'>
-												{" "}
-												{/* Reduced text size, adjusted margin */}
-												<span className='flex items-center font-medium text-gray-700'>
-													{" "}
-													{/* Reduced font weight */}
-													<User className='w-3.5 h-3.5 mr-1 text-gray-500' /> {/* Smaller icon */}
-													{response.responder.fullName} ({response.responder.role})
-												</span>
-												<span className='text-xs text-gray-500'>{response.createdAt}</span>
-											</div>
-											<p className='text-gray-700 leading-relaxed text-sm whitespace-pre-wrap'>{response.response}</p> {/* Reduced text size, slightly darker text */}
-											<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-3xl'>
-												{" "}
-												{/* Reduced gap */}
-												{response.imagePaths.map((path, index) => (
-													<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center'>
-														<Link href={path} target='_blank' rel='noopener noreferrer'>
-															{" "}
-															{/* Reduced height, less rounded */} {/* Link to open image in new tab */}
-															<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
-														</Link>
-													</div>
-												))}
-											</div>
+						{complaint.responses.map((response) => {
+							if (response.response)
+								return (
+									<div key={response.id} className='bg-gray-50 p-3 rounded-md border border-gray-200 shadow-sm'>
+										<div className='flex items-center justify-between text-xs text-gray-600 mb-1.5'>
+											<span className='flex items-center font-medium text-gray-700'>
+												<User className='w-3.5 h-3.5 mr-1 text-gray-500' />
+												{response.responder.fullName} ({response.responder.role})
+											</span>
+											<span className='text-xs text-gray-500'>{response.createdAt}</span>
 										</div>
-									);
-							})}
+										<p className='text-gray-700 leading-relaxed text-sm whitespace-pre-wrap'>{response.response}</p>
+										<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-3xl'>
+											{response.imagePaths.map((path, index) => (
+												<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center'>
+													<Link href={path} target='_blank' rel='noopener noreferrer'>
+														<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
+													</Link>
+												</div>
+											))}
+										</div>
+									</div>
+								);
+						})}
 					</div>
 				) : (
 					<div className='text-gray-500 text-center py-3 border rounded-md bg-white text-sm'>No responses yet.</div>
 				)}
 			</div>
 
-			{/* Complaint Response Form - Consistent background and padding */}
+			{/* Response form + PDF */}
 			<div className='bg-gray-50 border-t border-gray-100 p-5'>
-				{" "}
-				{/* Reduced padding */}
 				<ComplaintResponseForm complaintId={complaint.id} />
 				<Button
 					className='mt-4 text-sm text-white w-full hover:cursor-pointer'
-					onClick={async (event) => {
+					onClick={async () => {
 						const { base64, fileName } = await generateComplaintPdfById(complaint.id);
 						const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 						const blob = new Blob([byteArray], { type: "application/pdf" });
@@ -332,10 +354,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				</Button>
 			</div>
 
-			{/* Footer (Created At) - Reduced padding, smaller text */}
+			{/* Footer */}
 			<div className='p-3 text-right text-xs text-gray-500 bg-gray-50 mt-auto'>
 				<p className='flex items-center justify-end'>
-					<Calendar className='w-3.5 h-3.5 mr-1 text-gray-400' /> {/* Smaller icon */}
+					<Calendar className='w-3.5 h-3.5 mr-1 text-gray-400' />
 					Filed: {complaint.createdAt}
 				</p>
 			</div>

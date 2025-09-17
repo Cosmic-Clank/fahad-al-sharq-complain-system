@@ -126,31 +126,48 @@ export async function addEndWorkTime(formData: FormData) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
 
-	const complaintId = formData.get("complaintId") as string;
+	const complaintId = formData.get("complaintId") as string | null;
+	const workerInitialsRaw = formData.get("workerInitials") as string | null;
+	const customerInitialsRaw = formData.get("customerInitials") as string | null;
 
 	if (!complaintId) {
 		return { success: false, message: "Server error" };
+	}
+
+	// Normalize + simple validation (A–Z, dots, dashes, spaces; 1–6 chars)
+	const normalize = (val: string | null) => (val ?? "").trim().toUpperCase();
+
+	const workerInitials = normalize(workerInitialsRaw);
+	const customerInitials = normalize(customerInitialsRaw);
+
+	const initialsOk = (s: string) => /^[A-Z.\-\s]{1,6}$/.test(s);
+
+	if (!workerInitials || !customerInitials || !initialsOk(workerInitials) || !initialsOk(customerInitials)) {
+		return {
+			success: false,
+			message: "Please provide valid initials (1–6 characters; letters, spaces, dots, or dashes).",
+		};
 	}
 
 	try {
 		const workTime = await prismaClient.workTimes.findFirst({
 			where: {
 				complaintId: Number(complaintId),
-				endTime: null, // Find the work time that has not ended yet
+				endTime: null,
 			},
-			orderBy: {
-				date: "desc", // Get the most recent work time
-			},
+			orderBy: { date: "desc" },
 		});
 
 		if (!workTime) {
 			return { success: false, message: "No active work time found for this complaint." };
 		}
 
-		const updatedWorkTime = await prismaClient.workTimes.update({
+		await prismaClient.workTimes.update({
 			where: { id: workTime.id },
 			data: {
 				endTime: new Date(),
+				workerInitials, // new column
+				customerInitials, // new column
 			},
 		});
 

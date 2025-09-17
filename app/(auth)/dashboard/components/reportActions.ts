@@ -312,6 +312,9 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					startTime: true,
 					endTime: true,
 					user: { select: { fullName: true } },
+					// ADDED signatures
+					workerInitials: true,
+					customerInitials: true,
 				},
 				orderBy: { startTime: "asc" },
 			},
@@ -383,6 +386,11 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		const completedBy = endedOn ? c.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
 
+		// ADDED: derive worker/customer signatures from the completion entry
+		const completionWT = endedOn ? c.workTimes.find((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()) : null;
+		const workerSignature = endedOn ? completionWT?.workerInitials || "—" : "N/A";
+		const customerSignature = endedOn ? completionWT?.customerInitials || "—" : "N/A";
+
 		const totalMs = c.workTimes.reduce((sum, wt) => {
 			const end = wt.endTime ?? now;
 			return sum + Math.max(0, end.getTime() - wt.startTime.getTime());
@@ -411,7 +419,15 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			chipsY = H - 88;
 		for (const chip of chips) {
 			const cw = font.widthOfTextAtSize(chip, 9) + chipPadX * 2;
-			page.drawRectangle({ x: chipX, y: chipsY, width: cw, height: chipH, color: chipBg, borderColor: panelBorder, borderWidth: 1 });
+			page.drawRectangle({
+				x: chipX,
+				y: chipsY,
+				width: cw,
+				height: chipH,
+				color: chipBg,
+				borderColor: panelBorder,
+				borderWidth: 1,
+			});
 			text(chip, chipX + chipPadX, chipsY + 4, 9, false, ink);
 			chipX += cw + 6;
 		}
@@ -422,13 +438,21 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		const panelTop = H - 112;
 		const panelH = DETAILS_PANEL_H;
-		page.drawRectangle({ x: M, y: panelTop - panelH, width: W - 2 * M, height: panelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+		page.drawRectangle({
+			x: M,
+			y: panelTop - panelH,
+			width: W - 2 * M,
+			height: panelH,
+			color: panel,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
 
 		const colGap = 18;
 		const colW = (W - 2 * M - colGap - 24) / 2;
 		let y = panelTop - 24;
 
-		const drawField = (label: string, value: string | null, col: 0 | 1) => {
+		const textField = (label: string, value: string | null, col: 0 | 1) => {
 			const x = M + 12 + (col === 1 ? colW + colGap : 0);
 			text(label, x, y, 9, false, subt);
 			const lines = wrap(value || "—", colW, 10);
@@ -439,21 +463,21 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			}
 		};
 
-		drawField("Customer Name", c.customerName, 0);
+		textField("Customer Name", c.customerName, 0);
 		y -= FIELD_SPACING;
-		drawField("Customer Email", c.customerEmail ?? "—", 0);
+		textField("Customer Email", c.customerEmail ?? "—", 0);
 		y -= FIELD_SPACING;
-		drawField("Customer Phone", c.customerPhone, 0);
+		textField("Customer Phone", c.customerPhone, 0);
 		y -= FIELD_SPACING;
-		drawField("Convenient Time", prettyConvenientTime(c.convenientTime), 0);
+		textField("Convenient Time", prettyConvenientTime(c.convenientTime), 0);
 		y -= FIELD_SPACING;
 
 		y = panelTop - 24;
-		drawField("Address", c.customerAddress, 1);
+		textField("Address", c.customerAddress, 1);
 		y -= FIELD_SPACING;
-		drawField("Building", c.buildingName, 1);
+		textField("Building", c.buildingName, 1);
 		y -= FIELD_SPACING;
-		drawField("Apartment", c.apartmentNumber ?? "—", 1);
+		textField("Apartment", c.apartmentNumber ?? "—", 1);
 		y -= FIELD_SPACING;
 
 		// progress (DYNAMIC HEIGHT)
@@ -464,6 +488,9 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
 			["Work completed by", endedOn ? completedBy ?? "—" : "—"],
 			["Time worked for", timeWorkedFor],
+			// ADDED rows
+			["Worker signature", workerSignature],
+			["Customer signature", customerSignature],
 		];
 		const ROW_SPACING = 18;
 		const TOP_PADDING = 36; // header (18) + gap (18)
@@ -472,7 +499,15 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		const progH = Math.max(112, requiredProgH); // never smaller than legacy
 
 		const progTop = panelTop - panelH - 12;
-		page.drawRectangle({ x: M, y: progTop - progH, width: W - 2 * M, height: progH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+		page.drawRectangle({
+			x: M,
+			y: progTop - progH,
+			width: W - 2 * M,
+			height: progH,
+			color: panel,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
 
 		text("Progress", M + 12, progTop - 18, 11, true);
 		let py = progTop - TOP_PADDING;
@@ -508,7 +543,15 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		// description
 		const descTop = progTop - progH - 12;
 		const descH = 120;
-		page.drawRectangle({ x: M, y: descTop - descH, width: W - 2 * M, height: descH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+		page.drawRectangle({
+			x: M,
+			y: descTop - descH,
+			width: W - 2 * M,
+			height: descH,
+			color: panel,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
 		text("Description", M + 12, descTop - 18, 11, true);
 		if (c.description && c.description.trim()) {
 			const lines = wrap(c.description.trim(), W - 2 * M - 24, 10);
@@ -524,7 +567,15 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		// images
 		const imgsTop = descTop - descH - 12;
-		page.drawRectangle({ x: M, y: M + 70, width: W - 2 * M, height: imgsTop - (M + 70), color: panel, borderColor: panelBorder, borderWidth: 1 });
+		page.drawRectangle({
+			x: M,
+			y: M + 70,
+			width: W - 2 * M,
+			height: imgsTop - (M + 70),
+			color: panel,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
 		text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
 		if (images.length > 0) {
@@ -592,7 +643,14 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 			createdAt: true,
 			assignedTo: { select: { fullName: true, username: true } },
 			workTimes: {
-				select: { startTime: true, endTime: true, user: { select: { fullName: true } } },
+				select: {
+					startTime: true,
+					endTime: true,
+					user: { select: { fullName: true } },
+					// ADDED signatures
+					workerInitials: true,
+					customerInitials: true,
+				},
 				orderBy: { startTime: "asc" },
 			},
 			responses: {
@@ -616,6 +674,11 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const status = endedOn && !hasOpenIntervals ? "Completed" : complaint.workTimes.length > 0 ? "In Progress" : "Not started";
 
 	const completedBy = endedOn ? complaint.workTimes.filter((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()).map((wt) => wt.user.fullName)[0] ?? null : null;
+
+	// ADDED: derive worker/customer signatures from the completion entry
+	const completionWT = endedOn ? complaint.workTimes.find((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()) : null;
+	const workerSignature = endedOn ? completionWT?.workerInitials || "—" : "N/A";
+	const customerSignature = endedOn ? completionWT?.customerInitials || "—" : "N/A";
 
 	const totalMs = complaint.workTimes.reduce((sum, wt) => {
 		const end = wt.endTime ?? now;
@@ -678,7 +741,15 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		chipsY = H - 88;
 	for (const c of chips) {
 		const cw = font.widthOfTextAtSize(c, 9) + chipPadX * 2;
-		page.drawRectangle({ x: chipX, y: chipsY, width: cw, height: chipH, color: chipBg, borderColor: panelBorder, borderWidth: 1 });
+		page.drawRectangle({
+			x: chipX,
+			y: chipsY,
+			width: cw,
+			height: chipH,
+			color: chipBg,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
 		text(c, chipX + chipPadX, chipsY + 4, 9, false, ink);
 		chipX += cw + 6;
 	}
@@ -689,7 +760,15 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	const panelTop = H - 112;
 	const panelH = DETAILS_PANEL_H;
-	page.drawRectangle({ x: M, y: panelTop - panelH, width: W - 2 * M, height: panelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+	page.drawRectangle({
+		x: M,
+		y: panelTop - panelH,
+		width: W - 2 * M,
+		height: panelH,
+		color: panel,
+		borderColor: panelBorder,
+		borderWidth: 1,
+	});
 
 	const colGap = 18;
 	const colW = (W - 2 * M - colGap - 24) / 2;
@@ -731,6 +810,9 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
 		["Work completed by", endedOn ? completedBy ?? "—" : "—"],
 		["Time worked for", timeWorkedFor],
+		// ADDED rows
+		["Worker signature", workerSignature],
+		["Customer signature", customerSignature],
 	];
 	const ROW_SPACING = 18;
 	const TOP_PADDING = 36;
@@ -739,7 +821,15 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const progH = Math.max(112, requiredProgH);
 
 	const progTop = panelTop - panelH - 12;
-	page.drawRectangle({ x: M, y: progTop - progH, width: W - 2 * M, height: progH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+	page.drawRectangle({
+		x: M,
+		y: progTop - progH,
+		width: W - 2 * M,
+		height: progH,
+		color: panel,
+		borderColor: panelBorder,
+		borderWidth: 1,
+	});
 
 	text("Progress", M + 12, progTop - 18, 11, true);
 	let py = progTop - TOP_PADDING;
@@ -774,7 +864,15 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	// description
 	const descTop = progTop - progH - 12;
 	const descH = 120;
-	page.drawRectangle({ x: M, y: descTop - descH, width: W - 2 * M, height: descH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+	page.drawRectangle({
+		x: M,
+		y: descTop - descH,
+		width: W - 2 * M,
+		height: descH,
+		color: panel,
+		borderColor: panelBorder,
+		borderWidth: 1,
+	});
 	text("Description", M + 12, descTop - 18, 11, true);
 	if (complaint.description && complaint.description.trim()) {
 		const lines = wrap(complaint.description.trim(), W - 2 * M - 24, 10);
@@ -790,7 +888,15 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	// images
 	const imgsTop = descTop - descH - 12;
-	page.drawRectangle({ x: M, y: M + 70, width: W - 2 * M, height: imgsTop - (M + 70), color: panel, borderColor: panelBorder, borderWidth: 1 });
+	page.drawRectangle({
+		x: M,
+		y: M + 70,
+		width: W - 2 * M,
+		height: imgsTop - (M + 70),
+		color: panel,
+		borderColor: panelBorder,
+		borderWidth: 1,
+	});
 	text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
 	if (images.length > 0) {

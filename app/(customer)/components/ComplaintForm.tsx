@@ -17,11 +17,17 @@ import { formSchema } from "@/lib/constants";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 
+const predefinedProblems = {
+	HVAC: ["HVAC UNIT NOT COOLING", "HVAC UNIT NOT WORKING", "HVAC UNIT in is producing excessive noise", "WATER LEAKAGE FROM HVAC UNIT", "HVAC UNIT SHUTTING DOWN AUTOMATICALLY", "Unusual smell coming from HVAC unit", "HVAC DUCT ISSUES", "Thermostat issues or not responding", "High energy bills or inefficiency", "Ice buildup is occurring on the HVAC unit", "The HVAC unit is over-cooling"],
+	Others: ["PLUMBING WORK", "ELECTRIC WORK", "CIVIL WORK", "PAINTING WORK"],
+};
+
 function ComplaintForm() {
 	const [images, setImages] = React.useState<File[]>([]);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [submitError, setSubmitError] = React.useState<string | null>(null);
 	const [buildings, setBuildings] = React.useState<string[]>([]);
+	const [selectedProblem, setSelectedProblem] = React.useState<string | null>(null);
 	const router = useRouter();
 
 	useEffect(() => {
@@ -93,7 +99,10 @@ function ComplaintForm() {
 		formData.append("buildingName", values.buildingName);
 		formData.append("apartmentNumber", values.apartmentNumber);
 		formData.append("convenientTime", values.convenientTime);
-		formData.append("description", values.description);
+
+		// Concatenate selected problem with description text
+		const fullDescription = selectedProblem ? `${selectedProblem}\n${values.description}` : values.description;
+		formData.append("description", fullDescription);
 
 		// Append image files to the FormData object
 		// The 'images' key here must match formData.getAll('images') in your Server Action
@@ -269,9 +278,45 @@ function ComplaintForm() {
 					name='description' // This name must match the schema and formData key
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Description</FormLabel>
+							<FormLabel>Problem Description</FormLabel>
+
+							{/* HVAC Issues Section */}
+							<div className='mb-4'>
+								<h5 className='text-sm font-semibold text-gray-700 mb-2'>HVAC Issues</h5>
+								<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+									{predefinedProblems.HVAC.map((problem) => (
+										<Button key={problem} type='button' onClick={() => setSelectedProblem(problem)} variant={selectedProblem === problem ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={isSubmitting}>
+											{problem}
+										</Button>
+									))}
+								</div>
+							</div>
+
+							{/* Others Section */}
+							<div className='mb-4'>
+								<h5 className='text-sm font-semibold text-gray-700 mb-2'>Others</h5>
+								<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+									{predefinedProblems.Others.map((problem) => (
+										<Button key={problem} type='button' onClick={() => setSelectedProblem(problem)} variant={selectedProblem === problem ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={isSubmitting}>
+											{problem}
+										</Button>
+									))}
+								</div>
+							</div>
+
+							{/* Selected Problem Display */}
+							{selectedProblem && (
+								<div className='p-3 bg-blue-50 border border-blue-200 rounded-md mb-4'>
+									<p className='text-sm text-gray-700'>
+										<span className='font-semibold'>Selected Problem:</span> {selectedProblem}
+									</p>
+								</div>
+							)}
+
+							{/* Additional Description Textarea */}
+							<FormLabel className='text-sm'>Additional Details (Optional)</FormLabel>
 							<FormControl>
-								<Textarea placeholder='Enter your description' {...field} />
+								<Textarea placeholder='Enter any additional details about the problem...' {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

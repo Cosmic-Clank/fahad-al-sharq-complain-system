@@ -15,6 +15,11 @@ interface ComplaintResponseFormProps {
 	complaintId: string; // The ID of the complaint this response belongs to
 }
 
+const predefinedResponses = {
+	HVAC: ["HVAC UNIT NOT COOLING", "HVAC UNIT NOT WORKING", "HVAC UNIT in is producing excessive noise", "WATER LEAKAGE FROM HVAC UNIT", "HVAC UNIT SHUTTING DOWN AUTOMATICALLY", "Unusual smell coming from HVAC unit", "HVAC DUCT ISSUES", "Thermostat issues or not responding", "High energy bills or inefficiency", "Ice buildup is occurring on the HVAC unit", "The HVAC unit is over-cooling"],
+	Others: ["PLUMBING WORK", "ELECTRIC WORK", "CIVIL WORK", "PAINTING WORK"],
+};
+
 const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaintId }) => {
 	const [responseText, setResponseText] = useState("");
 	const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -52,7 +57,7 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 	const handleSubmit = async (formData: FormData) => {
 		setMessage(null); // Clear previous messages
 		if (!responseText.trim()) {
-			setMessage({ type: "error", text: "Response cannot be empty." });
+			setMessage({ type: "error", text: "Please select a response." });
 			return;
 		}
 		isLoading(true); // Set loading state to true
@@ -94,15 +99,37 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 				{/* Reduced space-y */}
 				{/* Hidden input to pass the complaintId to the server action */}
 				<input type='hidden' name='complaintId' value={complaintId} />
-				<textarea
-					name='responseText' // Important: name attribute matches formData.get() in server action
-					value={responseText}
-					onChange={(e) => setResponseText(e.target.value)}
-					rows={4} // Slightly reduced rows for compactness
-					placeholder='Write your response here...'
-					className='w-full p-2.5 border border-gray-200 rounded-md shadow-sm focus:ring-1 focus:ring-blue-300 focus:border-blue-300 text-gray-700 resize-y text-sm placeholder:text-gray-400 transition-colors' // Reduced padding, less rounded, softer focus ring, smaller text
-					disabled={loading} // Disable textarea when submitting
-				></textarea>
+				<input type='hidden' name='responseText' value={responseText} />
+				{/* HVAC Issues Section */}
+				<div>
+					<h5 className='text-sm font-semibold text-gray-700 mb-2'>HVAC Issues</h5>
+					<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+						{predefinedResponses.HVAC.map((response) => (
+							<Button key={response} type='button' onClick={() => setResponseText(response)} variant={responseText === response ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={loading}>
+								{response}
+							</Button>
+						))}
+					</div>
+				</div>
+				{/* Others Section */}
+				<div>
+					<h5 className='text-sm font-semibold text-gray-700 mb-2'>Others</h5>
+					<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+						{predefinedResponses.Others.map((response) => (
+							<Button key={response} type='button' onClick={() => setResponseText(response)} variant={responseText === response ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={loading}>
+								{response}
+							</Button>
+						))}
+					</div>
+				</div>
+				{/* Selected Response Display */}
+				{responseText && (
+					<div className='p-3 bg-blue-50 border border-blue-200 rounded-md'>
+						<p className='text-sm text-gray-700'>
+							<span className='font-semibold'>Selected Response:</span> {responseText}
+						</p>
+					</div>
+				)}
 				<div className='p-4 border border-gray-200 dark:border-gray-700 rounded-sm bg-white dark:bg-gray-800'>
 					<Label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>Upload Images (Optional)</Label>
 					<Input

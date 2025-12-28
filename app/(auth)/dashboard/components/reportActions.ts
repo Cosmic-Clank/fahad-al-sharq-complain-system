@@ -4,6 +4,8 @@
 import prisma from "@/lib/prisma";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Buffer } from "node:buffer";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -312,9 +314,10 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					startTime: true,
 					endTime: true,
 					user: { select: { fullName: true } },
-					// ADDED signatures
 					workerInitials: true,
 					customerInitials: true,
+					workerSignatureBase64: true,
+					customerSignatureBase64: true,
 				},
 				orderBy: { startTime: "asc" },
 			},
@@ -388,8 +391,10 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		// ADDED: derive worker/customer signatures from the completion entry
 		const completionWT = endedOn ? c.workTimes.find((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()) : null;
-		const workerSignature = endedOn ? completionWT?.workerInitials || "—" : "N/A";
-		const customerSignature = endedOn ? completionWT?.customerInitials || "—" : "N/A";
+		const hasWorkerSignatureImage = endedOn && completionWT?.workerSignatureBase64;
+		const hasCustomerSignatureImage = endedOn && completionWT?.customerSignatureBase64;
+		const workerSignatureFallback = endedOn ? completionWT?.workerInitials || "—" : "N/A";
+		const customerSignatureFallback = endedOn ? completionWT?.customerInitials || "—" : "N/A";
 
 		const totalMs = c.workTimes.reduce((sum, wt) => {
 			const end = wt.endTime ?? now;
@@ -403,10 +408,31 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		const uniqueResponders = Array.from(new Set(c.responses.map((r) => r.responder.fullName))).join(", ");
 		const images = normalizeImagePaths(c.imagePaths);
 
-		// header
+		// header with company branding
 		page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
-		text("Complaint Report", M, H - 38, 20, true, rgb(1, 1, 1));
-		text(`#${c.id}`, M, H - 58, 12, false, rgb(1, 1, 1));
+
+		// Try to embed favicon
+		try {
+			const faviconPath = join(process.cwd(), "public/favicon.png");
+			const faviconBytes = new Uint8Array(readFileSync(faviconPath));
+			if (faviconBytes && faviconBytes.length > 0) {
+				const favicon = await doc.embedPng(faviconBytes);
+				const iconSize = 32;
+				const iconScale = iconSize / Math.max(favicon.width, favicon.height);
+				page.drawImage(favicon, {
+					x: M,
+					y: H - 54,
+					width: favicon.width * iconScale,
+					height: favicon.height * iconScale,
+				});
+			}
+		} catch (e) {
+			console.error("Failed to load favicon:", e);
+		}
+
+		text("Fahad Al Sharq Complain System", M + 40, H - 30, 14, true, rgb(1, 1, 1));
+		text("Complaint Report", M + 40, H - 48, 12, false, rgb(1, 1, 1));
+		text(`#${c.id}`, M + 40, H - 62, 10, false, rgb(0.9, 0.9, 0.9));
 		const genAt = fmtDubai(new Date());
 		const genStr = `Generated: ${genAt} (Asia/Dubai)`;
 		text(genStr, W - M - font.widthOfTextAtSize(genStr, 10), H - 58, 10, false, rgb(1, 1, 1));
@@ -433,8 +459,8 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		}
 
 		// details (smaller)
-		const DETAILS_PANEL_H = 186;
-		const FIELD_SPACING = 34;
+		const DETAILS_PANEL_H = 140;
+		const FIELD_SPACING = 28;
 
 		const panelTop = H - 112;
 		const panelH = DETAILS_PANEL_H;
@@ -480,7 +506,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		textField("Apartment", c.apartmentNumber ?? "—", 1);
 		y -= FIELD_SPACING;
 
-		// progress (DYNAMIC HEIGHT)
+		// progress (TWO COLUMNS - DYNAMIC HEIGHT)
 		const PROGRESS_ROWS: [string, string][] = [
 			["Status", status],
 			["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
@@ -488,15 +514,19 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
 			["Work completed by", endedOn ? completedBy ?? "—" : "—"],
 			["Time worked for", timeWorkedFor],
-			// ADDED rows
-			["Worker signature", workerSignature],
-			["Customer signature", customerSignature],
 		];
-		const ROW_SPACING = 18;
-		const TOP_PADDING = 36; // header (18) + gap (18)
-		const BOTTOM_PADDING = 16;
-		const requiredProgH = TOP_PADDING + PROGRESS_ROWS.length * ROW_SPACING + BOTTOM_PADDING;
-		const progH = Math.max(112, requiredProgH); // never smaller than legacy
+
+		if (!hasWorkerSignatureImage && !hasCustomerSignatureImage) {
+			PROGRESS_ROWS.push(["Worker signature", workerSignatureFallback]);
+			PROGRESS_ROWS.push(["Customer signature", customerSignatureFallback]);
+		}
+
+		const ROW_SPACING = 16;
+		const TOP_PADDING = 24;
+		const BOTTOM_PADDING = 12;
+		const rowsPerCol = Math.ceil(PROGRESS_ROWS.length / 2);
+		const requiredProgH = TOP_PADDING + rowsPerCol * ROW_SPACING + BOTTOM_PADDING;
+		const progH = Math.max(100, requiredProgH);
 
 		const progTop = panelTop - panelH - 12;
 		page.drawRectangle({
@@ -510,38 +540,110 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		});
 
 		text("Progress", M + 12, progTop - 18, 11, true);
-		let py = progTop - TOP_PADDING;
-		PROGRESS_ROWS.forEach(([k, v]) => {
-			text(k, M + 12, py, 9, false, subt);
-			text(v, M + 140, py, 10, true);
-			py -= ROW_SPACING;
-		});
 
-		// responses
-		const rx = W / 2 + 6;
-		text("Responses", rx, progTop - 18, 11, true);
-		let ry = progTop - TOP_PADDING;
-		(
-			[
-				["Count", String(responsesCount)],
-				["First", firstResponseAt ? fmtDubai(firstResponseAt) : "—"],
-				["Last", lastResponseAt ? fmtDubai(lastResponseAt) : "—"],
-				["By", uniqueResponders || "—"],
-			] as [string, string][]
-		).forEach(([k, v]) => {
-			text(k, rx, ry, 9, false, subt);
-			const maxW = W - M - rx - 12;
-			const lines = wrap(v, maxW, 10);
-			let ly = ry;
-			for (const ln of lines) {
-				text(ln, rx + 80, ly, 10, true);
-				ly -= LH;
+		// Draw progress in 2 columns
+		const progColW = (W - 2 * M - 24 - 12) / 2;
+		let py = progTop - TOP_PADDING - 6;
+		for (let i = 0; i < rowsPerCol; i++) {
+			const row1 = PROGRESS_ROWS[i];
+			const row2 = PROGRESS_ROWS[i + rowsPerCol];
+
+			if (row1) {
+				text(row1[0], M + 12, py, 8, false, subt);
+				const val1Lines = wrap(row1[1], progColW - 100, 9);
+				text(val1Lines[0] || row1[1], M + 100, py, 9, true);
 			}
-			ry -= ROW_SPACING;
-		});
+
+			if (row2) {
+				text(row2[0], M + 12 + progColW + 12, py, 8, false, subt);
+				const val2Lines = wrap(row2[1], progColW - 100, 9);
+				text(val2Lines[0] || row2[1], M + 100 + progColW + 12, py, 9, true);
+			}
+
+			py -= ROW_SPACING;
+		}
+
+		// Signatures section (if images exist)
+		let descTop = progTop - progH - 12;
+		if (hasWorkerSignatureImage || hasCustomerSignatureImage) {
+			const sigH = 100;
+			const signaturesTop = descTop;
+			descTop = descTop - sigH - 12;
+
+			page.drawRectangle({
+				x: M,
+				y: signaturesTop - sigH,
+				width: W - 2 * M,
+				height: sigH,
+				color: panel,
+				borderColor: panelBorder,
+				borderWidth: 1,
+			});
+			text("Signatures", M + 12, signaturesTop - 18, 11, true);
+
+			const sigBoxW = (W - 2 * M - 24 - 12) / 2;
+			const sigBoxH = 60;
+
+			// Worker signature
+			if (hasWorkerSignatureImage && completionWT?.workerSignatureBase64) {
+				try {
+					let base64Data = completionWT.workerSignatureBase64;
+					// Remove data URL prefix if present
+					if (base64Data.startsWith("data:")) {
+						base64Data = base64Data.split(",")[1];
+					}
+					const sigBytes = Buffer.from(base64Data, "base64");
+					const workerSigImage = await doc.embedPng(sigBytes);
+					const scale = Math.min(sigBoxW / workerSigImage.width, sigBoxH / workerSigImage.height);
+					const w = workerSigImage.width * scale;
+					const h = workerSigImage.height * scale;
+					const imgY = Math.max(M + 76, signaturesTop - 35 - h);
+					page.drawImage(workerSigImage, {
+						x: M + 12,
+						y: imgY,
+						width: w,
+						height: h,
+					});
+					text("Worker", M + 12, Math.max(M + 76, imgY - 14), 9, false, subt);
+				} catch (e) {
+					console.error("Error embedding worker signature:", e);
+					text("Worker: " + workerSignatureFallback, M + 12, signaturesTop - 40, 10);
+				}
+			} else {
+				text("Worker: " + workerSignatureFallback, M + 12, signaturesTop - 40, 10);
+			}
+
+			// Customer signature
+			if (hasCustomerSignatureImage && completionWT?.customerSignatureBase64) {
+				try {
+					let base64Data = completionWT.customerSignatureBase64;
+					// Remove data URL prefix if present
+					if (base64Data.startsWith("data:")) {
+						base64Data = base64Data.split(",")[1];
+					}
+					const sigBytes = Buffer.from(base64Data, "base64");
+					const customerSigImage = await doc.embedPng(sigBytes);
+					const scale = Math.min(sigBoxW / customerSigImage.width, sigBoxH / customerSigImage.height);
+					const w = customerSigImage.width * scale;
+					const h = customerSigImage.height * scale;
+					const imgY = Math.max(M + 76, signaturesTop - 35 - h);
+					page.drawImage(customerSigImage, {
+						x: M + 12 + sigBoxW + 12,
+						y: imgY,
+						width: w,
+						height: h,
+					});
+					text("Customer", M + 12 + sigBoxW + 12, Math.max(M + 76, imgY - 14), 9, false, subt);
+				} catch (e) {
+					console.error("Error embedding customer signature:", e);
+					text("Customer: " + customerSignatureFallback, M + 12 + sigBoxW + 12, signaturesTop - 40, 10);
+				}
+			} else {
+				text("Customer: " + customerSignatureFallback, M + 12 + sigBoxW + 12, signaturesTop - 40, 10);
+			}
+		}
 
 		// description
-		const descTop = progTop - progH - 12;
 		const descH = 120;
 		page.drawRectangle({
 			x: M,
@@ -647,9 +749,10 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 					startTime: true,
 					endTime: true,
 					user: { select: { fullName: true } },
-					// ADDED signatures
 					workerInitials: true,
 					customerInitials: true,
+					workerSignatureBase64: true,
+					customerSignatureBase64: true,
 				},
 				orderBy: { startTime: "asc" },
 			},
@@ -677,8 +780,10 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	// ADDED: derive worker/customer signatures from the completion entry
 	const completionWT = endedOn ? complaint.workTimes.find((wt) => wt.endTime && wt.endTime.getTime() === endedOn.getTime()) : null;
-	const workerSignature = endedOn ? completionWT?.workerInitials || "—" : "N/A";
-	const customerSignature = endedOn ? completionWT?.customerInitials || "—" : "N/A";
+	const hasWorkerSignatureImage = endedOn && completionWT?.workerSignatureBase64;
+	const hasCustomerSignatureImage = endedOn && completionWT?.customerSignatureBase64;
+	const workerSignatureFallback = endedOn ? completionWT?.workerInitials || "—" : "N/A";
+	const customerSignatureFallback = endedOn ? completionWT?.customerInitials || "—" : "N/A";
 
 	const totalMs = complaint.workTimes.reduce((sum, wt) => {
 		const end = wt.endTime ?? now;
@@ -726,10 +831,31 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		return lines;
 	};
 
-	// header
+	// header with company branding
 	page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
-	text("Complaint Report", M, H - 38, 20, true, rgb(1, 1, 1));
-	text(`#${complaint.id}`, M, H - 58, 12, false, rgb(1, 1, 1));
+
+	// Try to embed favicon
+	try {
+		const faviconPath = join(process.cwd(), "public/favicon.png");
+		const faviconBytes = new Uint8Array(readFileSync(faviconPath));
+		if (faviconBytes && faviconBytes.length > 0) {
+			const favicon = await doc.embedPng(faviconBytes);
+			const iconSize = 32;
+			const iconScale = iconSize / Math.max(favicon.width, favicon.height);
+			page.drawImage(favicon, {
+				x: M,
+				y: H - 54,
+				width: favicon.width * iconScale,
+				height: favicon.height * iconScale,
+			});
+		}
+	} catch (e) {
+		console.error("Failed to load favicon:", e);
+	}
+
+	text("Fahad Al Sharq Complain System", M + 40, H - 30, 14, true, rgb(1, 1, 1));
+	text("Complaint Report", M + 40, H - 48, 12, false, rgb(1, 1, 1));
+	text(`#${complaint.id}`, M + 40, H - 62, 10, false, rgb(0.9, 0.9, 0.9));
 	const genAt = fmtDubai(new Date());
 	text(`Generated: ${genAt} (Asia/Dubai)`, W - M - font.widthOfTextAtSize(`Generated: ${genAt} (Asia/Dubai)`, 10), H - 58, 10, false, rgb(1, 1, 1));
 
@@ -755,8 +881,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	}
 
 	// details (smaller)
-	const DETAILS_PANEL_H = 186;
-	const FIELD_SPACING = 34;
+	const DETAILS_PANEL_H = 140;
+	const FIELD_SPACING = 28;
 
 	const panelTop = H - 112;
 	const panelH = DETAILS_PANEL_H;
@@ -802,7 +928,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	drawField("Apartment", complaint.apartmentNumber ?? "—", 1);
 	y -= FIELD_SPACING;
 
-	// progress (DYNAMIC HEIGHT)
+	// progress (TWO COLUMNS - DYNAMIC HEIGHT)
 	const PROGRESS_ROWS: [string, string][] = [
 		["Status", status],
 		["Work started on", startedOn ? fmtDubai(startedOn) : "—"],
@@ -810,15 +936,20 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		["Work ended on", endedOn ? fmtDubai(endedOn) : "—"],
 		["Work completed by", endedOn ? completedBy ?? "—" : "—"],
 		["Time worked for", timeWorkedFor],
-		// ADDED rows
-		["Worker signature", workerSignature],
-		["Customer signature", customerSignature],
 	];
-	const ROW_SPACING = 18;
-	const TOP_PADDING = 36;
-	const BOTTOM_PADDING = 16;
-	const requiredProgH = TOP_PADDING + PROGRESS_ROWS.length * ROW_SPACING + BOTTOM_PADDING;
-	const progH = Math.max(112, requiredProgH);
+
+	if (!hasWorkerSignatureImage && !hasCustomerSignatureImage) {
+		PROGRESS_ROWS.push(["Worker signature", workerSignatureFallback]);
+		PROGRESS_ROWS.push(["Customer signature", customerSignatureFallback]);
+	}
+
+	// 2-column layout
+	const ROW_SPACING = 16;
+	const TOP_PADDING = 24;
+	const BOTTOM_PADDING = 12;
+	const rowsPerCol = Math.ceil(PROGRESS_ROWS.length / 2);
+	const requiredProgH = TOP_PADDING + rowsPerCol * ROW_SPACING + BOTTOM_PADDING;
+	const progH = Math.max(100, requiredProgH);
 
 	const progTop = panelTop - panelH - 12;
 	page.drawRectangle({
@@ -832,37 +963,110 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	});
 
 	text("Progress", M + 12, progTop - 18, 11, true);
-	let py = progTop - TOP_PADDING;
-	PROGRESS_ROWS.forEach(([k, v]) => {
-		text(k, M + 12, py, 9, false, subt);
-		text(v, M + 140, py, 10, true);
-		py -= ROW_SPACING;
-	});
 
-	const rx = W / 2 + 6;
-	text("Responses", rx, progTop - 18, 11, true);
-	let ry = progTop - TOP_PADDING;
-	(
-		[
-			["Count", String(responsesCount)],
-			["First", firstResponseAt ? fmtDubai(firstResponseAt) : "—"],
-			["Last", lastResponseAt ? fmtDubai(lastResponseAt) : "—"],
-			["By", uniqueResponders || "—"],
-		] as [string, string][]
-	).forEach(([k, v]) => {
-		text(k, rx, ry, 9, false, subt);
-		const maxW = W - M - rx - 12;
-		const lines = wrap(v, maxW, 10);
-		let ly = ry;
-		for (const ln of lines) {
-			text(ln, rx + 80, ly, 10, true);
-			ly -= LH;
+	// Draw progress in 2 columns
+	const progColW = (W - 2 * M - 24 - 12) / 2;
+	let py = progTop - TOP_PADDING - 6;
+	for (let i = 0; i < rowsPerCol; i++) {
+		const row1 = PROGRESS_ROWS[i];
+		const row2 = PROGRESS_ROWS[i + rowsPerCol];
+
+		if (row1) {
+			text(row1[0], M + 12, py, 8, false, subt);
+			const val1Lines = wrap(row1[1], progColW - 100, 9);
+			text(val1Lines[0] || row1[1], M + 100, py, 9, true);
 		}
-		ry -= ROW_SPACING;
-	});
+
+		if (row2) {
+			text(row2[0], M + 12 + progColW + 12, py, 8, false, subt);
+			const val2Lines = wrap(row2[1], progColW - 100, 9);
+			text(val2Lines[0] || row2[1], M + 100 + progColW + 12, py, 9, true);
+		}
+
+		py -= ROW_SPACING;
+	}
+
+	// Signatures section (if images exist)
+	let descTop = progTop - progH - 12;
+	if (hasWorkerSignatureImage || hasCustomerSignatureImage) {
+		const sigH = 100;
+		const signaturesTop = descTop;
+		descTop = descTop - sigH - 12;
+
+		page.drawRectangle({
+			x: M,
+			y: signaturesTop - sigH,
+			width: W - 2 * M,
+			height: sigH,
+			color: panel,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
+		text("Signatures", M + 12, signaturesTop - 18, 11, true);
+
+		const sigBoxW = (W - 2 * M - 24 - 12) / 2;
+		const sigBoxH = 60;
+
+		// Worker signature
+		if (hasWorkerSignatureImage && completionWT?.workerSignatureBase64) {
+			try {
+				let base64Data = completionWT.workerSignatureBase64;
+				// Remove data URL prefix if present
+				if (base64Data.startsWith("data:")) {
+					base64Data = base64Data.split(",")[1];
+				}
+				const sigBytes = Buffer.from(base64Data, "base64");
+				const workerSigImage = await doc.embedPng(sigBytes);
+				const scale = Math.min(sigBoxW / workerSigImage.width, sigBoxH / workerSigImage.height);
+				const w = workerSigImage.width * scale;
+				const h = workerSigImage.height * scale;
+				const imgY = Math.max(M + 76, signaturesTop - 35 - h);
+				page.drawImage(workerSigImage, {
+					x: M + 12,
+					y: imgY,
+					width: w,
+					height: h,
+				});
+				text("Worker", M + 12, Math.max(M + 76, imgY - 14), 9, false, subt);
+			} catch (e) {
+				console.error("Error embedding worker signature:", e);
+				text("Worker: " + workerSignatureFallback, M + 12, signaturesTop - 40, 10);
+			}
+		} else {
+			text("Worker: " + workerSignatureFallback, M + 12, signaturesTop - 40, 10);
+		}
+
+		// Customer signature
+		if (hasCustomerSignatureImage && completionWT?.customerSignatureBase64) {
+			try {
+				let base64Data = completionWT.customerSignatureBase64;
+				// Remove data URL prefix if present
+				if (base64Data.startsWith("data:")) {
+					base64Data = base64Data.split(",")[1];
+				}
+				const sigBytes = Buffer.from(base64Data, "base64");
+				const customerSigImage = await doc.embedPng(sigBytes);
+				const scale = Math.min(sigBoxW / customerSigImage.width, sigBoxH / customerSigImage.height);
+				const w = customerSigImage.width * scale;
+				const h = customerSigImage.height * scale;
+				const imgY = Math.max(M + 76, signaturesTop - 35 - h);
+				page.drawImage(customerSigImage, {
+					x: M + 12 + sigBoxW + 12,
+					y: imgY,
+					width: w,
+					height: h,
+				});
+				text("Customer", M + 12 + sigBoxW + 12, Math.max(M + 76, imgY - 14), 9, false, subt);
+			} catch (e) {
+				console.error("Error embedding customer signature:", e);
+				text("Customer: " + customerSignatureFallback, M + 12 + sigBoxW + 12, signaturesTop - 40, 10);
+			}
+		} else {
+			text("Customer: " + customerSignatureFallback, M + 12 + sigBoxW + 12, signaturesTop - 40, 10);
+		}
+	}
 
 	// description
-	const descTop = progTop - progH - 12;
 	const descH = 120;
 	page.drawRectangle({
 		x: M,

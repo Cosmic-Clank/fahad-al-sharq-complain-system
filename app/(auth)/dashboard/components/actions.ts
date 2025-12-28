@@ -127,14 +127,52 @@ export async function addEndWorkTime(formData: FormData) {
 	}
 
 	const complaintId = formData.get("complaintId") as string | null;
-	const workerInitialsRaw = formData.get("workerInitials") as string | null;
-	const customerInitialsRaw = formData.get("customerInitials") as string | null;
+	const workerSignatureBase64 = formData.get("workerSignatureBase64") as string | null;
+	const customerSignatureBase64 = formData.get("customerSignatureBase64") as string | null;
 
 	if (!complaintId) {
 		return { success: false, message: "Server error" };
 	}
 
-	// Normalize + simple validation (A–Z, dots, dashes, spaces; 1–6 chars)
+	// Check if signatures are provided (new system)
+	if (workerSignatureBase64 && customerSignatureBase64) {
+		if (!workerSignatureBase64.trim() || !customerSignatureBase64.trim()) {
+			return { success: false, message: "Invalid signatures provided." };
+		}
+
+		try {
+			const workTime = await prismaClient.workTimes.findFirst({
+				where: {
+					complaintId: Number(complaintId),
+					endTime: null,
+				},
+				orderBy: { date: "desc" },
+			});
+
+			if (!workTime) {
+				return { success: false, message: "No active work time found for this complaint." };
+			}
+
+			await prismaClient.workTimes.update({
+				where: { id: workTime.id },
+				data: {
+					endTime: new Date(),
+					workerSignatureBase64: workerSignatureBase64.trim(),
+					customerSignatureBase64: customerSignatureBase64.trim(),
+				},
+			});
+
+			return { success: true, message: "Work time ended successfully!" };
+		} catch (error) {
+			console.error("Error ending work time:", error);
+			return { success: false, message: "Failed to end work time. Please try again." };
+		}
+	}
+
+	// Fallback to old initials system for backward compatibility
+	const workerInitialsRaw = formData.get("workerInitials") as string | null;
+	const customerInitialsRaw = formData.get("customerInitials") as string | null;
+
 	const normalize = (val: string | null) => (val ?? "").trim().toUpperCase();
 
 	const workerInitials = normalize(workerInitialsRaw);
@@ -166,8 +204,8 @@ export async function addEndWorkTime(formData: FormData) {
 			where: { id: workTime.id },
 			data: {
 				endTime: new Date(),
-				workerInitials, // new column
-				customerInitials, // new column
+				workerInitials,
+				customerInitials,
 			},
 		});
 

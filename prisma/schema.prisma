@@ -95,6 +95,8 @@ model WorkTimes {
   updatedAt   DateTime @updatedAt
   workerInitials String?
   customerInitials String?
+  workerSignatureBase64 String?
+  customerSignatureBase64 String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)

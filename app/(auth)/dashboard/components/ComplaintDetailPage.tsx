@@ -68,6 +68,8 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 					},
 					customerInitials: true,
 					workerInitials: true,
+					workerSignatureBase64: true,
+					customerSignatureBase64: true,
 				},
 				orderBy: { date: "asc" }, // Order by date ascending
 			},
@@ -132,6 +134,8 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			},
 			customerInitials: wt.customerInitials,
 			workerInitials: wt.workerInitials,
+			workerSignatureBase64: wt.workerSignatureBase64,
+			customerSignatureBase64: wt.customerSignatureBase64,
 		}))[0],
 	};
 

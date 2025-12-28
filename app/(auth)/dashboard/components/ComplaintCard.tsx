@@ -1,8 +1,8 @@
 // components/ComplaintCard.tsx
 "use client";
 
-import React, { useState } from "react";
-import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download, RotateCcw } from "lucide-react";
 
 import ComplaintResponseForm from "./ComplaintResponseForm";
 import Link from "next/link";
@@ -17,6 +17,9 @@ import { generateComplaintPdfById } from "./reportActions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+// NEW: Signature canvas
+import SignatureCanvas from "react-signature-canvas";
 
 // Define the data type for a single complaint
 interface ComplaintData {
@@ -46,6 +49,8 @@ interface ComplaintData {
 		user: { fullName: string; role: string };
 		customerInitials: string | null;
 		workerInitials: string | null;
+		workerSignatureBase64: string | null;
+		customerSignatureBase64: string | null;
 	};
 }
 
@@ -59,30 +64,36 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 
 	const [isWorkTimesLoading, setIsWorkTimesLoading] = useState(false);
 
-	// NEW: dialog state + initials
+	// NEW: dialog state + signature refs
 	const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
-	const [workerInitials, setWorkerInitials] = useState("");
-	const [customerInitials, setCustomerInitials] = useState("");
+	const workerSignaturePadRef = useRef<SignatureCanvas>(null);
+	const customerSignaturePadRef = useRef<SignatureCanvas>(null);
 	const [endError, setEndError] = useState<string | null>(null);
 
 	const toggleDescription = () => setShowFullDescription(!showFullDescription);
 
 	const displayDescription = complaint.description.length > maxDescriptionLength && !showFullDescription ? `${complaint.description.substring(0, maxDescriptionLength)}...` : complaint.description;
 
-	// NEW: confirm handler (mimics the original form submit)
+	// NEW: confirm handler with signature capture
 	const handleConfirmEndWork = async () => {
 		setEndError(null);
-		if (!workerInitials.trim() || !customerInitials.trim()) {
-			setEndError("Please enter both initials.");
+
+		// Check if both signatures are drawn
+		if (!workerSignaturePadRef.current || !customerSignaturePadRef.current || workerSignaturePadRef.current.isEmpty() || customerSignaturePadRef.current.isEmpty()) {
+			setEndError("Please sign both signature pads.");
 			return;
 		}
+
 		setIsWorkTimesLoading(true);
 		try {
+			// Get base64 signatures from the pads
+			const workerSignatureBase64 = workerSignaturePadRef.current.toDataURL();
+			const customerSignatureBase64 = customerSignaturePadRef.current.toDataURL();
+
 			const fd = new FormData();
 			fd.append("complaintId", complaint.id);
-			// If you later want to pass initials to the server, just append them here:
-			fd.append("workerInitials", workerInitials.trim());
-			fd.append("customerInitials", customerInitials.trim());
+			fd.append("workerSignatureBase64", workerSignatureBase64);
+			fd.append("customerSignatureBase64", customerSignatureBase64);
 
 			const result = await addEndWorkTime(fd);
 
@@ -189,7 +200,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 					<div className='bg-green-50 border border-green-200 rounded-md p-4 mb-4'>
 						<div className='text-green-700 font-semibold flex items-center mb-2'>
 							<Calendar className='w-4 h-4 mr-2 text-green-500' />
-							Work Completed: {complaint.workTimes.user.fullName} ({complaint.workTimes.user.role}) Signature: {complaint.workTimes.workerInitials} / {complaint.workTimes.customerInitials}
+							Work Completed: {complaint.workTimes.user.fullName} ({complaint.workTimes.user.role})
 						</div>
 						<div className='text-sm text-gray-700 mb-1'>
 							<span className='font-medium'>Date:</span> <span>{complaint.workTimes.date}</span>
@@ -197,9 +208,35 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 						<div className='text-sm text-gray-700 mb-1'>
 							<span className='font-medium'>Start Time:</span> <span>{complaint.workTimes.startTime}</span>
 						</div>
-						<div className='text-sm text-gray-700'>
+						<div className='text-sm text-gray-700 mb-3'>
 							<span className='font-medium'>End Time:</span> <span>{complaint.workTimes.endTime}</span>
 						</div>
+
+						{/* Show signatures if they exist (new system) */}
+						{complaint.workTimes.workerSignatureBase64 && complaint.workTimes.customerSignatureBase64 ? (
+							<div className='space-y-4 mt-4'>
+								<div className='space-y-2'>
+									<p className='text-sm font-medium text-gray-700'>Worker Signature:</p>
+									<div className='border border-gray-300 rounded-md overflow-hidden bg-white p-2'>
+										<img src={complaint.workTimes.workerSignatureBase64} alt='Worker Signature' className='max-w-full h-24 object-contain' />
+									</div>
+								</div>
+								<div className='space-y-2'>
+									<p className='text-sm font-medium text-gray-700'>Customer Signature:</p>
+									<div className='border border-gray-300 rounded-md overflow-hidden bg-white p-2'>
+										<img src={complaint.workTimes.customerSignatureBase64} alt='Customer Signature' className='max-w-full h-24 object-contain' />
+									</div>
+								</div>
+							</div>
+						) : (
+							/* Fallback to old initials display */
+							<div className='text-sm text-gray-700 mt-3'>
+								<span className='font-medium'>Signatures:</span>{" "}
+								<span>
+									{complaint.workTimes.workerInitials} / {complaint.workTimes.customerInitials}
+								</span>
+							</div>
+						)}
 					</div>
 				)}
 
@@ -250,37 +287,67 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 								</Button>
 							</DialogTrigger>
 
-							<DialogContent>
+							<DialogContent className='max-w-2xl'>
 								<DialogHeader>
 									<DialogTitle>Confirm work completion</DialogTitle>
-									<DialogDescription className='text-xs'>Please enter initials before completing. This is just a UI step; the initials aren’t stored yet.</DialogDescription>
+									<DialogDescription className='text-xs'>Please provide signatures from both the worker and customer.</DialogDescription>
 								</DialogHeader>
 
-								<div className='space-y-4 mt-2'>
-									<div className='grid gap-2'>
-										<Label htmlFor='worker-initials'>Worker initials</Label>
-										<Input id='worker-initials' placeholder='e.g., SA' value={workerInitials} onChange={(e) => setWorkerInitials(e.target.value)} maxLength={6} />
+								<div className='space-y-6 mt-4'>
+									{/* Worker Signature */}
+									<div className='space-y-2'>
+										<Label htmlFor='worker-signature'>Worker Signature</Label>
+										<div className='border-2 border-gray-300 rounded-md overflow-hidden bg-white'>
+											<SignatureCanvas
+												ref={workerSignaturePadRef}
+												canvasProps={{
+													width: 500,
+													height: 150,
+													className: "block w-full",
+												}}
+											/>
+										</div>
+										<Button type='button' variant='outline' size='sm' onClick={() => workerSignaturePadRef.current?.clear()} className='w-full'>
+											<RotateCcw className='w-4 h-4 mr-2' />
+											Clear Worker Signature
+										</Button>
 									</div>
 
-									<div className='grid gap-2'>
-										<Label htmlFor='customer-initials'>Customer initials</Label>
-										<Input id='customer-initials' placeholder='e.g., MK' value={customerInitials} onChange={(e) => setCustomerInitials(e.target.value)} maxLength={6} />
+									{/* Customer Signature */}
+									<div className='space-y-2'>
+										<Label htmlFor='customer-signature'>Customer Signature</Label>
+										<div className='border-2 border-gray-300 rounded-md overflow-hidden bg-white'>
+											<SignatureCanvas
+												ref={customerSignaturePadRef}
+												canvasProps={{
+													width: 500,
+													height: 150,
+													className: "block w-full",
+												}}
+											/>
+										</div>
+										<Button type='button' variant='outline' size='sm' onClick={() => customerSignaturePadRef.current?.clear()} className='w-full'>
+											<RotateCcw className='w-4 h-4 mr-2' />
+											Clear Customer Signature
+										</Button>
 									</div>
 
 									{endError && <p className='text-xs text-red-600 border border-red-200 bg-red-50 rounded px-2 py-1'>{endError}</p>}
 								</div>
 
-								<DialogFooter className='mt-4'>
+								<DialogFooter className='mt-6'>
 									<Button
 										variant='outline'
 										onClick={() => {
 											setIsEndDialogOpen(false);
 											setEndError(null);
+											workerSignaturePadRef.current?.clear();
+											customerSignaturePadRef.current?.clear();
 										}}
 										disabled={isWorkTimesLoading}>
 										Cancel
 									</Button>
-									<Button className='text-white' onClick={handleConfirmEndWork} disabled={isWorkTimesLoading || !workerInitials.trim() || !customerInitials.trim()}>
+									<Button className='text-white' onClick={handleConfirmEndWork} disabled={isWorkTimesLoading}>
 										{isWorkTimesLoading ? (
 											<span className='inline-flex items-center gap-2'>
 												<Loading /> Finishing…

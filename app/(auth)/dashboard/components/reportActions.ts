@@ -6,6 +6,8 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -410,7 +412,9 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		// header with full-width image
 		try {
-			const headerPath = join(process.cwd(), "public/header.png");
+			const __filename = fileURLToPath(import.meta.url);
+			const __dirname = dirname(__filename);
+			const headerPath = join(__dirname, "../../../../public/header.png");
 			const headerBytes = new Uint8Array(readFileSync(headerPath));
 			if (headerBytes && headerBytes.length > 0) {
 				const headerImage = await doc.embedPng(headerBytes);
@@ -824,7 +828,9 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	// header with full-width image
 	try {
-		const headerPath = join(process.cwd(), "public/header.png");
+		const __filename = fileURLToPath(import.meta.url);
+		const __dirname = dirname(__filename);
+		const headerPath = join(__dirname, "../../../../public/header.png");
 		const headerBytes = new Uint8Array(readFileSync(headerPath));
 		if (headerBytes && headerBytes.length > 0) {
 			const headerImage = await doc.embedPng(headerBytes);

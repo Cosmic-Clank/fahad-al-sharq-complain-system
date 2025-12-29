@@ -7,7 +7,7 @@ import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle
 import ComplaintResponseForm from "./ComplaintResponseForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { addEndWorkTime, addStartWorkTime } from "./actions";
+import { addEndWorkTime, addStartWorkTime, deleteComplaint, deleteComplaintResponse, editComplaintResponse } from "./actions";
 import { Loading } from "@/components/ui/loading";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import AssignmentForm from "./AssignmentForm";
@@ -17,6 +17,7 @@ import { generateComplaintPdfById } from "./reportActions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // NEW: Signature canvas
 import SignatureCanvas from "react-signature-canvas";
@@ -70,6 +71,11 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 	const customerSignaturePadRef = useRef<SignatureCanvas>(null);
 	const [endError, setEndError] = useState<string | null>(null);
 
+	// NEW: edit response state
+	const [editingResponseId, setEditingResponseId] = useState<string | null>(null);
+	const [editingResponseText, setEditingResponseText] = useState<string>("");
+	const [isEditingLoading, setIsEditingLoading] = useState(false);
+
 	const toggleDescription = () => setShowFullDescription(!showFullDescription);
 
 	const displayDescription = complaint.description.length > maxDescriptionLength && !showFullDescription ? `${complaint.description.substring(0, maxDescriptionLength)}...` : complaint.description;
@@ -106,6 +112,59 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			setEndError("Something went wrong. Please try again.");
 		} finally {
 			setIsWorkTimesLoading(false);
+		}
+	};
+
+	// Handle delete complaint
+	const handleDeleteComplaint = async () => {
+		setIsWorkTimesLoading(true);
+		try {
+			const result = await deleteComplaint(Number(complaint.id));
+			if (result.success) {
+				window.location.href = "/dashboard";
+			} else {
+				alert(result.message || "Could not delete complaint. Please try again.");
+			}
+		} catch (e) {
+			alert("Something went wrong. Please try again.");
+		} finally {
+			setIsWorkTimesLoading(false);
+		}
+	};
+
+	// Handle delete response
+	const handleDeleteResponse = async (responseId: string) => {
+		if (!confirm("Are you sure you want to delete this response?")) return;
+
+		setIsEditingLoading(true);
+		try {
+			const result = await deleteComplaintResponse(responseId);
+			if (result.success) {
+				window.location.reload();
+			} else {
+				alert(result.message || "Could not delete response. Please try again.");
+			}
+		} catch (e) {
+			alert("Something went wrong. Please try again.");
+		} finally {
+			setIsEditingLoading(false);
+		}
+	};
+
+	// Handle edit response
+	const handleEditResponse = async (responseId: string) => {
+		setIsEditingLoading(true);
+		try {
+			const result = await editComplaintResponse(responseId, editingResponseText);
+			if (result.success) {
+				window.location.reload();
+			} else {
+				alert(result.message || "Could not update response. Please try again.");
+			}
+		} catch (e) {
+			alert("Something went wrong. Please try again.");
+		} finally {
+			setIsEditingLoading(false);
 		}
 	};
 
@@ -379,7 +438,69 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 												<User className='w-3.5 h-3.5 mr-1 text-gray-500' />
 												{response.responder.fullName} ({response.responder.role})
 											</span>
-											<span className='text-xs text-gray-500'>{response.createdAt}</span>
+											<div className='flex items-center gap-2'>
+												<span className='text-xs text-gray-500'>{response.createdAt}</span>
+												{complaint.currentUser.role === "ADMIN" && (
+													<div className='flex gap-1'>
+														<Dialog open={editingResponseId === response.id} onOpenChange={(open) => {
+															if (open) {
+																setEditingResponseId(response.id);
+																setEditingResponseText(response.response);
+															} else {
+																setEditingResponseId(null);
+															}
+														}}>
+															<DialogTrigger asChild>
+																<Button variant='ghost' size='sm' className='h-6 px-2 text-xs text-blue-600 hover:text-blue-700'>
+																	Edit
+																</Button>
+															</DialogTrigger>
+															<DialogContent className='max-w-2xl'>
+																<DialogHeader>
+																	<DialogTitle>Edit Response</DialogTitle>
+																</DialogHeader>
+																<div className='space-y-4'>
+																	<div className='space-y-2'>
+																		<Label htmlFor='edit-response'>Response Text</Label>
+																		<textarea
+																			id='edit-response'
+																			value={editingResponseText}
+																			onChange={(e) => setEditingResponseText(e.target.value)}
+																			className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+																			rows={5}
+																		/>
+																	</div>
+																</div>
+																<DialogFooter>
+																	<Button
+																		variant='outline'
+																		onClick={() => {
+																			setEditingResponseId(null);
+																			setEditingResponseText("");
+																		}}
+																		disabled={isEditingLoading}>
+																		Cancel
+																	</Button>
+																	<Button
+																		onClick={() => handleEditResponse(response.id)}
+																		disabled={isEditingLoading}
+																		className='text-white'>
+																		{isEditingLoading ? "Saving..." : "Save Changes"}
+																	</Button>
+																</DialogFooter>
+															</DialogContent>
+														</Dialog>
+														<Button
+															variant='ghost'
+															size='sm'
+															className='h-6 px-2 text-xs text-red-600 hover:text-red-700'
+															onClick={() => handleDeleteResponse(response.id)}
+															disabled={isEditingLoading}>
+															Delete
+														</Button>
+													</div>
+												)}
+											</div>
 										</div>
 										<p className='text-gray-700 leading-relaxed text-sm whitespace-pre-wrap'>{response.response}</p>
 										<div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-w-3xl'>
@@ -422,11 +543,33 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			</div>
 
 			{/* Footer */}
-			<div className='p-3 text-right text-xs text-gray-500 bg-gray-50 mt-auto'>
-				<p className='flex items-center justify-end'>
+			<div className='p-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between'>
+				<p className='text-right text-xs text-gray-500 flex items-center'>
 					<Calendar className='w-3.5 h-3.5 mr-1 text-gray-400' />
 					Filed: {complaint.createdAt}
 				</p>
+				{complaint.currentUser.role === "ADMIN" && (
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button variant='destructive' size='sm' disabled={isWorkTimesLoading}>
+								<XCircle className='w-4 h-4 mr-1' />
+								Delete
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Delete Complaint?</AlertDialogTitle>
+								<AlertDialogDescription>This action cannot be undone. The complaint and all associated data will be permanently deleted.</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Cancel</AlertDialogCancel>
+								<AlertDialogAction onClick={handleDeleteComplaint} className='bg-red-600 hover:bg-red-700' disabled={isWorkTimesLoading}>
+									{isWorkTimesLoading ? "Deleting..." : "Delete"}
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
+				)}
 			</div>
 		</div>
 	);

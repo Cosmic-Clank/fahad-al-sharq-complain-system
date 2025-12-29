@@ -63,7 +63,7 @@ function ComplaintForm() {
 		if (e.target.files) {
 			const selectedFiles = Array.from(e.target.files);
 			const maxImages = 5;
-			const maxSize = 2 * 1024 * 1024;
+			const maxSize = 5 * 1024 * 1024;
 			const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
 			if (selectedFiles.length > maxImages) {

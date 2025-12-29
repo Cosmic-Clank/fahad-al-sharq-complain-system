@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { User, CalendarDays, Clock, AlertTriangle, CheckCircle, History, Badge as IdBadge } from "lucide-react";
 import React from "react";
 import { Badge } from "@/components/ui/badge";
+import EmployeeEditDialog from "./EmployeeEditDialog";
 
 export default async function EmployeeDetails({ slug }: { slug: string }) {
 	const employeeId = Number(slug);
@@ -49,10 +50,13 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 		<div className='w-full px-4 sm:px-6 lg:px-12 py-8 space-y-10'>
 			{/* Header Card */}
 			<div className='w-full bg-white/60 backdrop-blur-md rounded-xl border border-primary/20 shadow-sm p-4 sm:p-6 space-y-4'>
-				<h1 className='text-2xl sm:text-3xl font-semibold text-primary flex items-center gap-2 flex-wrap'>
-					<User className='w-6 h-6 shrink-0' />
-					{employee.fullName}
-				</h1>
+				<div className='flex items-center justify-between flex-wrap gap-4'>
+					<h1 className='text-2xl sm:text-3xl font-semibold text-primary flex items-center gap-2'>
+						<User className='w-6 h-6 shrink-0' />
+						{employee.fullName}
+					</h1>
+					<EmployeeEditDialog employee={employee} />
+				</div>
 				<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-700'>
 					<div className='flex items-center gap-2 min-w-0'>
 						<IdBadge className='w-4 h-4 text-primary shrink-0' />

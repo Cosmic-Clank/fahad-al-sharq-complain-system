@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
 	const uploadedImagePaths: string[] = []; // This will now store only strings (paths)
 
-	const maxSize = 2 * 1024 * 1024; // 2MB max size
+	const maxSize = 5 * 1024 * 1024; // 2MB max size
 	const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 	const maxImages = 5;
 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 				console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
 				return NextResponse.json(
 					{
-						message: `Invalid file detected: ${file.name}. Max size is 2MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`,
+						message: `Invalid file detected: ${file.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`,
 					},
 					{ status: 400 }
 				);

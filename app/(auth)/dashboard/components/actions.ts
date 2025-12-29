@@ -9,6 +9,7 @@ import path from "path";
 import fs from "fs/promises";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 
 // Define the type for the form data you expect
 interface ResponseFormData {
@@ -237,5 +238,196 @@ export async function assignComplaintToUser(complaintId: number, userId: number)
 	} catch (error) {
 		console.error("Error assigning complaint:", error);
 		return { success: false, message: "Failed to assign complaint. Please try again." };
+	}
+}
+
+export async function deleteComplaint(complaintId: number) {
+	const session = await auth();
+	if (!session || !session.user || !session.user.id) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
+
+	try {
+		// Verify the complaint exists
+		const complaint = await prismaClient.complaint.findUnique({
+			where: { id: complaintId },
+		});
+
+		if (!complaint) {
+			return { success: false, message: "Complaint not found." };
+		}
+
+		// Delete all related records first (workTimes, responses, etc.)
+		await prismaClient.workTimes.deleteMany({
+			where: { complaintId: complaintId },
+		});
+
+		await prismaClient.complaintResponse.deleteMany({
+			where: { complaintId: complaintId },
+		});
+
+		// Finally delete the complaint
+		await prismaClient.complaint.delete({
+			where: { id: complaintId },
+		});
+
+		revalidatePath("/dashboard");
+		return { success: true, message: "Complaint deleted successfully!" };
+	} catch (error) {
+		console.error("Error deleting complaint:", error);
+		return { success: false, message: "Failed to delete complaint. Please try again." };
+	}
+}
+
+export async function deleteComplaintResponse(responseId: string) {
+	const session = await auth();
+	if (!session || !session.user || !session.user.id) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
+
+	// Check if user is admin
+	const user = await prismaClient.user.findUnique({
+		where: { id: Number(session.user.id) },
+	});
+
+	if (!user || user.role !== "ADMIN") {
+		return { success: false, message: "Only admins can delete responses." };
+	}
+
+	try {
+		// Verify the response exists
+		const response = await prismaClient.complaintResponse.findUnique({
+			where: { id: Number(responseId) },
+		});
+
+		if (!response) {
+			return { success: false, message: "Response not found." };
+		}
+
+		// Delete the response
+		await prismaClient.complaintResponse.delete({
+			where: { id: Number(responseId) },
+		});
+
+		revalidatePath("/dashboard");
+		return { success: true, message: "Response deleted successfully!" };
+	} catch (error) {
+		console.error("Error deleting response:", error);
+		return { success: false, message: "Failed to delete response. Please try again." };
+	}
+}
+
+export async function editComplaintResponse(responseId: string, newResponseText: string) {
+	const session = await auth();
+	if (!session || !session.user || !session.user.id) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
+
+	// Check if user is admin
+	const user = await prismaClient.user.findUnique({
+		where: { id: Number(session.user.id) },
+	});
+
+	if (!user || user.role !== "ADMIN") {
+		return { success: false, message: "Only admins can edit responses." };
+	}
+
+	if (!newResponseText || newResponseText.trim() === "") {
+		return { success: false, message: "Response text cannot be empty." };
+	}
+
+	try {
+		// Verify the response exists
+		const response = await prismaClient.complaintResponse.findUnique({
+			where: { id: Number(responseId) },
+		});
+
+		if (!response) {
+			return { success: false, message: "Response not found." };
+		}
+
+		// Update the response
+		await prismaClient.complaintResponse.update({
+			where: { id: Number(responseId) },
+			data: { response: newResponseText },
+		});
+
+		revalidatePath("/dashboard");
+		return { success: true, message: "Response updated successfully!" };
+	} catch (error) {
+		console.error("Error updating response:", error);
+		return { success: false, message: "Failed to update response. Please try again." };
+	}
+}
+
+export async function updateEmployeeDetails(employeeId: number, fullName: string, username: string, password?: string) {
+	const session = await auth();
+	if (!session || !session.user || !session.user.id) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
+
+	// Check if user is admin
+	const user = await prismaClient.user.findUnique({
+		where: { id: Number(session.user.id) },
+	});
+
+	if (!user || user.role !== "ADMIN") {
+		return { success: false, message: "Only admins can update employee details." };
+	}
+
+	// Validate input
+	if (!fullName || fullName.trim() === "") {
+		return { success: false, message: "Full name cannot be empty." };
+	}
+
+	if (!username || username.trim() === "") {
+		return { success: false, message: "Username cannot be empty." };
+	}
+
+	try {
+		// Verify the employee exists
+		const employee = await prismaClient.user.findUnique({
+			where: { id: employeeId, role: "EMPLOYEE" },
+		});
+
+		if (!employee) {
+			return { success: false, message: "Employee not found." };
+		}
+
+		// Check if new username is already taken by another user
+		if (username.trim() !== employee.username) {
+			const existingUser = await prismaClient.user.findUnique({
+				where: { username: username.trim() },
+			});
+			if (existingUser) {
+				return { success: false, message: "Username is already taken." };
+			}
+		}
+
+		// Update the employee
+		const updateData: any = {
+			fullName: fullName.trim(),
+			username: username.trim(),
+		};
+
+		// Only update password if provided
+		if (password && password.trim() !== "") {
+			if (password.length < 6) {
+				return { success: false, message: "Password must be at least 6 characters long." };
+			}
+			// Hash the password using bcrypt
+			updateData.passwordHash = await bcrypt.hash(password.trim(), 12);
+		}
+
+		await prismaClient.user.update({
+			where: { id: employeeId },
+			data: updateData,
+		});
+
+		revalidatePath("/dashboard/admin/employees");
+		return { success: true, message: "Employee details updated successfully!" };
+	} catch (error) {
+		console.error("Error updating employee details:", error);
+		return { success: false, message: "Failed to update employee details. Please try again." };
 	}
 }

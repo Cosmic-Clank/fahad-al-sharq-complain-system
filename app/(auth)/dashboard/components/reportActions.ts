@@ -408,41 +408,32 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		const uniqueResponders = Array.from(new Set(c.responses.map((r) => r.responder.fullName))).join(", ");
 		const images = normalizeImagePaths(c.imagePaths);
 
-		// header with company branding
-		page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
-
-		// Try to embed favicon
+		// header with full-width image
 		try {
-			const faviconPath = join(process.cwd(), "public/favicon.png");
-			const faviconBytes = new Uint8Array(readFileSync(faviconPath));
-			if (faviconBytes && faviconBytes.length > 0) {
-				const favicon = await doc.embedPng(faviconBytes);
-				const iconSize = 32;
-				const iconScale = iconSize / Math.max(favicon.width, favicon.height);
-				page.drawImage(favicon, {
-					x: M,
-					y: H - 54,
-					width: favicon.width * iconScale,
-					height: favicon.height * iconScale,
+			const headerPath = join(process.cwd(), "public/header.png");
+			const headerBytes = new Uint8Array(readFileSync(headerPath));
+			if (headerBytes && headerBytes.length > 0) {
+				const headerImage = await doc.embedPng(headerBytes);
+				const scale = W / headerImage.width;
+				const headerHeight = headerImage.height * scale;
+				page.drawImage(headerImage, {
+					x: 0,
+					y: H - headerHeight,
+					width: W,
+					height: headerHeight,
 				});
 			}
 		} catch (e) {
-			console.error("Failed to load favicon:", e);
+			console.error("Failed to load header image:", e);
+			page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
 		}
-
-		text("Fahad Al Sharq Complain System", M + 40, H - 30, 14, true, rgb(1, 1, 1));
-		text("Complaint Report", M + 40, H - 48, 12, false, rgb(1, 1, 1));
-		text(`#${c.id}`, M + 40, H - 62, 10, false, rgb(0.9, 0.9, 0.9));
-		const genAt = fmtDubai(new Date());
-		const genStr = `Generated: ${genAt} (Asia/Dubai)`;
-		text(genStr, W - M - font.widthOfTextAtSize(genStr, 10), H - 58, 10, false, rgb(1, 1, 1));
 
 		// chips
 		let chipX = M;
 		const chips = [`Created: ${fmtDubai(c.createdAt)}`, c.assignedTo ? `Assigned to: ${c.assignedTo.fullName}` : "Unassigned", endedOn ? `Completed: ${fmtDubai(endedOn)}` : "Not completed"];
 		const chipH = 18,
 			chipPadX = 6,
-			chipsY = H - 88;
+			chipsY = H - 100;
 		for (const chip of chips) {
 			const cw = font.widthOfTextAtSize(chip, 9) + chipPadX * 2;
 			page.drawRectangle({
@@ -462,7 +453,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		const DETAILS_PANEL_H = 140;
 		const FIELD_SPACING = 28;
 
-		const panelTop = H - 112;
+		const panelTop = H - 130;
 		const panelH = DETAILS_PANEL_H;
 		page.drawRectangle({
 			x: M,
@@ -831,40 +822,32 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		return lines;
 	};
 
-	// header with company branding
-	page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
-
-	// Try to embed favicon
+	// header with full-width image
 	try {
-		const faviconPath = join(process.cwd(), "public/favicon.png");
-		const faviconBytes = new Uint8Array(readFileSync(faviconPath));
-		if (faviconBytes && faviconBytes.length > 0) {
-			const favicon = await doc.embedPng(faviconBytes);
-			const iconSize = 32;
-			const iconScale = iconSize / Math.max(favicon.width, favicon.height);
-			page.drawImage(favicon, {
-				x: M,
-				y: H - 54,
-				width: favicon.width * iconScale,
-				height: favicon.height * iconScale,
+		const headerPath = join(process.cwd(), "public/header.png");
+		const headerBytes = new Uint8Array(readFileSync(headerPath));
+		if (headerBytes && headerBytes.length > 0) {
+			const headerImage = await doc.embedPng(headerBytes);
+			const scale = W / headerImage.width;
+			const headerHeight = headerImage.height * scale;
+			page.drawImage(headerImage, {
+				x: 0,
+				y: H - headerHeight,
+				width: W,
+				height: headerHeight,
 			});
 		}
 	} catch (e) {
-		console.error("Failed to load favicon:", e);
+		console.error("Failed to load header image:", e);
+		page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
 	}
-
-	text("Fahad Al Sharq Complain System", M + 40, H - 30, 14, true, rgb(1, 1, 1));
-	text("Complaint Report", M + 40, H - 48, 12, false, rgb(1, 1, 1));
-	text(`#${complaint.id}`, M + 40, H - 62, 10, false, rgb(0.9, 0.9, 0.9));
-	const genAt = fmtDubai(new Date());
-	text(`Generated: ${genAt} (Asia/Dubai)`, W - M - font.widthOfTextAtSize(`Generated: ${genAt} (Asia/Dubai)`, 10), H - 58, 10, false, rgb(1, 1, 1));
 
 	// chips
 	let chipX = M;
 	const chips = [`Created: ${fmtDubai(complaint.createdAt)}`, complaint.assignedTo ? `Assigned to: ${complaint.assignedTo.fullName}` : "Unassigned", endedOn ? `Completed: ${fmtDubai(endedOn)}` : "Not completed"];
 	const chipH = 18,
 		chipPadX = 6,
-		chipsY = H - 88;
+		chipsY = H - 100;
 	for (const c of chips) {
 		const cw = font.widthOfTextAtSize(c, 9) + chipPadX * 2;
 		page.drawRectangle({
@@ -884,7 +867,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const DETAILS_PANEL_H = 140;
 	const FIELD_SPACING = 28;
 
-	const panelTop = H - 112;
+	const panelTop = H - 130;
 	const panelH = DETAILS_PANEL_H;
 	page.drawRectangle({
 		x: M,

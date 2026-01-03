@@ -325,8 +325,10 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			responses: {
 				select: {
 					id: true,
+					response: true,
 					createdAt: true,
 					responder: { select: { fullName: true } },
+					imagePaths: true,
 				},
 				orderBy: { createdAt: "asc" },
 			},
@@ -705,13 +707,213 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 		// footer
 		const footerLeft = `Complaint #${c.id}`;
-		const footerRight = `Page ${pageIndex + 1} of ${totalPages}`;
+		const footerRight = `Page ${pageIndex * 2 + 1} of ${totalPages * 2}`;
+		text(footerLeft, M, 40, 9, false, subt);
+		text(footerRight, W - M - font.widthOfTextAtSize(footerRight, 9), 40, 9, false, subt);
+	};
+
+	const drawResponsesPage = async (c: (typeof complaints)[number], pageIndex: number) => {
+		const page = doc.addPage([W, H]);
+		const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
+			page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+		};
+
+		// header
+		try {
+			if (headerBase64) {
+				let base64Data = headerBase64;
+				if (base64Data.startsWith("data:")) {
+					base64Data = base64Data.split(",")[1];
+				}
+				const headerBytes = Buffer.from(base64Data, "base64");
+				const headerImage = await doc.embedPng(headerBytes);
+				const scale = W / headerImage.width;
+				const headerHeight = headerImage.height * scale;
+				page.drawImage(headerImage, {
+					x: 0,
+					y: H - headerHeight,
+					width: W,
+					height: headerHeight,
+				});
+			}
+		} catch (e) {
+			console.error("Failed to load header image:", e);
+			page.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
+		}
+
+		// Title
+		text(`Complaint #${c.id} - Responses`, M + 12, H - 110, 16, true);
+
+		let currentY = H - 150;
+
+		if (c.responses.length === 0) {
+			page.drawRectangle({
+				x: M,
+				y: currentY - 60,
+				width: W - 2 * M,
+				height: 60,
+				color: panel,
+				borderColor: panelBorder,
+				borderWidth: 1,
+			});
+			text("No responses yet.", M + 12, currentY - 30, 10, false, subt);
+		} else {
+			for (let i = 0; i < c.responses.length; i++) {
+				const resp = c.responses[i];
+				const respImages = normalizeImagePaths(resp.imagePaths);
+
+				// Calculate response panel height
+				const responseLines = wrap(resp.response || "—", W - 2 * M - 24, 10);
+				const responseTextHeight = Math.max(60, responseLines.length * LH + 40);
+				const imageRowHeight = respImages.length > 0 ? 130 : 0;
+				const panelHeight = responseTextHeight + imageRowHeight + 20;
+
+				// Check if we need a new page
+				if (currentY - panelHeight < M + 80) {
+					// Footer for current page
+					const footerLeft = `Complaint #${c.id} - Responses`;
+					const footerRight = `Page ${pageIndex * 2 + 2} of ${totalPages * 2}`;
+					text(footerLeft, M, 40, 9, false, subt);
+					text(footerRight, W - M - font.widthOfTextAtSize(footerRight, 9), 40, 9, false, subt);
+
+					// Create new page
+					const newPage = doc.addPage([W, H]);
+					const newText = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
+						newPage.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+					};
+
+					// Header for new page
+					try {
+						if (headerBase64) {
+							let base64Data = headerBase64;
+							if (base64Data.startsWith("data:")) {
+								base64Data = base64Data.split(",")[1];
+							}
+							const headerBytes = Buffer.from(base64Data, "base64");
+							const headerImage = await doc.embedPng(headerBytes);
+							const scale = W / headerImage.width;
+							const headerHeight = headerImage.height * scale;
+							newPage.drawImage(headerImage, {
+								x: 0,
+								y: H - headerHeight,
+								width: W,
+								height: headerHeight,
+							});
+						}
+					} catch (e) {
+						console.error("Failed to load header image:", e);
+						newPage.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
+					}
+
+					newText(`Complaint #${c.id} - Responses (continued)`, M + 12, H - 110, 14, true);
+					currentY = H - 150;
+
+					// Continue drawing on new page
+					newPage.drawRectangle({
+						x: M,
+						y: currentY - panelHeight,
+						width: W - 2 * M,
+						height: panelHeight,
+						color: panel,
+						borderColor: panelBorder,
+						borderWidth: 1,
+					});
+
+					// Response header
+					newText(`Response #${i + 1}`, M + 12, currentY - 18, 11, true);
+					newText(`By: ${resp.responder.fullName}`, M + 200, currentY - 18, 9, false, subt);
+					newText(`Date: ${fmtDubai(resp.createdAt)}`, M + 380, currentY - 18, 9, false, subt);
+
+					// Response text
+					let ry = currentY - 40;
+					for (const line of responseLines) {
+						newText(line, M + 12, ry, 10);
+						ry -= LH;
+					}
+
+					// Response images
+					if (respImages.length > 0) {
+						const pad = 10,
+							thumbW = (W - 2 * M - 24 - pad * 2) / 3,
+							thumbH = 100;
+						let ix = M + 12,
+							iy = ry - 20;
+						for (let j = 0; j < Math.min(respImages.length, 3); j++) {
+							const raw = await fetchImageBytes(respImages[j]);
+							if (!raw) continue;
+							const down = await maybeDownscaleJpeg(raw, 900, 900);
+							const jpg = await doc.embedJpg(down);
+							const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
+							const w = jpg.width * scale,
+								h = jpg.height * scale;
+							newPage.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy - thumbH), width: w, height: h });
+							newText(`Img ${j + 1}`, ix, Math.max(M + 64, iy - thumbH - 10), 8, false, subt);
+							ix += thumbW + pad;
+						}
+					}
+
+					currentY -= panelHeight + 12;
+					continue;
+				}
+
+				// Draw response panel
+				page.drawRectangle({
+					x: M,
+					y: currentY - panelHeight,
+					width: W - 2 * M,
+					height: panelHeight,
+					color: panel,
+					borderColor: panelBorder,
+					borderWidth: 1,
+				});
+
+				// Response header
+				text(`Response #${i + 1}`, M + 12, currentY - 18, 11, true);
+				text(`By: ${resp.responder.fullName}`, M + 200, currentY - 18, 9, false, subt);
+				text(`Date: ${fmtDubai(resp.createdAt)}`, M + 380, currentY - 18, 9, false, subt);
+
+				// Response text
+				let ry = currentY - 40;
+				for (const line of responseLines) {
+					text(line, M + 12, ry, 10);
+					ry -= LH;
+				}
+
+				// Response images
+				if (respImages.length > 0) {
+					const pad = 10,
+						thumbW = (W - 2 * M - 24 - pad * 2) / 3,
+						thumbH = 100;
+					let ix = M + 12,
+						iy = ry - 20;
+					for (let j = 0; j < Math.min(respImages.length, 3); j++) {
+						const raw = await fetchImageBytes(respImages[j]);
+						if (!raw) continue;
+						const down = await maybeDownscaleJpeg(raw, 900, 900);
+						const jpg = await doc.embedJpg(down);
+						const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
+						const w = jpg.width * scale,
+							h = jpg.height * scale;
+						page.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy - thumbH), width: w, height: h });
+						text(`Img ${j + 1}`, ix, Math.max(M + 64, iy - thumbH - 10), 8, false, subt);
+						ix += thumbW + pad;
+					}
+				}
+
+				currentY -= panelHeight + 12;
+			}
+		}
+
+		// footer
+		const footerLeft = `Complaint #${c.id} - Responses`;
+		const footerRight = `Page ${pageIndex * 2 + 2} of ${totalPages * 2}`;
 		text(footerLeft, M, 40, 9, false, subt);
 		text(footerRight, W - M - font.widthOfTextAtSize(footerRight, 9), 40, 9, false, subt);
 	};
 
 	for (let i = 0; i < complaints.length; i++) {
 		await drawComplaintPage(complaints[i], i);
+		await drawResponsesPage(complaints[i], i);
 	}
 
 	const bytes = await doc.save();
@@ -753,7 +955,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				orderBy: { startTime: "asc" },
 			},
 			responses: {
-				select: { id: true, createdAt: true, responder: { select: { fullName: true } } },
+				select: { id: true, response: true, createdAt: true, responder: { select: { fullName: true } }, imagePaths: true },
 				orderBy: { createdAt: "asc" },
 			},
 		},
@@ -1124,7 +1326,201 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 	// footer
 	text(`Complaint #${complaint.id}`, M, 40, 9, false, subt);
-	text(`Page 1 of 1`, W - M - font.widthOfTextAtSize("Page 1 of 1", 9), 40, 9, false, subt);
+	text(`Page 1 of 2`, W - M - font.widthOfTextAtSize("Page 1 of 2", 9), 40, 9, false, subt);
+
+	// ===== SECOND PAGE: RESPONSES =====
+	const page2 = doc.addPage([W, H]);
+	const text2 = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
+		page2.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+	};
+
+	// header
+	try {
+		if (headerBase64) {
+			let base64Data = headerBase64;
+			if (base64Data.startsWith("data:")) {
+				base64Data = base64Data.split(",")[1];
+			}
+			const headerBytes = Buffer.from(base64Data, "base64");
+			const headerImage = await doc.embedPng(headerBytes);
+			const scale = W / headerImage.width;
+			const headerHeight = headerImage.height * scale;
+			page2.drawImage(headerImage, {
+				x: 0,
+				y: H - headerHeight,
+				width: W,
+				height: headerHeight,
+			});
+		}
+	} catch (e) {
+		console.error("Failed to load header image:", e);
+		page2.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
+	}
+
+	// Title
+	text2(`Complaint #${complaint.id} - Responses`, M + 12, H - 110, 16, true);
+
+	let currentY = H - 150;
+
+	if (complaint.responses.length === 0) {
+		page2.drawRectangle({
+			x: M,
+			y: currentY - 60,
+			width: W - 2 * M,
+			height: 60,
+			color: panel,
+			borderColor: panelBorder,
+			borderWidth: 1,
+		});
+		text2("No responses yet.", M + 12, currentY - 30, 10, false, subt);
+	} else {
+		for (let i = 0; i < complaint.responses.length; i++) {
+			const resp = complaint.responses[i];
+			const respImages = normalizeImagePaths(resp.imagePaths);
+
+			// Calculate response panel height
+			const responseLines = wrap(resp.response || "—", W - 2 * M - 24, 10);
+			const responseTextHeight = Math.max(60, responseLines.length * LH + 40);
+			const imageRowHeight = respImages.length > 0 ? 130 : 0;
+			const panelHeight = responseTextHeight + imageRowHeight + 20;
+
+			// Check if we need a new page
+			if (currentY - panelHeight < M + 80) {
+				// Footer for current page
+				text2(`Complaint #${complaint.id} - Responses`, M, 40, 9, false, subt);
+				text2(`Page 2 of 2+`, W - M - font.widthOfTextAtSize("Page 2 of 2+", 9), 40, 9, false, subt);
+
+				// Create new page
+				const newPage = doc.addPage([W, H]);
+				const newText = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
+					newPage.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+				};
+
+				// Header for new page
+				try {
+					if (headerBase64) {
+						let base64Data = headerBase64;
+						if (base64Data.startsWith("data:")) {
+							base64Data = base64Data.split(",")[1];
+						}
+						const headerBytes = Buffer.from(base64Data, "base64");
+						const headerImage = await doc.embedPng(headerBytes);
+						const scale = W / headerImage.width;
+						const headerHeight = headerImage.height * scale;
+						newPage.drawImage(headerImage, {
+							x: 0,
+							y: H - headerHeight,
+							width: W,
+							height: headerHeight,
+						});
+					}
+				} catch (e) {
+					console.error("Failed to load header image:", e);
+					newPage.drawRectangle({ x: 0, y: H - 76, width: W, height: 76, color: band });
+				}
+
+				newText(`Complaint #${complaint.id} - Responses (continued)`, M + 12, H - 110, 14, true);
+				currentY = H - 150;
+
+				// Continue drawing on new page with newText function
+				newPage.drawRectangle({
+					x: M,
+					y: currentY - panelHeight,
+					width: W - 2 * M,
+					height: panelHeight,
+					color: panel,
+					borderColor: panelBorder,
+					borderWidth: 1,
+				});
+
+				// Response header
+				newText(`Response #${i + 1}`, M + 12, currentY - 18, 11, true);
+				newText(`By: ${resp.responder.fullName}`, M + 200, currentY - 18, 9, false, subt);
+				newText(`Date: ${fmtDubai(resp.createdAt)}`, M + 380, currentY - 18, 9, false, subt);
+
+				// Response text
+				let ry = currentY - 40;
+				for (const line of responseLines) {
+					newText(line, M + 12, ry, 10);
+					ry -= LH;
+				}
+
+				// Response images
+				if (respImages.length > 0) {
+					const pad = 10,
+						thumbW = (W - 2 * M - 24 - pad * 2) / 3,
+						thumbH = 100;
+					let ix = M + 12,
+						iy = ry - 20;
+					for (let j = 0; j < Math.min(respImages.length, 3); j++) {
+						const raw = await fetchImageBytes(respImages[j]);
+						if (!raw) continue;
+						const down = await maybeDownscaleJpeg(raw, 900, 900);
+						const jpg = await doc.embedJpg(down);
+						const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
+						const w = jpg.width * scale,
+							h = jpg.height * scale;
+						newPage.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy - thumbH), width: w, height: h });
+						newText(`Img ${j + 1}`, ix, Math.max(M + 64, iy - thumbH - 10), 8, false, subt);
+						ix += thumbW + pad;
+					}
+				}
+
+				currentY -= panelHeight + 12;
+				continue;
+			}
+
+			// Draw response panel
+			page2.drawRectangle({
+				x: M,
+				y: currentY - panelHeight,
+				width: W - 2 * M,
+				height: panelHeight,
+				color: panel,
+				borderColor: panelBorder,
+				borderWidth: 1,
+			});
+
+			// Response header
+			text2(`Response #${i + 1}`, M + 12, currentY - 18, 11, true);
+			text2(`By: ${resp.responder.fullName}`, M + 200, currentY - 18, 9, false, subt);
+			text2(`Date: ${fmtDubai(resp.createdAt)}`, M + 380, currentY - 18, 9, false, subt);
+
+			// Response text
+			let ry = currentY - 40;
+			for (const line of responseLines) {
+				text2(line, M + 12, ry, 10);
+				ry -= LH;
+			}
+
+			// Response images
+			if (respImages.length > 0) {
+				const pad = 10,
+					thumbW = (W - 2 * M - 24 - pad * 2) / 3,
+					thumbH = 100;
+				let ix = M + 12,
+					iy = ry - 20;
+				for (let j = 0; j < Math.min(respImages.length, 3); j++) {
+					const raw = await fetchImageBytes(respImages[j]);
+					if (!raw) continue;
+					const down = await maybeDownscaleJpeg(raw, 900, 900);
+					const jpg = await doc.embedJpg(down);
+					const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
+					const w = jpg.width * scale,
+						h = jpg.height * scale;
+					page2.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy - thumbH), width: w, height: h });
+					text2(`Img ${j + 1}`, ix, Math.max(M + 64, iy - thumbH - 10), 8, false, subt);
+					ix += thumbW + pad;
+				}
+			}
+
+			currentY -= panelHeight + 12;
+		}
+	}
+
+	// footer page 2
+	text2(`Complaint #${complaint.id} - Responses`, M, 40, 9, false, subt);
+	text2(`Page 2 of 2`, W - M - font.widthOfTextAtSize("Page 2 of 2", 9), 40, 9, false, subt);
 
 	const bytes = await doc.save();
 	const base64 = Buffer.from(bytes).toString("base64");

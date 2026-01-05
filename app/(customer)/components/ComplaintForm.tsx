@@ -314,7 +314,7 @@ function ComplaintForm() {
 							)}
 
 							{/* Additional Description Textarea */}
-							<FormLabel className='text-sm'>Additional Details (Optional)</FormLabel>
+							<FormLabel className='text-sm'>Additional Details</FormLabel>
 							<FormControl>
 								<Textarea placeholder='Enter any additional details about the problem...' {...field} />
 							</FormControl>

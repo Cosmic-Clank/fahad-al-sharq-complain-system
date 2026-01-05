@@ -36,15 +36,14 @@ export async function addComplaintResponse(formData: FormData) {
 
 	const uploadedImagePaths: string[] = []; // This will now store only strings (paths)
 
-	const maxSize = 2 * 1024 * 1024; // 2MB
+	const maxSize = 5 * 1024 * 1024; // 5MB (align with client-side validation)
 	const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 	const maxImages = 5;
 
 	if (files.length > maxImages) {
 		return { success: false, message: `You can upload a maximum of ${maxImages} images.` };
 	}
-	const directoryName = nanoid(); // Basic slugify
-	const uploadPath = path.join(directoryName, nanoid());
+	const directoryName = nanoid(); // Folder per response to avoid collisions
 
 	if (files.length > 0) {
 		for (const file of files) {
@@ -53,10 +52,15 @@ export async function addComplaintResponse(formData: FormData) {
 
 			if (!allowedTypes.includes(file.type) || file.size > maxSize) {
 				console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
-				return { success: false, message: `Invalid file detected: ${file.name}. Max size is 2MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.` };
+				return { success: false, message: `Invalid file detected: ${file.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.` };
 			}
 
-			const { data, error } = await supabaseAdminClient.storage.from("complaint-images").upload(uploadPath, file);
+			// Ensure each file gets a unique path to avoid Supabase "resource exists" errors
+			const extension = path.extname(file.name) || "";
+			const uniqueFileName = `${nanoid()}${extension}`;
+			const uploadPath = path.posix.join(directoryName, uniqueFileName);
+
+			const { data, error } = await supabaseAdminClient.storage.from("complaint-images").upload(uploadPath, file, { upsert: false });
 			if (error) {
 				console.error("Error uploading file to Supabase:", error);
 				return { success: false, message: `Failed to upload image ${file.name} to Database. Please try again.` };

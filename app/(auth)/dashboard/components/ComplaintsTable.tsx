@@ -8,6 +8,11 @@ type StatusFilter = "Completed" | "Incomplete" | "In Progress";
 async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; status?: StatusFilter }) {
 	const session = await auth(); // Get the current user session
 	const data = await prismaClient.complaint.findMany({
+		where: {
+			createdAt: {
+				gte: new Date("2026-01-01"),
+			},
+		},
 		select: {
 			id: true,
 			assignedTo: true,

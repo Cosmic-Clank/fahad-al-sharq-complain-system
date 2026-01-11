@@ -18,8 +18,10 @@ import { formSchema } from "@/lib/constants";
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 
 const problemCategories = {
-	HVAC: ["HVAC UNIT NOT COOLING", "HVAC UNIT NOT WORKING", "HVAC UNIT in is producing excessive noise", "WATER LEAKAGE FROM HVAC UNIT", "HVAC UNIT SHUTTING DOWN AUTOMATICALLY", "Unusual smell coming from HVAC unit", "HVAC DUCT ISSUES", "Thermostat issues or not responding", "High energy bills or inefficiency", "Ice buildup is occurring on the HVAC unit", "The HVAC unit is over-cooling"],
-	Others: ["PLUMBING WORK", "ELECTRIC WORK", "CIVIL WORK", "PAINTING WORK"],
+	"HVAC": ["HVAC UNIT NOT COOLING", "HVAC UNIT NOT WORKING", "HVAC UNIT in is producing excessive noise", "WATER LEAKAGE FROM HVAC UNIT", "HVAC UNIT SHUTTING DOWN AUTOMATICALLY", "Unusual smell coming from HVAC unit", "HVAC DUCT ISSUES", "Thermostat issues or not responding", "High energy bills or inefficiency", "Ice buildup is occurring on the HVAC unit", "The HVAC unit is over-cooling"],
+	"Electric Work": ["Change electric socket", "Change light switch", "Fix short circuit", "Rewire point / cable replacement", "Loose connection repair", "Add new power point", "Replace damaged wire", "Light fitting installation", "Emergency light repair", "Water heater electrical repair", "AC electrical connection"],
+	"Plumbing Work": ["Leaks & Repairs", "Fix water leakage", "Pipe repair / replacement", "Joint sealing", "Hidden leak detection", "Ceiling water leakage fix", "Toilet blockage removal", "Kitchen sink blockage", "Floor drain cleaning", "Main line flushing", "Toilet flushing problem", "Replace flush valve", "Fix running toilet", "Toilet seat replacement", "Install new WC", "Water heater repair", "Heater replacement", "Thermostat change", "Safety valve replacement", "Water tank cleaning", "Tank float valve repair", "Booster pump repair", "Pressure issue fixing"],
+	"Civil Work": ["Plaster damage fixing", "Hole filling in wall", "Tile replacement", "Broken tile fixing", "Grout repair", "Marble / granite fixing", "Floor leveling", "Door alignment fixing", "Hinge replacement", "Lock fitting", "Window glass replacement", "Sealant fixing", "Roof leakage treatment", "Bathroom waterproofing", "Balcony leakage fix", "Expansion joint sealing"],
 };
 
 function ComplaintForm() {
@@ -27,6 +29,7 @@ function ComplaintForm() {
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [submitError, setSubmitError] = React.useState<string | null>(null);
 	const [buildings, setBuildings] = React.useState<string[]>([]);
+	const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 	const [selectedProblem, setSelectedProblem] = React.useState<string | null>(null);
 	const router = useRouter();
 
@@ -102,7 +105,7 @@ function ComplaintForm() {
 
 		// Concatenate selected problem with description text
 		const fullDescription = selectedProblem ? `${selectedProblem}\n${values.description}` : values.description;
-		formData.append("description", fullDescription);
+		formData.append("description", fullDescription || "");
 
 		// Append image files to the FormData object
 		// The 'images' key here must match formData.getAll('images') in your Server Action
@@ -280,29 +283,40 @@ function ComplaintForm() {
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Problem Description</FormLabel>
 
-							{/* HVAC Issues Section */}
+							{/* Problem Category Selection */}
 							<div className='mb-4'>
-								<h5 className='text-sm font-semibold text-gray-700 mb-2'>HVAC Issues</h5>
-								<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
-									{predefinedProblems.HVAC.map((problem) => (
-										<Button key={problem} type='button' onClick={() => setSelectedProblem(problem)} variant={selectedProblem === problem ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={isSubmitting}>
-											{problem}
+								<h5 className='text-sm font-semibold text-gray-700 mb-2'>Select Category</h5>
+								<div className='grid grid-cols-2 md:grid-cols-4 gap-2'>
+									{Object.keys(problemCategories).map((category) => (
+										<Button
+											key={category}
+											type='button'
+											onClick={() => {
+												setSelectedCategory(category);
+												setSelectedProblem(null); // Reset problem selection when category changes
+											}}
+											variant={selectedCategory === category ? "default" : "outline"}
+											className='h-auto py-2 px-3'
+											disabled={isSubmitting}>
+											{category}
 										</Button>
 									))}
 								</div>
 							</div>
 
-							{/* Others Section */}
-							<div className='mb-4'>
-								<h5 className='text-sm font-semibold text-gray-700 mb-2'>Others</h5>
-								<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
-									{predefinedProblems.Others.map((problem) => (
-										<Button key={problem} type='button' onClick={() => setSelectedProblem(problem)} variant={selectedProblem === problem ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={isSubmitting}>
-											{problem}
-										</Button>
-									))}
+							{/* Problem Selection - Shows only if category is selected */}
+							{selectedCategory && (
+								<div className='mb-4'>
+									<h5 className='text-sm font-semibold text-gray-700 mb-2'>Select Specific Problem</h5>
+									<div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
+										{problemCategories[selectedCategory as keyof typeof problemCategories].map((problem) => (
+											<Button key={problem} type='button' onClick={() => setSelectedProblem(problem)} variant={selectedProblem === problem ? "default" : "outline"} className='justify-start text-left text-xs h-auto py-2 px-3' disabled={isSubmitting}>
+												{problem}
+											</Button>
+										))}
+									</div>
 								</div>
-							</div>
+							)}
 
 							{/* Selected Problem Display */}
 							{selectedProblem && (
@@ -314,7 +328,7 @@ function ComplaintForm() {
 							)}
 
 							{/* Additional Description Textarea */}
-							<FormLabel className='text-sm'>Additional Details</FormLabel>
+							<FormLabel className='text-sm'>Additional Details (Optional)</FormLabel>
 							<FormControl>
 								<Textarea placeholder='Enter any additional details about the problem...' {...field} />
 							</FormControl>

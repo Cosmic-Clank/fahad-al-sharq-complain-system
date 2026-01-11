@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Clock, Droplets, Fan, Gauge, HeartHandshake, Home, MessageSquare, Phone, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
+import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Clock, Droplets, Facebook, Fan, Gauge, HeartHandshake, Home, Instagram, MessageSquare, Phone, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
 
 const stats = [
 	{
@@ -107,7 +107,7 @@ export default function LandingPage() {
 				<div className='absolute right-1/3 top-1/3 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl' />
 			</div>
 
-			<div className='relative mx-auto flex max-w-7xl flex-col gap-20 px-6 pb-20 pt-8 sm:px-10 lg:pt-16'>
+			<div className='relative mx-auto flex max-w-7xl flex-col gap-20 px-6 pb-20 pt-2 sm:px-10 lg:pt-4'>
 				{/* Navigation */}
 				<nav className='flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white/80 px-6 py-4 shadow-sm backdrop-blur-sm'>
 					<div className='flex items-center gap-2'>
@@ -120,7 +120,7 @@ export default function LandingPage() {
 						</div>
 					</div>
 					<div className='flex items-center gap-3'>
-						<Link href='/customer' className='hidden sm:inline-flex rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
+						<Link href='/complain' className='hidden sm:inline-flex rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
 							Submit complaint
 						</Link>
 						<Link href='/auth/login' className='inline-flex items-center gap-2 rounded-lg bg-[#1ca5e4] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#1ca5e4]/25 transition hover:bg-[#1693cd] hover:shadow-lg'>
@@ -142,7 +142,7 @@ export default function LandingPage() {
 							<p className='text-lg leading-relaxed text-slate-600 sm:text-xl'>Professional air conditioning installation, maintenance, and repair services across all Emirates. Available 24/7 for emergencies with certified technicians and genuine parts.</p>
 						</div>
 						<div className='flex flex-wrap gap-3'>
-							<Link href='/customer' className='group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[#1ca5e4]/30 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1ca5e4]/40'>
+							<Link href='/complain' className='group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[#1ca5e4]/30 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1ca5e4]/40'>
 								Book a service
 								<ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
 							</Link>
@@ -151,6 +151,11 @@ export default function LandingPage() {
 								Call us now
 							</Link>
 						</div>
+						<Link href='/complain' className='inline-flex items-center gap-2 rounded-xl border-4 border-red-500 bg-red-50 px-6 py-4 text-base font-bold text-red-600 shadow-lg transition hover:scale-105 hover:bg-red-100 hover:shadow-xl'>
+							<MessageSquare className='h-5 w-5' />
+							⚠️ Have a Complaint? Report It Now
+							<ArrowRight className='h-5 w-5' />
+						</Link>
 						<div className='grid gap-4 sm:grid-cols-3'>
 							{stats.map((item) => (
 								<div key={item.label} className='rounded-2xl border border-slate-200/60 bg-white/70 p-5 shadow-sm backdrop-blur-sm'>
@@ -302,7 +307,24 @@ export default function LandingPage() {
 					</div>
 				</section>
 
-				{/* Complaint System CTA */}
+				{/* Quick Complaint Submission CTA */}
+				<section className='rounded-3xl border-4 border-[#1ca5e4]/40 bg-gradient-to-br from-[#1ca5e4]/15 via-blue-50/60 to-white p-8 shadow-2xl sm:p-12 relative'>
+					<div className='absolute -top-4 left-6 inline-flex items-center gap-2 rounded-full bg-[#1ca5e4] px-5 py-2 text-sm font-bold text-white shadow-lg'>
+						<span className='text-xl'>⚠️</span>
+						<span>Submit Your Complaint Now</span>
+					</div>
+					<div className='mt-4 text-center'>
+						<h2 className='text-3xl font-bold text-slate-900 sm:text-4xl'>Having an issue with our service?</h2>
+						<p className='mx-auto mt-4 max-w-2xl text-lg text-slate-700 font-medium'>We want to hear from you! Click the button below to report your complaint and we'll resolve it quickly.</p>
+						<Link href='/complain' className='mt-8 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-10 py-6 text-xl font-bold text-white shadow-xl shadow-[#1ca5e4]/40 transition hover:scale-105 hover:shadow-2xl'>
+							<MessageSquare className='h-6 w-6' />
+							Submit Complaint
+							<ArrowRight className='h-6 w-6' />
+						</Link>
+					</div>
+				</section>
+
+				{/* Detailed Complaint System Info */}
 				<section className='rounded-3xl border border-[#1ca5e4]/20 bg-gradient-to-br from-[#1ca5e4]/10 via-blue-50/50 to-white p-8 shadow-xl sm:p-12'>
 					<div className='grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-center'>
 						<div className='space-y-5'>
@@ -334,7 +356,7 @@ export default function LandingPage() {
 							</div>
 						</div>
 						<div className='flex flex-col gap-4'>
-							<Link href='/customer' className='inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-8 py-5 text-lg font-semibold text-white shadow-lg shadow-[#1ca5e4]/30 transition hover:scale-[1.02] hover:shadow-xl'>
+							<Link href='/complain' className='inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-8 py-5 text-lg font-semibold text-white shadow-lg shadow-[#1ca5e4]/30 transition hover:scale-[1.02] hover:shadow-xl'>
 								Submit a complaint
 								<ArrowRight className='h-5 w-5' />
 							</Link>
@@ -352,7 +374,7 @@ export default function LandingPage() {
 						<h2 className='text-3xl font-bold text-white sm:text-4xl'>Ready to experience superior AC service?</h2>
 						<p className='mx-auto mt-4 max-w-2xl text-lg text-slate-300'>Contact us today for a free consultation and quote. Available 24/7 for emergencies.</p>
 						<div className='mt-8 flex flex-wrap items-center justify-center gap-4'>
-							<Link href='/customer' className='inline-flex items-center gap-2 rounded-xl bg-[#1ca5e4] px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-[#1ca5e4]/40 transition hover:bg-[#1693cd] hover:shadow-xl'>
+							<Link href='/complain' className='inline-flex items-center gap-2 rounded-xl bg-[#1ca5e4] px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-[#1ca5e4]/40 transition hover:bg-[#1693cd] hover:shadow-xl'>
 								Book now
 								<ArrowRight className='h-5 w-5' />
 							</Link>
@@ -365,9 +387,23 @@ export default function LandingPage() {
 				</section>
 
 				{/* Footer */}
-				<footer className='border-t border-slate-200 pt-8 text-center text-sm text-slate-600'>
-					<p>&copy; {new Date().getFullYear()} Fahad Al Sharq AC Systems LLC. All rights reserved.</p>
-					<p className='mt-2'>Licensed AC contractor serving all Emirates</p>
+				<footer className='border-t border-slate-200 pt-8'>
+					<div className='space-y-6'>
+						<div className='flex flex-col items-center gap-4 sm:flex-row sm:justify-center'>
+							<a href='https://www.facebook.com/fahad.al.sharq' target='_blank' rel='noopener noreferrer' className='flex items-center gap-2 rounded-lg bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-200'>
+								<Facebook className='h-5 w-5' />
+								Follow on Facebook
+							</a>
+							<a href='https://www.instagram.com/fahadalsharq169/' target='_blank' rel='noopener noreferrer' className='flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-100 to-pink-100 px-4 py-2 text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 transition hover:from-purple-200 hover:to-pink-200'>
+								<Instagram className='h-5 w-5' />
+								Follow on Instagram
+							</a>
+						</div>
+						<div className='text-center text-sm text-slate-600'>
+							<p>&copy; {new Date().getFullYear()} Fahad Al Sharq AC Systems LLC. All rights reserved.</p>
+							<p className='mt-2'>Licensed AC contractor serving all Emirates</p>
+						</div>
+					</div>
 				</footer>
 			</div>
 		</div>

@@ -126,8 +126,26 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		workTimes: complaint.workTimes.map((wt) => ({
 			id: String(wt.id),
 			date: wt.date instanceof Date ? wt.date.toISOString().split("T")[0] : String(wt.date), // Format date as YYYY-MM-DD
-			startTime: wt.startTime instanceof Date ? wt.startTime.toLocaleTimeString() : String(wt.startTime), // Format time as HH:MM:SS
-			endTime: wt.endTime instanceof Date ? wt.endTime.toLocaleTimeString() : String(wt.endTime), // Format time as HH:MM:SS
+			startTime:
+				wt.startTime instanceof Date
+					? wt.startTime.toLocaleTimeString("en-US", {
+							timeZone: "Asia/Dubai",
+							hour12: true, // Set to false for 24-hour format
+							hour: "2-digit",
+							minute: "2-digit",
+							second: "2-digit",
+						})
+					: String(wt.startTime), // Format time as HH:MM:SS
+			endTime:
+				wt.endTime instanceof Date
+					? wt.endTime.toLocaleTimeString("en-US", {
+							timeZone: "Asia/Dubai",
+							hour12: true, // Set to false for 24-hour format
+							hour: "2-digit",
+							minute: "2-digit",
+							second: "2-digit",
+						})
+					: String(wt.endTime), // Format time as HH:MM:SS
 			user: {
 				fullName: wt.user.fullName,
 				role: wt.user.role, // Ensure role is a string

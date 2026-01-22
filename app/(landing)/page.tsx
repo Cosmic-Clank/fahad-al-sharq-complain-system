@@ -394,8 +394,8 @@ export default function LandingPage() {
 								<Facebook className='h-5 w-5' />
 								Follow on Facebook
 							</a>
-							<a href='https://www.instagram.com/fahadalsharq169/' target='_blank' rel='noopener noreferrer' className='flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 transition hover:from-purple-200 hover:to-pink-200'>
-								<Instagram className='h-5 w-5' />
+							<a href='https://www.instagram.com/fahadalsharq169/' target='_blank' rel='noopener noreferrer' className='flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 transition hover:from-purple-200 hover:to-pink-200'>
+								<Instagram className='h-5 w-5' color='white' />
 								Follow on Instagram
 							</a>
 						</div>

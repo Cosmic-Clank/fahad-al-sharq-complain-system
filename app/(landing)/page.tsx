@@ -123,7 +123,7 @@ export default function LandingPage() {
 						<Link href='/complain' className='hidden sm:inline-flex rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
 							Submit complaint
 						</Link>
-						<Link href='/auth/login' className='inline-flex items-center gap-2 rounded-lg bg-[#1ca5e4] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#1ca5e4]/25 transition hover:bg-[#1693cd] hover:shadow-lg'>
+						<Link href='/login' className='inline-flex items-center gap-2 rounded-lg bg-[#1ca5e4] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#1ca5e4]/25 transition hover:bg-[#1693cd] hover:shadow-lg'>
 							Dashboard
 							<ArrowRight className='h-4 w-4' />
 						</Link>
@@ -146,10 +146,10 @@ export default function LandingPage() {
 								Book a service
 								<ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
 							</Link>
-							<Link href='tel:+971XXXXXXXX' className='inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-7 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:border-[#1ca5e4]/30 hover:bg-slate-50'>
+							{/* <Link href='tel:+971XXXXXXXX' className='inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-7 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:border-[#1ca5e4]/30 hover:bg-slate-50'>
 								<Phone className='h-5 w-5 text-[#1ca5e4]' />
 								Call us now
-							</Link>
+							</Link> */}
 						</div>
 						<Link href='/complain' className='inline-flex items-center gap-2 rounded-xl border-4 border-red-500 bg-red-50 px-6 py-4 text-base font-bold text-red-600 shadow-lg transition hover:scale-105 hover:bg-red-100 hover:shadow-xl'>
 							<MessageSquare className='h-5 w-5' />
@@ -258,10 +258,10 @@ export default function LandingPage() {
 										<div className='text-xl font-bold text-slate-900'>{title}</div>
 										<p className='mt-2 text-sm leading-relaxed text-slate-600'>{desc}</p>
 									</div>
-									<div className='flex items-center gap-2 text-sm font-semibold text-[#1ca5e4]'>
+									{/* <div className='flex items-center gap-2 text-sm font-semibold text-[#1ca5e4]'>
 										Learn more
 										<ArrowRight className='h-4 w-4 transition-transform group-hover:translate-x-1' />
-									</div>
+									</div> */}
 								</div>
 							</div>
 						))}
@@ -360,7 +360,7 @@ export default function LandingPage() {
 								Submit a complaint
 								<ArrowRight className='h-5 w-5' />
 							</Link>
-							<Link href='/auth/login' className='inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-8 py-5 text-lg font-semibold text-slate-800 shadow-sm transition hover:border-[#1ca5e4]/30 hover:bg-slate-50'>
+							<Link href='/login' className='inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-8 py-5 text-lg font-semibold text-slate-800 shadow-sm transition hover:border-[#1ca5e4]/30 hover:bg-slate-50'>
 								Staff dashboard
 								<Users className='h-5 w-5 text-[#1ca5e4]' />
 							</Link>
@@ -378,10 +378,10 @@ export default function LandingPage() {
 								Book now
 								<ArrowRight className='h-5 w-5' />
 							</Link>
-							<Link href='tel:+971XXXXXXXX' className='inline-flex items-center gap-2 rounded-xl border-2 border-white/20 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition hover:bg-white/20'>
+							{/* <Link href='tel:+971XXXXXXXX' className='inline-flex items-center gap-2 rounded-xl border-2 border-white/20 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition hover:bg-white/20'>
 								<Phone className='h-5 w-5' />
 								Call +971 XX XXX XXXX
-							</Link>
+							</Link> */}
 						</div>
 					</div>
 				</section>

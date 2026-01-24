@@ -127,7 +127,7 @@ function ComplaintForm() {
 				throw new Error(data.message || "Something went wrong");
 			}
 			if (res.ok) {
-				router.push("/success"); // Redirect to a success page
+				router.push("/complain/success"); // Redirect to a success page
 			}
 		} catch (err) {
 			console.error("Error submitting complaint:", err);

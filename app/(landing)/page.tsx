@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Clock, Droplets, Facebook, Fan, Gauge, HeartHandshake, Home, Instagram, MessageSquare, Phone, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
 
 const stats = [
@@ -100,142 +101,86 @@ const process = [
 
 export default function LandingPage() {
 	return (
-		<div className='relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/30'>
-			<div className='pointer-events-none absolute inset-0 opacity-40'>
-				<div className='absolute -right-20 top-0 h-96 w-96 rounded-full bg-[#1ca5e4]/20 blur-3xl' />
-				<div className='absolute bottom-0 left-0 h-80 w-80 rounded-full bg-[#1ca5e4]/15 blur-3xl' />
-				<div className='absolute right-1/3 top-1/3 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl' />
-			</div>
-
-			<div className='relative mx-auto flex max-w-7xl flex-col gap-20 px-6 pb-20 pt-2 sm:px-10 lg:pt-4'>
-				{/* Navigation */}
-				<nav className='flex items-center justify-between rounded-2xl border border-slate-200/60 bg-white/80 px-6 py-4 shadow-sm backdrop-blur-sm'>
-					<div className='flex items-center gap-2'>
-						<div className='flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#1ca5e4] to-blue-600'>
+		<div className='relative overflow-hidden'>
+			{/* Fixed Navigation - Floating Dock */}
+			<nav className='fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-6xl rounded-2xl border border-slate-200/60 bg-white/80 shadow-lg backdrop-blur-sm'>
+				<div className='flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 md:px-10'>
+					{/* Logo Section */}
+					<div className='flex items-center gap-2 min-w-max'>
+						<div className='flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#1ca5e4] to-blue-600 flex-shrink-0'>
 							<AirVent className='h-6 w-6 text-white' />
 						</div>
-						<div>
-							<div className='text-lg font-bold text-slate-900'>Fahad Al Sharq</div>
+						<div className='hidden sm:block'>
+							<div className='text-base sm:text-lg font-bold text-slate-900'>Fahad Al Sharq</div>
 							<div className='text-xs text-slate-600'>AC Systems LLC</div>
 						</div>
 					</div>
-					<div className='flex items-center gap-3'>
-						<Link href='/complain' className='hidden sm:inline-flex rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
+
+					{/* Spacer */}
+					<div className='flex-1' />
+
+					{/* Buttons Section */}
+					<div className='flex items-center gap-2 sm:gap-3'>
+						<Link href='/complain' className='hidden sm:inline-flex rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
 							Submit complaint
 						</Link>
-						<Link href='/login' className='inline-flex items-center gap-2 rounded-lg bg-[#1ca5e4] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#1ca5e4]/25 transition hover:bg-[#1693cd] hover:shadow-lg'>
-							Dashboard
+						<Link href='/login' className='inline-flex items-center gap-1 sm:gap-2 rounded-lg bg-[#1ca5e4] px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-[#1ca5e4]/25 transition hover:bg-[#1693cd] hover:shadow-lg'>
+							<span className='hidden sm:inline'>Staff Signin</span>
+							<span className='sm:hidden'>Sign In</span>
 							<ArrowRight className='h-4 w-4' />
 						</Link>
 					</div>
-				</nav>
+				</div>
+			</nav>
 
-				{/* Hero Section */}
-				<header className='grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center'>
-					<div className='space-y-8'>
-						<div className='inline-flex items-center gap-2 rounded-full bg-[#1ca5e4]/10 px-4 py-2 text-sm font-medium text-[#1ca5e4] ring-1 ring-[#1ca5e4]/20'>
+			{/* Hero Section - Full Width with space for fixed navbar */}
+			<header className='relative w-screen left-1/2 right-1/2 -mx-[50vw] min-h-[700px] overflow-hidden lg:min-h-[800px] pt-20'>
+				{/* Background Image */}
+				<Image src='/hero.jpg' alt='Professional AC technician working on installation' fill className='absolute inset-0 h-full w-full object-cover' priority />
+
+				{/* Dark gradient overlay - left to right for better text contrast */}
+				<div className='absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30' />
+
+				{/* Animated accent shapes */}
+				<div className='pointer-events-none absolute inset-0 overflow-hidden'>
+					<div className='absolute -right-32 top-20 h-80 w-80 rounded-full bg-[#1ca5e4]/10 blur-3xl' />
+					<div className='absolute -bottom-32 right-1/4 h-96 w-96 rounded-full bg-[#1ca5e4]/5 blur-3xl' />
+				</div>
+
+				{/* Content */}
+				<div className='relative z-10 flex h-full flex-col justify-between px-6 py-12 sm:px-12 lg:py-16'>
+					<div className='space-y-8 max-w-2xl'>
+						<div className='inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/20 backdrop-blur-sm w-fit'>
 							<ShieldCheck className='h-4 w-4' />
 							<span>Licensed & Certified AC Services in UAE</span>
 						</div>
-						<div className='space-y-5'>
-							<h1 className='text-balance text-5xl font-bold leading-tight tracking-tight text-slate-900 sm:text-6xl lg:text-7xl'>Your trusted partner for AC solutions</h1>
-							<p className='text-lg leading-relaxed text-slate-600 sm:text-xl'>Professional air conditioning installation, maintenance, and repair services across all Emirates. Available 24/7 for emergencies with certified technicians and genuine parts.</p>
+						<div className='space-y-6'>
+							<h1 className='text-balance text-5xl font-bold leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl drop-shadow-lg'>Your trusted partner for AC solutions</h1>
+							<p className='text-lg leading-relaxed text-white/90 sm:text-xl drop-shadow-md'>Professional air conditioning installation, maintenance, and repair services across all Emirates. Available 24/7 for emergencies with certified technicians and genuine parts.</p>
 						</div>
-						<div className='flex flex-wrap gap-3'>
-							<Link href='/complain' className='group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[#1ca5e4]/30 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1ca5e4]/40'>
-								Book a service
+						<div className='flex flex-wrap gap-3 mb-4'>
+							<Link href='/complain' className='group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-[#1ca5e4]/50 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-[#1ca5e4]/60'>
+								Book a service/complain
 								<ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
 							</Link>
-							{/* <Link href='tel:+971XXXXXXXX' className='inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-7 py-4 text-base font-semibold text-slate-800 shadow-sm transition hover:border-[#1ca5e4]/30 hover:bg-slate-50'>
-								<Phone className='h-5 w-5 text-[#1ca5e4]' />
-								Call us now
-							</Link> */}
-						</div>
-						<Link href='/complain' className='inline-flex items-center gap-2 rounded-xl border-4 border-red-500 bg-red-50 px-6 py-4 text-base font-bold text-red-600 shadow-lg transition hover:scale-105 hover:bg-red-100 hover:shadow-xl'>
-							<MessageSquare className='h-5 w-5' />
-							⚠️ Have a Complaint? Report It Now
-							<ArrowRight className='h-5 w-5' />
-						</Link>
-						<div className='grid gap-4 sm:grid-cols-3'>
-							{stats.map((item) => (
-								<div key={item.label} className='rounded-2xl border border-slate-200/60 bg-white/70 p-5 shadow-sm backdrop-blur-sm'>
-									<div className='text-sm font-medium text-slate-600'>{item.label}</div>
-									<div className='mt-2 text-3xl font-bold text-[#1ca5e4]'>{item.value}</div>
-									<div className='text-xs text-slate-500'>{item.delta}</div>
-								</div>
-							))}
 						</div>
 					</div>
-					<div className='relative overflow-hidden rounded-3xl border border-slate-200/60 bg-white/70 p-6 shadow-2xl backdrop-blur-sm'>
-						<div className='absolute inset-0 bg-gradient-to-br from-[#1ca5e4]/5 via-white/50 to-blue-100/30' />
-						<div className='relative space-y-6'>
-							<div className='flex items-center justify-between'>
-								<div className='inline-flex items-center gap-2 text-sm font-semibold text-slate-700'>
-									<Thermometer className='h-4 w-4 text-[#1ca5e4]' /> Live service status
-								</div>
-								<span className='rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700'>All teams active</span>
-							</div>
-							<div className='space-y-4 rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-sm'>
-								<div className='flex items-center justify-between'>
-									<div className='inline-flex items-center gap-2 text-sm font-medium text-slate-600'>
-										<Home className='h-4 w-4 text-[#1ca5e4]' /> Active service areas
-									</div>
-									<span className='text-xs font-semibold text-slate-700'>7 Emirates</span>
-								</div>
-								<div className='grid gap-3 sm:grid-cols-2'>
-									<div className='rounded-xl border border-slate-200/60 bg-gradient-to-br from-[#1ca5e4]/5 to-blue-50/50 p-4'>
-										<div className='text-xs font-medium text-slate-600'>Available technicians</div>
-										<div className='mt-1 text-2xl font-bold text-slate-900'>42</div>
-										<p className='text-xs text-slate-500'>Ready to serve</p>
-									</div>
-									<div className='rounded-xl border border-slate-200/60 bg-gradient-to-br from-emerald-50 to-green-50/50 p-4'>
-										<div className='text-xs font-medium text-slate-600'>Response time</div>
-										<div className='mt-1 text-2xl font-bold text-slate-900'>1.8h</div>
-										<p className='text-xs text-slate-500'>Average arrival</p>
-									</div>
-								</div>
-							</div>
-							<div className='grid gap-4 sm:grid-cols-2'>
-								<div className='rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm'>
-									<div className='flex items-center justify-between text-sm'>
-										<span className='inline-flex items-center gap-2 font-medium text-slate-600'>
-											<Clock className='h-4 w-4 text-[#1ca5e4]' /> Today
-										</span>
-										<span className='text-xs font-semibold text-[#1ca5e4]'>18 bookings</span>
-									</div>
-									<div className='mt-3 space-y-2 text-sm'>
-										<div className='flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2'>
-											<span className='text-slate-700'>Installations</span>
-											<span className='font-semibold text-slate-900'>6</span>
-										</div>
-										<div className='flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2'>
-											<span className='text-slate-700'>Maintenance</span>
-											<span className='font-semibold text-slate-900'>9</span>
-										</div>
-									</div>
-								</div>
-								<div className='rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm'>
-									<div className='flex items-center justify-between text-sm'>
-										<span className='inline-flex items-center gap-2 font-medium text-slate-600'>
-											<Star className='h-4 w-4 text-[#1ca5e4]' /> Rating
-										</span>
-										<span className='text-xs font-semibold text-[#1ca5e4]'>4.9/5.0</span>
-									</div>
-									<div className='mt-3 space-y-1'>
-										<div className='flex items-center gap-2'>
-											<div className='h-2 flex-1 overflow-hidden rounded-full bg-slate-100'>
-												<div className='h-full w-[98%] bg-gradient-to-r from-[#1ca5e4] to-blue-500' />
-											</div>
-											<span className='text-xs font-semibold text-slate-700'>98%</span>
-										</div>
-										<p className='text-xs text-slate-500'>Customer satisfaction</p>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</header>
 
+					{/* Bottom Stats Cards */}
+					<div className='grid gap-4 sm:grid-cols-3 max-w-2xl'>
+						{stats.map((item) => (
+							<div key={item.label} className='rounded-2xl border border-white/20 bg-white/10 p-5 shadow-lg backdrop-blur-md transition hover:bg-white/15 hover:border-white/30'>
+								<div className='text-sm font-medium text-white/80'>{item.label}</div>
+								<div className='mt-2 text-3xl font-bold text-[#1ca5e4] drop-shadow-md'>{item.value}</div>
+								<div className='text-xs text-white/70'>{item.delta}</div>
+							</div>
+						))}
+					</div>
+				</div>
+			</header>
+
+			{/* Rest of content */}
+			<div className='relative mx-auto flex max-w-7xl flex-col gap-20 px-6 pb-20 sm:px-10 mt-6'>
 				{/* Services Section */}
 				<section className='space-y-8'>
 					<div className='text-center'>

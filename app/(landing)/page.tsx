@@ -136,7 +136,7 @@ export default function LandingPage() {
 			{/* Hero Section - Full Width with space for fixed navbar */}
 			<header className='relative w-screen left-1/2 right-1/2 -mx-[50vw] min-h-[700px] overflow-hidden lg:min-h-[800px] pt-20'>
 				{/* Background Image */}
-				<Image src='/hero.jpg' alt='Professional AC technician working on installation' fill className='absolute inset-0 h-full w-full object-cover' priority />
+				<Image src='/hero2.jpg' alt='Professional AC technician working on installation' fill className='absolute inset-0 h-full w-full object-cover' priority />
 
 				{/* Dark gradient overlay - left to right for better text contrast */}
 				<div className='absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30' />

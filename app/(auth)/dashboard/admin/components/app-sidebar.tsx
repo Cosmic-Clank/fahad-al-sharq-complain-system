@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check, AlertCircle } from "lucide-react";
+import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check, AlertCircle, Package, Plus, ArrowUpCircle, Users, List } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -46,6 +46,34 @@ const items = [
 	},
 ];
 
+const inventoryItems = [
+	{
+		title: "All Items",
+		url: "/dashboard/admin/inventory",
+		icon: Package,
+	},
+	{
+		title: "Transactions",
+		url: "/dashboard/admin/inventory/transactions",
+		icon: List,
+	},
+	{
+		title: "Restock",
+		url: "/dashboard/admin/inventory/restock/0",
+		icon: ArrowUpCircle,
+	},
+	{
+		title: "New Item",
+		url: "/dashboard/admin/inventory/new",
+		icon: Plus,
+	},
+	{
+		title: "Requests",
+		url: "/dashboard/admin/inventory/requests",
+		icon: Users,
+	},
+];
+
 export function AppSidebar() {
 	return (
 		<Sidebar variant='inset' collapsible='icon'>
@@ -67,6 +95,23 @@ export function AppSidebar() {
 					<SidebarGroupContent>
 						<SidebarMenu>
 							{items.map((item) => (
+								<SidebarMenuItem key={item.title}>
+									<SidebarMenuButton asChild>
+										<a href={item.url}>
+											<item.icon />
+											<span>{item.title}</span>
+										</a>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel>Inventory</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{inventoryItems.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton asChild>
 										<a href={item.url}>

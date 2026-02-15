@@ -24,5 +24,8 @@ export default async function page() {
 		// Use the correct Role enum value, e.g., 'EMPLOYEE'
 		return redirect("/dashboard/employee");
 	}
+	if (role === "INVENTORY_MANAGER") {
+		return redirect("/dashboard/inventory_manager");
+	}
 	return <NotAuthorized />;
 }

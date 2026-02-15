@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { createEmployee } from "../actions"; // Import your new server action
 import { useRouter } from "next/navigation"; // For client-side redirects
 import { Loading } from "@/components/ui/loading";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Define the Zod schema for employee creation
 // IMPORTANT: This schema should match the one in your server action for client-side validation
@@ -19,6 +20,7 @@ const employeeFormSchema = z.object({
 	fullName: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long." }).max(100, { message: "Full name must be at most 100 characters long." }),
 	username: z.string({ required_error: "Username is required" }),
 	password: z.string({ required_error: "Password is required" }),
+	role: z.enum(["EMPLOYEE", "INVENTORY_MANAGER"], { required_error: "Role is required" }),
 	// .min(8, { message: "Password must be at least 8 characters long." })
 	// .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
 	// .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter." })
@@ -40,6 +42,7 @@ function EmployeeForm() {
 			fullName: "",
 			username: "",
 			password: "",
+			role: "EMPLOYEE",
 		},
 	});
 
@@ -53,6 +56,7 @@ function EmployeeForm() {
 		formData.append("fullName", values.fullName);
 		formData.append("username", values.username);
 		formData.append("password", values.password);
+		formData.append("role", values.role);
 
 		try {
 			const result = await createEmployee(formData); // Call the server action
@@ -130,6 +134,29 @@ function EmployeeForm() {
 							<FormControl>
 								<Input placeholder='••••••••' type='password' {...field} disabled={isSubmitting} />
 							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				{/* Role */}
+				<FormField
+					control={form.control}
+					name='role'
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Role</FormLabel>
+							<Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+								<FormControl>
+									<SelectTrigger>
+										<SelectValue placeholder='Select a role' />
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									<SelectItem value='EMPLOYEE'>Employee</SelectItem>
+									<SelectItem value='INVENTORY_MANAGER'>Inventory Manager</SelectItem>
+								</SelectContent>
+							</Select>
 							<FormMessage />
 						</FormItem>
 					)}

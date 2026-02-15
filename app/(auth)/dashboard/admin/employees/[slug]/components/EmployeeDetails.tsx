@@ -11,7 +11,9 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 	const employee = await prismaClient.user.findUnique({
 		where: {
 			id: employeeId,
-			role: "EMPLOYEE",
+			role: {
+				in: ["EMPLOYEE", "INVENTORY_MANAGER"],
+			},
 		},
 		select: {
 			id: true,

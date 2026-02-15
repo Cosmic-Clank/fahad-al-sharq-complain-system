@@ -7,7 +7,6 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
-  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -27,11 +26,15 @@ model User {
   complaintResponses ComplaintResponse[]
   workTimes WorkTimes[]
   complaintsAssigned Complaint[] @relation("AssignedComplaints")
+  inventoryRequests InventoryRequest[]
+  inventoryTransactions InventoryTransaction[]
+  approvedRequests InventoryRequest[] @relation("ApprovedRequests")
 }
 
 enum Role {
   EMPLOYEE
   ADMIN
+  INVENTORY_MANAGER
 }
 
 enum ConvenientTime {
@@ -106,4 +109,70 @@ model Buildings {
 	id			Int		@id @default(autoincrement())
 	buildingName	String
   emirate		String @default("dubai")
+}
+
+model Inventory {
+  id                Int       @id @default(autoincrement())
+  itemName          String
+  itemCode          String?
+  category          String?
+  description       String?
+  quantity          Int
+  unitPrice         Float?
+  supplier          String?
+  location          String?
+  imageUrl          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  transactions      InventoryTransaction[]
+  requests          InventoryRequest[]
+}
+
+enum TransactionType {
+  ADD
+  REMOVE
+  ADJUST
+  REQUEST
+}
+
+enum InventoryRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model InventoryTransaction {
+  id                Int               @id @default(autoincrement())
+  inventoryId       Int
+  quantity          Int
+  transactionType   TransactionType
+  notes             String?
+  employeeId        Int?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  inventory         Inventory         @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  employee          User?             @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+}
+
+model InventoryRequest {
+  id                Int                        @id @default(autoincrement())
+  inventoryId       Int
+  employeeId        Int
+  quantity          Int
+  status            InventoryRequestStatus    @default(PENDING)
+  reason            String?
+  notes             String?
+  approvedBy        Int?
+  approvedAt        DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  inventory         Inventory                 @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  employee          User                      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approver          User?                     @relation("ApprovedRequests", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([inventoryId])
+  @@index([status])
 }

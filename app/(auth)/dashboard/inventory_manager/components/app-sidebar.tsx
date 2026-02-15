@@ -1,46 +1,36 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { AlertCircle, Book, Check, Cross, Home, LucideOctagon, Package, Plus } from "lucide-react";
+import { Home, LogOut, Package, Plus, ArrowUpCircle, CheckCircle, Users, List } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
-const dashboardItems = [
-	{
-		title: "All",
-		url: "/dashboard/employee",
-		icon: Home,
-	},
-	{
-		title: "Complete",
-		url: "/dashboard/employee/complete",
-		icon: Check,
-	},
-	{
-		title: "Incomplete",
-		url: "/dashboard/employee/incomplete",
-		icon: Cross,
-	},
-	{
-		title: "Pending",
-		url: "/dashboard/employee/pending",
-		icon: AlertCircle,
-	},
-	{
-		title: "Reports",
-		url: "/dashboard/employee/reports",
-		icon: Book,
-	},
-];
-
 const inventoryItems = [
 	{
-		title: "My Requests",
-		url: "/dashboard/employee/inventory",
+		title: "All Items",
+		url: "/dashboard/inventory_manager",
 		icon: Package,
 	},
 	{
-		title: "New Request",
-		url: "/dashboard/employee/inventory/request",
+		title: "Transactions",
+		url: "/dashboard/inventory_manager/transactions",
+		icon: List,
+	},
+	{
+		title: "Restock",
+		url: "/dashboard/inventory_manager/restock/0",
+		icon: ArrowUpCircle,
+	},
+	{
+		title: "New Item",
+		url: "/dashboard/inventory_manager/new",
 		icon: Plus,
+	},
+];
+
+const employeeItems = [
+	{
+		title: "Requests",
+		url: "/dashboard/inventory_manager/employees/requests",
+		icon: Users,
 	},
 ];
 
@@ -61,10 +51,10 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+					<SidebarGroupLabel>Inventory</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{dashboardItems.map((item) => (
+							{inventoryItems.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton asChild>
 										<a href={item.url}>
@@ -78,10 +68,10 @@ export function AppSidebar() {
 					</SidebarGroupContent>
 				</SidebarGroup>
 				<SidebarGroup>
-					<SidebarGroupLabel>Inventory</SidebarGroupLabel>
+					<SidebarGroupLabel>Employees</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{inventoryItems.map((item) => (
+							{employeeItems.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton asChild>
 										<a href={item.url}>

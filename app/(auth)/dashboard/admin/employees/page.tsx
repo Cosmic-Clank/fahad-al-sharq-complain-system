@@ -11,7 +11,9 @@ async function page() {
 			createdAt: true,
 		},
 		where: {
-			role: "EMPLOYEE",
+			role: {
+				in: ["EMPLOYEE", "INVENTORY_MANAGER"],
+			},
 		},
 	});
 	const formattedData = data.map((item) => ({

@@ -11,6 +11,7 @@ const serverEmployeeFormSchema = z.object({
 	fullName: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long." }).max(100, { message: "Full name must be at most 100 characters long." }),
 	username: z.string({ required_error: "username is required" }),
 	password: z.string({ required_error: "Password is required" }),
+	role: z.enum(["EMPLOYEE", "INVENTORY_MANAGER"], { required_error: "Role is required" }),
 	// .min(8, { message: "Password must be at least 8 characters long." })
 	// .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
 	// .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter." })
@@ -23,6 +24,7 @@ export async function createEmployee(formData: FormData) {
 		fullName: formData.get("fullName"),
 		username: formData.get("username"),
 		password: formData.get("password"),
+		role: formData.get("role"),
 	};
 
 	try {
@@ -47,7 +49,7 @@ export async function createEmployee(formData: FormData) {
 				fullName: validatedData.fullName,
 				username: validatedData.username,
 				passwordHash: hashedPassword,
-				role: "EMPLOYEE", // Assign a default role
+				role: validatedData.role,
 			},
 		});
 
@@ -56,7 +58,8 @@ export async function createEmployee(formData: FormData) {
 		// Or, if you want a full redirect after success (e.g., to a dashboard)
 		// redirect("/dashboard/admin/employees");
 
-		return { success: true, message: "Employee created successfully!" };
+		const roleLabel = validatedData.role === "INVENTORY_MANAGER" ? "Inventory Manager" : "Employee";
+		return { success: true, message: `${roleLabel} created successfully!` };
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			// Return validation errors to the client

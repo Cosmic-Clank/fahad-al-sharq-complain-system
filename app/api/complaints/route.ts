@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
 		description: formData.get("description"),
 	};
 
+	const isPrivateRaw = formData.get("isPrivate");
+	const isPrivate = isPrivateRaw === "true" ? true : null;
+
 	// 2. Server-side validation using Zod
 	const validatedFields = serverFormSchema.safeParse(rawData);
 
@@ -115,6 +118,7 @@ export async function POST(req: NextRequest) {
 			data: {
 				customerName: fullname,
 				customerEmail: email,
+				isPrivate,
 				customerPhone: phoneNumber,
 				customerAddress: address,
 				buildingName: buildingName,

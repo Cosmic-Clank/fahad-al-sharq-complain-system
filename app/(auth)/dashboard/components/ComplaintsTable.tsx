@@ -5,13 +5,18 @@ import { auth } from "@/auth";
 
 type StatusFilter = "Completed" | "Incomplete" | "In Progress";
 
-async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; status?: StatusFilter }) {
+async function ComplaintsTable({ role, status, isPrivate = false }: { role: "admin" | "employee"; status?: StatusFilter; isPrivate?: boolean }) {
 	const session = await auth(); // Get the current user session
 	const data = await prismaClient.complaint.findMany({
 		where: {
 			createdAt: {
 				gte: new Date("2026-01-01"),
 			},
+			...(isPrivate
+				? { isPrivate: true }
+				: {
+					OR: [{ isPrivate: false }, { isPrivate: null }],
+				}),
 		},
 		select: {
 			id: true,

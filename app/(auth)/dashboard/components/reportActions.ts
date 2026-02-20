@@ -170,6 +170,8 @@ function buildWhere(
 		}
 	}
 
+	where.OR = [{ isPrivate: false }, { isPrivate: null }];
+
 	return where;
 }
 
@@ -190,6 +192,8 @@ export async function getUniqueOptions(column: ComplaintColumn, filters?: Record
 			}
 		}
 	}
+
+	where.OR = [{ isPrivate: false }, { isPrivate: null }];
 
 	const rows = await prisma.complaint.findMany({
 		distinct: [column as any],
@@ -927,8 +931,11 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 export async function generateComplaintPdfById(complaintId: string): Promise<{ fileName: string; base64: string }> {
 	const id = Number(complaintId);
 
-	const complaint = await prisma.complaint.findUnique({
-		where: { id },
+	const complaint = await prisma.complaint.findFirst({
+		where: {
+			id,
+			OR: [{ isPrivate: false }, { isPrivate: null }],
+		},
 		select: {
 			id: true,
 			customerName: true,

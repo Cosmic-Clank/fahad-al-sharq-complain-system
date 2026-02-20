@@ -46,6 +46,29 @@ const items = [
 	},
 ];
 
+const privateComplaintItems = [
+	{
+		title: "All",
+		url: "/dashboard/admin/allIsPrivate",
+		icon: Home,
+	},
+	{
+		title: "Complete",
+		url: "/dashboard/admin/completeIsPrivate",
+		icon: Check,
+	},
+	{
+		title: "Incomplete",
+		url: "/dashboard/admin/incompleteIsPrivate",
+		icon: Cross,
+	},
+	{
+		title: "Pending",
+		url: "/dashboard/admin/pendingIsPrivate",
+		icon: AlertCircle,
+	},
+];
+
 const inventoryItems = [
 	{
 		title: "All Items",
@@ -95,6 +118,23 @@ export function AppSidebar() {
 					<SidebarGroupContent>
 						<SidebarMenu>
 							{items.map((item) => (
+								<SidebarMenuItem key={item.title}>
+									<SidebarMenuButton asChild>
+										<a href={item.url}>
+											<item.icon />
+											<span>{item.title}</span>
+										</a>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel>Private Complaints</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{privateComplaintItems.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton asChild>
 										<a href={item.url}>

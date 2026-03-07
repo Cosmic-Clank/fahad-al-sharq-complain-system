@@ -121,3 +121,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Google Translate — prevent body shift and hide top banner */
+body {
+  top: 0 !important;
+}
+
+.skiptranslate iframe {
+  display: none !important;
+}

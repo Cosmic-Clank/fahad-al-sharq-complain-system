@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import Script from "next/script";
+import LanguageToggle from "@/components/LanguageToggle";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -28,6 +30,19 @@ export default function RootLayout({
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
 				{children}
 				<Toaster />
+				<div id="google_translate_element" style={{ display: "none" }} />
+				<LanguageToggle />
+				<Script strategy="afterInteractive" id="google-translate-init">{`
+					function googleTranslateElementInit() {
+						new google.translate.TranslateElement({
+							pageLanguage: 'en',
+							includedLanguages: 'ar',
+							layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+							autoDisplay: false,
+						}, 'google_translate_element');
+					}
+				`}</Script>
+				<Script strategy="afterInteractive" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" />
 			</body>
 		</html>
 	);

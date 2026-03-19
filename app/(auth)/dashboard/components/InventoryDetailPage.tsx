@@ -41,6 +41,7 @@ async function InventoryDetailPage({ id, role = "inventory_manager" }: Inventory
 		unitPrice: item.unitPrice || null,
 		supplier: item.supplier || "",
 		location: item.location || "",
+		division: item.division,
 		imageUrl: item.imageUrl || null,
 		createdAt: item.createdAt.toLocaleString(),
 		updatedAt: item.updatedAt.toLocaleString(),

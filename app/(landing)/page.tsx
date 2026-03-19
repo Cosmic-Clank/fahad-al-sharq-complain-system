@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Clock, Droplets, Facebook, Fan, Gauge, HeartHandshake, Home, Instagram, MessageSquare, Phone, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
+import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Clock, Droplets, Facebook, Fan, FileText, Gauge, HeartHandshake, Home, Instagram, Lock, MessageSquare, Phone, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
 
 const stats = [
 	{
@@ -163,6 +163,10 @@ export default function LandingPage() {
 								Book a service/complain
 								<ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
 							</Link>
+							<a href='/profile.pdf' target='_blank' rel='noopener noreferrer' className='group inline-flex items-center gap-2 rounded-xl border-2 border-white/30 bg-white/10 px-7 py-4 text-base font-semibold text-white backdrop-blur-sm transition hover:scale-[1.02] hover:bg-white/20 hover:border-white/50'>
+								<FileText className='h-5 w-5' />
+								Company Profile
+							</a>
 						</div>
 					</div>
 
@@ -304,6 +308,10 @@ export default function LandingPage() {
 							<Link href='/complain' className='inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-8 py-5 text-lg font-semibold text-white shadow-lg shadow-[#1ca5e4]/30 transition hover:scale-[1.02] hover:shadow-xl'>
 								Submit a complaint
 								<ArrowRight className='h-5 w-5' />
+							</Link>
+							<Link href='/private-complain' className='inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-8 py-5 text-lg font-semibold text-white shadow-lg shadow-amber-500/30 transition hover:scale-[1.02] hover:shadow-xl'>
+								<Lock className='h-5 w-5' />
+								Private complaint
 							</Link>
 							<Link href='/login' className='inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-8 py-5 text-lg font-semibold text-slate-800 shadow-sm transition hover:border-[#1ca5e4]/30 hover:bg-slate-50'>
 								Staff dashboard

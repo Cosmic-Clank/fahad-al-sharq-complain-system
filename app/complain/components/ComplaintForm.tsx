@@ -1,7 +1,7 @@
 // components/ComplaintForm.tsx
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useEffect } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
@@ -29,29 +29,13 @@ const problemCategories = {
 	"Computer Maintenance": ["Desktop computer troubleshooting", "Laptop troubleshooting", "Operating system installation (Windows / macOS / Linux)", "OS formatting & reinstallation", "Software installation & updates", "Virus & malware removal", "Hardware diagnosis", "RAM installation or replacement", "Hard disk / SSD installation or upgrade", "Power supply replacement", "Motherboard diagnosis", "Screen replacement (laptop)", "Keyboard replacement (laptop / desktop)", "Fan & cooling system cleaning", "Overheating issue fixing", "Data backup & recovery", "Network & internet configuration", "Printer installation & troubleshooting", "Driver installation & updates", "General computer preventive maintenance"],
 };
 
-function ComplaintForm() {
+function ComplaintForm({ buildings }: { buildings: string[] }) {
 	const [images, setImages] = React.useState<File[]>([]);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [submitError, setSubmitError] = React.useState<string | null>(null);
-	const [buildings, setBuildings] = React.useState<string[]>([]);
 	const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 	const [selectedProblem, setSelectedProblem] = React.useState<string | null>(null);
 	const router = useRouter();
-
-	useEffect(() => {
-		// Fetch building names from the server or any other source
-		const fetchBuildings = async () => {
-			try {
-				const response = await fetch("/api/buildings");
-				const data = await response.json();
-				setBuildings(Array.isArray(data) ? data.map((item) => item.buildingName) : []);
-			} catch (error) {
-				console.error("Error fetching buildings:", error);
-			}
-		};
-
-		fetchBuildings();
-	}, []);
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -141,15 +125,6 @@ function ComplaintForm() {
 			form.reset(); // Reset the form fields
 		}
 	};
-
-	if (buildings.length === 0) {
-		<div className='w-full h-screen flex justify-center items-center'>
-			<svg className='animate-spin h-10 w-10 text-primary' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
-				<circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
-				<path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'></path>
-			</svg>
-		</div>;
-	}
 
 	return (
 		<Form {...form}>

@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Package, DollarSign, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus } from "lucide-react";
+import { Pencil, Package, DollarSign, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus, Globe } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
@@ -24,6 +25,7 @@ interface InventoryItemData {
 	unitPrice: number | null;
 	supplier: string;
 	location: string;
+	division: string;
 	imageUrl: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -57,6 +59,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		unitPrice: item.unitPrice || "",
 		supplier: item.supplier,
 		location: item.location,
+		division: item.division,
 	});
 
 	const handleEditSubmit = async () => {
@@ -73,6 +76,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		formData.append("unitPrice", editedItem.unitPrice ? String(editedItem.unitPrice) : "");
 		formData.append("supplier", editedItem.supplier);
 		formData.append("location", editedItem.location);
+		formData.append("division", editedItem.division);
 
 		try {
 			const result = await updateInventoryItem(formData);
@@ -185,6 +189,12 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 									</span>
 								</div>
 							)}
+							<div className='flex items-center gap-2'>
+								<Globe size={16} className='text-gray-500' />
+								<span className='text-sm'>
+									<strong>Division:</strong> {item.division === "DUBAI" ? "Dubai" : item.division === "SHARJAH" ? "Sharjah" : item.division}
+								</span>
+							</div>
 						</div>
 
 						{item.description && (
@@ -288,6 +298,19 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 						<div>
 							<Label htmlFor='location'>Location (Optional)</Label>
 							<Input id='location' value={editedItem.location} onChange={(e) => setEditedItem({ ...editedItem, location: e.target.value })} disabled={isLoading} />
+						</div>
+
+						<div>
+							<Label htmlFor='division'>Division <span className='text-red-500'>*</span></Label>
+							<Select value={editedItem.division} onValueChange={(value) => setEditedItem({ ...editedItem, division: value })} disabled={isLoading}>
+								<SelectTrigger>
+									<SelectValue placeholder='Select division' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='DUBAI'>Dubai</SelectItem>
+									<SelectItem value='SHARJAH'>Sharjah</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
 
 						{error && <p className='text-red-500 text-sm bg-red-50 border border-red-200 rounded p-3'>{error}</p>}

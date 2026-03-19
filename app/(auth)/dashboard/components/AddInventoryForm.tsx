@@ -13,6 +13,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const inventoryFormSchema = z.object({
 	itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
@@ -23,6 +24,7 @@ const inventoryFormSchema = z.object({
 	unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
 	supplier: z.string().optional(),
 	location: z.string().optional(),
+	division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
 });
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
@@ -44,6 +46,7 @@ function AddInventoryForm() {
 			unitPrice: undefined,
 			supplier: "",
 			location: "",
+			division: "DUBAI",
 		},
 	});
 
@@ -84,6 +87,7 @@ function AddInventoryForm() {
 		formData.append("unitPrice", values.unitPrice ? String(values.unitPrice) : "");
 		formData.append("supplier", values.supplier || "");
 		formData.append("location", values.location || "");
+		formData.append("division", values.division);
 
 		images.forEach((file) => {
 			formData.append("images", file);
@@ -228,6 +232,29 @@ function AddInventoryForm() {
 							<FormControl>
 								<Input placeholder='e.g., Warehouse A, Shelf 3' {...field} disabled={isSubmitting} />
 							</FormControl>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				{/* Division */}
+				<FormField
+					control={form.control}
+					name='division'
+					render={({ field }) => (
+						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+							<FormLabel>Division <span className='text-red-500'>*</span></FormLabel>
+							<Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+								<FormControl>
+									<SelectTrigger>
+										<SelectValue placeholder='Select division' />
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									<SelectItem value='DUBAI'>Dubai</SelectItem>
+									<SelectItem value='SHARJAH'>Sharjah</SelectItem>
+								</SelectContent>
+							</Select>
 							<FormMessage />
 						</FormItem>
 					)}

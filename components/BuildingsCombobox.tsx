@@ -32,7 +32,7 @@ export function BuildingsCombobox({ options, value, onChange, placeholder, class
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className='w-full p-0'>
-				<Command>
+				<Command translate="no">
 					<CommandInput placeholder='Search...' />
 					<CommandList>
 						<CommandEmpty>No option found.</CommandEmpty>

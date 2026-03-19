@@ -17,6 +17,7 @@ type InventoryRowData = {
 	unitPrice: string;
 	supplier: string;
 	location: string;
+	division: string;
 	imageUrl: string;
 	createdAt: string;
 	updatedAt: string;
@@ -64,6 +65,7 @@ export default function CustomInventoryDataTable({ data, role = "inventory_manag
 		{ name: "Unit Price", selector: (row: InventoryRowData) => row.unitPrice, sortable: true },
 		{ name: "Supplier", selector: (row: InventoryRowData) => row.supplier, sortable: true },
 		{ name: "Location", selector: (row: InventoryRowData) => row.location, sortable: true },
+		{ name: "Division", selector: (row: InventoryRowData) => row.division, sortable: true },
 		{ name: "Created At", selector: (row: InventoryRowData) => row.createdAt, sortable: true },
 		{ name: "Updated At", selector: (row: InventoryRowData) => row.updatedAt, sortable: true },
 		{

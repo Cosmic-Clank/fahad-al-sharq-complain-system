@@ -93,6 +93,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 					<div className='space-y-1 text-sm ml-7'>
 						<p><span className='font-medium'>Item ID:</span> #{request.inventory.id}</p>
 						<p><span className='font-medium'>Category:</span> {request.inventory.category || "N/A"}</p>
+						<p><span className='font-medium'>Division:</span> {request.inventory.division === "DUBAI" ? "Dubai" : "Sharjah"}</p>
 						<p><span className='font-medium'>Available Qty:</span> <span className='font-semibold text-blue-600'>{request.inventory.quantity} units</span></p>
 					</div>
 				</div>

@@ -123,10 +123,16 @@ model Inventory {
   supplier          String?
   location          String?
   imageUrl          String?
+  division          Division  @default(DUBAI)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   transactions      InventoryTransaction[]
   requests          InventoryRequest[]
+}
+
+enum Division {
+  DUBAI
+  SHARJAH
 }
 
 enum TransactionType {

@@ -16,6 +16,7 @@ const serverInventoryFormSchema = z.object({
 	unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
 	supplier: z.string().optional().or(z.literal("")),
 	location: z.string().optional().or(z.literal("")),
+	division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
 });
 
 export async function createInventoryItem(formData: FormData) {
@@ -30,6 +31,7 @@ export async function createInventoryItem(formData: FormData) {
 			unitPrice: formData.get("unitPrice"),
 			supplier: formData.get("supplier"),
 			location: formData.get("location"),
+			division: formData.get("division"),
 		};
 
 		// Validate data
@@ -95,6 +97,7 @@ export async function createInventoryItem(formData: FormData) {
 				supplier: validatedData.supplier || null,
 				location: validatedData.location || null,
 				imageUrl: imageUrl,
+				division: validatedData.division,
 			},
 		});
 
@@ -146,6 +149,7 @@ const serverInventoryUpdateSchema = z.object({
 	unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
 	supplier: z.string().optional().or(z.literal("")),
 	location: z.string().optional().or(z.literal("")),
+	division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
 });
 
 export async function updateInventoryItem(formData: FormData) {
@@ -161,6 +165,7 @@ export async function updateInventoryItem(formData: FormData) {
 			unitPrice: formData.get("unitPrice"),
 			supplier: formData.get("supplier"),
 			location: formData.get("location"),
+			division: formData.get("division"),
 		};
 
 		// Validate data
@@ -194,6 +199,7 @@ export async function updateInventoryItem(formData: FormData) {
 				unitPrice: validatedData.unitPrice ? Number(validatedData.unitPrice) : null,
 				supplier: validatedData.supplier || null,
 				location: validatedData.location || null,
+				division: validatedData.division,
 			},
 		});
 

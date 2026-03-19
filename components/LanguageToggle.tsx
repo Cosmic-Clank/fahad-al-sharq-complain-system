@@ -31,7 +31,7 @@ export default function LanguageToggle() {
 	return (
 		<button
 			onClick={toggle}
-			className='fixed bottom-4 right-4 z-50 bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 shadow-md hover:shadow-lg hover:bg-gray-50 transition-all cursor-pointer'>
+			className='fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 shadow-md hover:shadow-lg hover:bg-gray-50 transition-all cursor-pointer'>
 			{isArabic ? "English" : "عربي"}
 		</button>
 	);

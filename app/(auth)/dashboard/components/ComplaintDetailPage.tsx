@@ -36,9 +36,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			convenientTime: true,
 			description: true,
 			isPrivate: true,
-
 			imagePaths: true,
-			isPrivate: true,
 
 			createdAt: true,
 			responses: {

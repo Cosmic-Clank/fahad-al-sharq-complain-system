@@ -2,9 +2,10 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download, RotateCcw } from "lucide-react";
+import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download, RotateCcw, Lock, Globe, Package } from "lucide-react";
 
 import ComplaintResponseForm from "./ComplaintResponseForm";
+import ComplaintInventoryForm from "./ComplaintInventoryForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { addEndWorkTime, addStartWorkTime, deleteComplaint, deleteComplaintResponse, editComplaintResponse } from "./actions";
@@ -25,7 +26,9 @@ import SignatureCanvas from "react-signature-canvas";
 // Define the data type for a single complaint
 interface ComplaintData {
 	currentUser: { fullName: string; role: string };
+	currentUserId?: number;
 	id: string;
+	isPrivate?: boolean;
 	assignedTo?: { fullName: string; role: string } | null;
 	customerName: string;
 	customerPhone: string;
@@ -53,6 +56,14 @@ interface ComplaintData {
 		workerSignatureBase64: string | null;
 		customerSignatureBase64: string | null;
 	};
+	inventoryUsages: {
+		id: string;
+		quantityUsed: number;
+		notes: string | null;
+		createdAt: string;
+		inventory: { itemName: string; itemCode: string | null; category: string | null };
+		employee: { fullName: string };
+	}[];
 }
 
 interface ComplaintCardProps {
@@ -172,7 +183,18 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 		<div className='bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden'>
 			{/* Header */}
 			<div className='p-5 pb-3 border-b border-gray-100 bg-gray-50'>
-				<h3 className='text-xl font-semibold text-gray-800 mb-1'>{complaint.customerName}</h3>
+				<div className='flex items-center gap-2 mb-1'>
+					<h3 className='text-xl font-semibold text-gray-800'>{complaint.customerName}</h3>
+					{complaint.isPrivate ? (
+						<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800'>
+							<Lock className='w-3 h-3' /> Private
+						</span>
+					) : (
+						<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800'>
+							<Globe className='w-3 h-3' /> Public
+						</span>
+					)}
+				</div>
 				<p className='text-xs text-gray-500 flex items-center'>
 					<PersonStandingIcon className='w-3.5 h-3.5 mr-1 text-gray-400' />
 					Assigned To:
@@ -420,6 +442,45 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 						</Dialog>
 					</div>
 				)}
+			</div>
+
+			{/* Inventory Items Used */}
+			<div className='px-5 pb-5'>
+				<div className='border border-gray-200 rounded-md p-4 bg-gray-50'>
+					<h4 className='text-sm font-semibold text-gray-800 mb-3 flex items-center gap-1'>
+						<Package className='w-4 h-4 text-teal-600' />
+						Inventory Items Used
+					</h4>
+
+					{complaint.inventoryUsages && complaint.inventoryUsages.length > 0 ? (
+						<div className='space-y-2 mb-3'>
+							{complaint.inventoryUsages.map((usage) => (
+								<div key={usage.id} className='flex items-start justify-between text-sm bg-white border border-gray-100 rounded p-2'>
+									<div>
+										<span className='font-medium text-gray-800'>{usage.inventory.itemName}</span>
+										{usage.inventory.itemCode && (
+											<span className='text-gray-400 text-xs ml-1'>({usage.inventory.itemCode})</span>
+										)}
+										{usage.notes && <p className='text-xs text-gray-500 mt-0.5'>{usage.notes}</p>}
+										<p className='text-xs text-gray-400 mt-0.5'>by {usage.employee.fullName} · {usage.createdAt}</p>
+									</div>
+									<span className='ml-4 shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800'>
+										×{usage.quantityUsed}
+									</span>
+								</div>
+							))}
+						</div>
+					) : (
+						<p className='text-xs text-gray-400 italic mb-3'>No inventory items logged yet.</p>
+					)}
+
+					{complaint.currentUser.role === "EMPLOYEE" && complaint.currentUserId && (
+						<ComplaintInventoryForm
+							complaintId={complaint.id}
+							employeeId={complaint.currentUserId}
+						/>
+					)}
+				</div>
 			</div>
 
 			{/* Past Responses */}

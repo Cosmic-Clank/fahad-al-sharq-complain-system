@@ -29,6 +29,8 @@ model User {
   inventoryRequests InventoryRequest[]
   inventoryTransactions InventoryTransaction[]
   approvedRequests InventoryRequest[] @relation("ApprovedRequests")
+  employeeInventory EmployeeInventory[] @relation("EmployeeInventoryItems")
+  inventoryUsages ComplaintInventoryUsage[] @relation("EmployeeInventoryUsages")
 }
 
 enum Role {
@@ -72,7 +74,8 @@ model Complaint {
 
   responses       ComplaintResponse[]
   workTimes       WorkTimes[]
-  assignedTo     User? @relation("AssignedComplaints", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo      User? @relation("AssignedComplaints", fields: [assignedToId], references: [id], onDelete: SetNull)
+  inventoryUsages ComplaintInventoryUsage[]
 }
 
 model ComplaintResponse {
@@ -128,6 +131,8 @@ model Inventory {
   updatedAt         DateTime  @updatedAt
   transactions      InventoryTransaction[]
   requests          InventoryRequest[]
+  employeeStocks    EmployeeInventory[]        @relation("EmployeeInventoryStock")
+  complaintUsages   ComplaintInventoryUsage[]  @relation("InventoryUsages")
 }
 
 enum Division {
@@ -182,4 +187,32 @@ model InventoryRequest {
   @@index([employeeId])
   @@index([inventoryId])
   @@index([status])
+}
+
+model EmployeeInventory {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  inventoryId Int
+  quantity    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee  User      @relation("EmployeeInventoryItems", fields: [employeeId], references: [id], onDelete: Cascade)
+  inventory Inventory @relation("EmployeeInventoryStock", fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, inventoryId])
+}
+
+model ComplaintInventoryUsage {
+  id           Int      @id @default(autoincrement())
+  complaintId  Int
+  employeeId   Int
+  inventoryId  Int
+  quantityUsed Int
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  employee  User      @relation("EmployeeInventoryUsages", fields: [employeeId], references: [id], onDelete: Cascade)
+  inventory Inventory @relation("InventoryUsages", fields: [inventoryId], references: [id], onDelete: Cascade)
 }

@@ -61,6 +61,24 @@ export async function POST(req: NextRequest) {
 
 	const { fullname, email, phoneNumber, address, buildingName, apartmentNumber, convenientTime, description } = validatedFields.data;
 
+	// 3. Check for duplicate complaint from same building + apartment within 24 hours
+	const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+	const existing = await prismaClient.complaint.findFirst({
+		where: {
+			buildingName,
+			apartmentNumber,
+			createdAt: { gte: since },
+		},
+		select: { id: true },
+	});
+
+	if (existing) {
+		return NextResponse.json(
+			{ message: "A complaint for this building and apartment was already submitted in the last 24 hours. Please wait before submitting another one." },
+			{ status: 429 }
+		);
+	}
+
 	// --- Start Image Upload to Supabase ---
 	const files = formData.getAll("images") as File[]; // 'images' should match your input name
 

@@ -435,3 +435,64 @@ export async function updateEmployeeDetails(employeeId: number, fullName: string
 		return { success: false, message: "Failed to update employee details. Please try again." };
 	}
 }
+
+export async function getEmployeeInventoryForComplaint(employeeId: number) {
+	try {
+		const stock = await prismaClient.employeeInventory.findMany({
+			where: { employeeId, quantity: { gt: 0 } },
+			include: {
+				inventory: {
+					select: {
+						id: true,
+						itemName: true,
+						itemCode: true,
+						category: true,
+						imageUrl: true,
+					},
+				},
+			},
+			orderBy: { inventory: { itemName: "asc" } },
+		});
+		return stock;
+	} catch (error) {
+		console.error("Error fetching employee inventory:", error);
+		return [];
+	}
+}
+
+export async function addComplaintInventoryUsage(complaintId: number, employeeId: number, inventoryId: number, quantityUsed: number, notes?: string) {
+	try {
+		if (quantityUsed <= 0) {
+			return { success: false, message: "Quantity must be greater than zero." };
+		}
+
+		const stock = await prismaClient.employeeInventory.findUnique({
+			where: { employeeId_inventoryId: { employeeId, inventoryId } },
+		});
+
+		if (!stock) {
+			return { success: false, message: "You do not have this item in your inventory." };
+		}
+
+		if (stock.quantity < quantityUsed) {
+			return { success: false, message: `Insufficient stock. You only have ${stock.quantity} unit(s) available.` };
+		}
+
+		await prismaClient.$transaction([
+			prismaClient.complaintInventoryUsage.create({
+				data: { complaintId, employeeId, inventoryId, quantityUsed, notes: notes || null },
+			}),
+			prismaClient.employeeInventory.update({
+				where: { employeeId_inventoryId: { employeeId, inventoryId } },
+				data: { quantity: { decrement: quantityUsed } },
+			}),
+		]);
+
+		revalidatePath(`/dashboard/employee/complaint/${complaintId}`);
+		revalidatePath(`/dashboard/admin/complaint/${complaintId}`);
+		return { success: true, message: "Items logged successfully." };
+	} catch (error) {
+		console.error("Error logging inventory usage:", error);
+		return { success: false, message: "Failed to log inventory usage. Please try again." };
+	}
+}

@@ -84,6 +84,22 @@ export async function approveInventoryRequest(requestId: number, approverId: num
 			},
 		});
 
+		// Credit the employee's personal inventory balance
+		await prisma.employeeInventory.upsert({
+			where: {
+				employeeId_inventoryId: {
+					employeeId: request.employeeId,
+					inventoryId: request.inventoryId,
+				},
+			},
+			update: { quantity: { increment: request.quantity } },
+			create: {
+				employeeId: request.employeeId,
+				inventoryId: request.inventoryId,
+				quantity: request.quantity,
+			},
+		});
+
 		// Update the request to APPROVED
 		const updatedRequest = await prisma.inventoryRequest.update({
 			where: { id: requestId },

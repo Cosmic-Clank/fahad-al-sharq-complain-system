@@ -35,10 +35,12 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			apartmentNumber: true,
 			convenientTime: true,
 			description: true,
+			isPrivate: true,
 
-			imagePaths: true, // Prisma will return the JSON string
+			imagePaths: true,
+			isPrivate: true,
 
-			createdAt: true, // Prisma returns a Date object
+			createdAt: true,
 			responses: {
 				select: {
 					id: true,
@@ -71,7 +73,22 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 					workerSignatureBase64: true,
 					customerSignatureBase64: true,
 				},
-				orderBy: { date: "asc" }, // Order by date ascending
+				orderBy: { date: "asc" },
+			},
+			inventoryUsages: {
+				select: {
+					id: true,
+					quantityUsed: true,
+					notes: true,
+					createdAt: true,
+					inventory: {
+						select: { itemName: true, itemCode: true, category: true },
+					},
+					employee: {
+						select: { fullName: true },
+					},
+				},
+				orderBy: { createdAt: "asc" },
 			},
 		},
 	});
@@ -106,6 +123,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			role: (session!.user as any).role,
 		},
 		id: String(complaint.id), // Ensure ID is string if it's a number/BigInt
+		isPrivate: complaint.isPrivate ?? false,
 		createdAt: complaint.createdAt.toLocaleString(), // Convert Date to local string
 		assignedTo: complaint.assignedTo, // Ensure assignedTo is a string or null
 		apartmentNumber: complaint.apartmentNumber, // Ensure apartmentNumber is a string
@@ -155,11 +173,23 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			workerSignatureBase64: wt.workerSignatureBase64,
 			customerSignatureBase64: wt.customerSignatureBase64,
 		}))[0],
+		inventoryUsages: complaint.inventoryUsages.map((u) => ({
+			id: String(u.id),
+			quantityUsed: u.quantityUsed,
+			notes: u.notes,
+			createdAt: u.createdAt instanceof Date ? u.createdAt.toLocaleString() : String(u.createdAt),
+			inventory: {
+				itemName: u.inventory.itemName,
+				itemCode: u.inventory.itemCode,
+				category: u.inventory.category,
+			},
+			employee: { fullName: u.employee.fullName },
+		})),
+		currentUserId: Number((session!.user as any).id),
 	};
 
 	return (
 		<div className=' bg-gray-100 h-full'>
-			{/* Pass the formatted single complaint object to the Client Component */}
 			<ComplaintCard complaint={formattedComplaint} />
 		</div>
 	);

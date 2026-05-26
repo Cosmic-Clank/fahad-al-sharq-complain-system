@@ -122,11 +122,34 @@
   }
 }
 
-/* Google Translate — prevent body shift and hide top banner */
-body {
-  top: 0 !important;
+/* ── Google Translate: fully suppress the top bar & body shift ── */
+
+/* Hide every element Google injects into the page */
+.goog-te-banner-frame,
+.goog-te-balloon-frame,
+#goog-gt-tt,
+.goog-tooltip,
+.goog-tooltip:hover,
+.goog-text-highlight,
+.skiptranslate,
+.skiptranslate iframe,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd,
+.VIpgJd-ZVi9od-ORHb,
+.VIpgJd-yAWNEb-L7lbkb {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
 }
 
-.skiptranslate iframe {
-  display: none !important;
+/* Prevent body from being pushed down by Google's injected stylesheet */
+body,
+body.translated-ltr,
+body.translated-rtl {
+  top: 0 !important;
+  position: static !important;
+}
+
+/* Fix: Google wraps translated text in <font> tags — inherit the app font */
+font[face] {
+  font-family: inherit !important;
 }

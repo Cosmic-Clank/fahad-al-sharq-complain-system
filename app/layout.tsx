@@ -30,9 +30,10 @@ export default function RootLayout({
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
 				{children}
 				<Toaster />
-				<div id="google_translate_element" style={{ display: "none" }} />
+				<div id="google_translate_element" className="notranslate" style={{ display: "none" }} />
 				<LanguageToggle />
-				<Script strategy="afterInteractive" id="google-translate-init">{`
+				{/* Define the callback BEFORE Google's script loads so there's no race condition */}
+				<Script strategy="beforeInteractive" id="google-translate-init">{`
 					function googleTranslateElementInit() {
 						new google.translate.TranslateElement({
 							pageLanguage: 'en',

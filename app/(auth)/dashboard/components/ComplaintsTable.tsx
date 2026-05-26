@@ -5,18 +5,13 @@ import { auth } from "@/auth";
 
 type StatusFilter = "Completed" | "Incomplete" | "In Progress";
 
-async function ComplaintsTable({ role, status, isPrivate = false }: { role: "admin" | "employee"; status?: StatusFilter; isPrivate?: boolean }) {
+async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; status?: StatusFilter }) {
 	const session = await auth(); // Get the current user session
 	const data = await prismaClient.complaint.findMany({
 		where: {
 			createdAt: {
 				gte: new Date("2026-01-01"),
 			},
-			...(isPrivate
-				? { isPrivate: true }
-				: {
-					OR: [{ isPrivate: false }, { isPrivate: null }],
-				}),
 		},
 		select: {
 			id: true,
@@ -28,6 +23,7 @@ async function ComplaintsTable({ role, status, isPrivate = false }: { role: "adm
 			apartmentNumber: true,
 			convenientTime: true,
 			description: true,
+			isPrivate: true,
 			createdAt: true,
 			workTimes: {
 				select: {
@@ -85,6 +81,7 @@ async function ComplaintsTable({ role, status, isPrivate = false }: { role: "adm
 			status: statusComputed as StatusFilter,
 			completedBy: item.workTimes.length > 0 ? latestWT.user.fullName : null,
 			completedOn: item.workTimes.length > 0 ? latestWT.date.toDateString() : null,
+			isPrivate: item.isPrivate ?? false,
 		};
 	});
 

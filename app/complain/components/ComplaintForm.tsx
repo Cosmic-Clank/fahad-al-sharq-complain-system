@@ -111,14 +111,15 @@ function ComplaintForm({ buildings }: { buildings: string[] }) {
 			const data = await res.json();
 			// Handle potential errors or messages returned from the server action
 			if (!res.ok) {
-				throw new Error(data.message || "Something went wrong");
+				setSubmitError(data.message || "Something went wrong");
+				return;
 			}
 			if (res.ok) {
 				router.push("/complain/success"); // Redirect to a success page
 			}
 		} catch (err) {
 			console.error("Error submitting complaint:", err);
-			setSubmitError("Failed to submit complaint. Please try again.");
+			if (!submitError) setSubmitError("Failed to submit complaint. Please try again.");
 		} finally {
 			setIsSubmitting(false);
 			setImages([]); // Clear images after submission

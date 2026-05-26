@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { SortDescIcon } from "lucide-react";
+import { SortDescIcon, Lock, Globe } from "lucide-react";
 import { getEmirates, getBuildingsByEmirate, type Building } from "./buildingActions";
 
 type RowData = {
@@ -23,6 +23,7 @@ type RowData = {
 	status: string; // "Completed" | "In Progress" | "Incomplete"
 	completedBy?: string | null;
 	completedOn?: string | null;
+	isPrivate?: boolean;
 };
 
 export default function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
@@ -84,6 +85,23 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 
 	const columns = [
 		{ name: "ID", selector: (row: RowData) => row.id, sortable: true, grow: 0 },
+		{
+			name: "Type",
+			selector: (row: RowData) => (row.isPrivate ? "Private" : "Public"),
+			sortable: true,
+			grow: 0,
+			cell: (row: RowData) =>
+				row.isPrivate ? (
+					<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 whitespace-nowrap">
+						<Lock className="w-3 h-3 shrink-0" /> Private
+					</span>
+				) : (
+					<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 whitespace-nowrap">
+						<Globe className="w-3 h-3 shrink-0" /> Public
+					</span>
+				),
+			width: "110px",
+		},
 		{
 			name: "Assigned To",
 			selector: (row: RowData) => row.assignedTo || "-",

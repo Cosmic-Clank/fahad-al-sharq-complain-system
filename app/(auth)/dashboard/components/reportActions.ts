@@ -336,6 +336,17 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 				},
 				orderBy: { createdAt: "asc" },
 			},
+			inventoryUsages: {
+				select: {
+					id: true,
+					quantityUsed: true,
+					notes: true,
+					createdAt: true,
+					inventory: { select: { itemName: true, itemCode: true } },
+					employee: { select: { fullName: true } },
+				},
+				orderBy: { createdAt: "asc" },
+			},
 		},
 		orderBy: { createdAt: "asc" },
 	});
@@ -361,8 +372,10 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 	const totalPages = complaints.length;
 
+	const sanitize = (t: string) => (t || "").replace(/[^\x20-\x7E\xA0-\xFF]/g, "?");
+
 	const wrap = (t: string, maxW: number, size = 10, f = font) => {
-		const words = (t || "").split(/\s+/);
+		const words = sanitize(t).split(/\s+/);
 		const lines: string[] = [];
 		let line = "";
 		for (const w of words) {
@@ -379,7 +392,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 	const drawComplaintPage = async (c: (typeof complaints)[number], pageIndex: number) => {
 		const page = doc.addPage([W, H]);
 		const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
-			page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+			page.drawText(sanitize(t), { x, y, size, font: bold ? fontBold : font, color });
 		};
 
 		// metrics
@@ -719,7 +732,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 	const drawResponsesPage = async (c: (typeof complaints)[number], pageIndex: number) => {
 		const page = doc.addPage([W, H]);
 		const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
-			page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+			page.drawText(sanitize(t), { x, y, size, font: bold ? fontBold : font, color });
 		};
 
 		// header
@@ -749,6 +762,27 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		text(`Complaint #${c.id} - Responses`, M + 12, H - 110, 16, true);
 
 		let currentY = H - 150;
+
+		// Inventory Items Used section
+		const invUsages = (c as any).inventoryUsages as Array<{ id: number; quantityUsed: number; notes: string | null; createdAt: Date; inventory: { itemName: string; itemCode: string | null }; employee: { fullName: string } }> | undefined;
+		if (invUsages && invUsages.length > 0) {
+			const invPanelH = Math.max(60, invUsages.length * LH + 48);
+			page.drawRectangle({ x: M, y: currentY - invPanelH, width: W - 2 * M, height: invPanelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+			text("Inventory Items Used", M + 12, currentY - 18, 11, true);
+			let iy = currentY - 36;
+			for (const usage of invUsages) {
+				const itemLabel = usage.inventory.itemCode ? `${usage.inventory.itemName} (${usage.inventory.itemCode})` : usage.inventory.itemName;
+				const usageLine = `• ${itemLabel}  ×${usage.quantityUsed}  — used by ${usage.employee.fullName}`;
+				text(usageLine, M + 12, iy, 10);
+				iy -= LH;
+				if (usage.notes) {
+					text(`  Note: ${usage.notes}`, M + 20, iy, 9, false, subt);
+					iy -= LH;
+				}
+				if (iy < M + 80) break;
+			}
+			currentY -= invPanelH + 12;
+		}
 
 		if (c.responses.length === 0) {
 			page.drawRectangle({
@@ -783,7 +817,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					// Create new page
 					const newPage = doc.addPage([W, H]);
 					const newText = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
-						newPage.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+						newPage.drawText(sanitize(t), { x, y, size, font: bold ? fontBold : font, color });
 					};
 
 					// Header for new page
@@ -965,6 +999,17 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				select: { id: true, response: true, createdAt: true, responder: { select: { fullName: true } }, imagePaths: true },
 				orderBy: { createdAt: "asc" },
 			},
+			inventoryUsages: {
+				select: {
+					id: true,
+					quantityUsed: true,
+					notes: true,
+					createdAt: true,
+					inventory: { select: { itemName: true, itemCode: true } },
+					employee: { select: { fullName: true } },
+				},
+				orderBy: { createdAt: "asc" },
+			},
 		},
 	});
 
@@ -1017,12 +1062,14 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const panelBorder = rgb(0.9, 0.92, 0.94);
 	const band = rgb(0.14, 0.44, 0.78);
 
+	const sanitize = (t: string) => (t || "").replace(/[^\x20-\x7E\xA0-\xFF]/g, "?");
+
 	const page = doc.addPage([W, H]);
 	const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
-		page.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+		page.drawText(sanitize(t), { x, y, size, font: bold ? fontBold : font, color });
 	};
 	const wrap = (t: string, maxW: number, size = 10, f = font) => {
-		const words = (t || "").split(/\s+/);
+		const words = sanitize(t).split(/\s+/);
 		const lines: string[] = [];
 		let line = "";
 		for (const w of words) {
@@ -1338,7 +1385,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	// ===== SECOND PAGE: RESPONSES =====
 	const page2 = doc.addPage([W, H]);
 	const text2 = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
-		page2.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+		page2.drawText(sanitize(t), { x, y, size, font: bold ? fontBold : font, color });
 	};
 
 	// header
@@ -1368,6 +1415,26 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	text2(`Complaint #${complaint.id} - Responses`, M + 12, H - 110, 16, true);
 
 	let currentY = H - 150;
+
+	// Inventory Items Used section
+	if (complaint.inventoryUsages && complaint.inventoryUsages.length > 0) {
+		const invPanelH = Math.max(60, complaint.inventoryUsages.length * LH + 48);
+		page2.drawRectangle({ x: M, y: currentY - invPanelH, width: W - 2 * M, height: invPanelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
+		text2("Inventory Items Used", M + 12, currentY - 18, 11, true);
+		let iy = currentY - 36;
+		for (const usage of complaint.inventoryUsages) {
+			const itemLabel = usage.inventory.itemCode ? `${usage.inventory.itemName} (${usage.inventory.itemCode})` : usage.inventory.itemName;
+			const usageLine = `• ${itemLabel}  ×${usage.quantityUsed}  — used by ${usage.employee.fullName}`;
+			text2(usageLine, M + 12, iy, 10);
+			iy -= LH;
+			if (usage.notes) {
+				text2(`  Note: ${usage.notes}`, M + 20, iy, 9, false, subt);
+				iy -= LH;
+			}
+			if (iy < M + 80) break;
+		}
+		currentY -= invPanelH + 12;
+	}
 
 	if (complaint.responses.length === 0) {
 		page2.drawRectangle({
@@ -1400,7 +1467,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				// Create new page
 				const newPage = doc.addPage([W, H]);
 				const newText = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
-					newPage.drawText(t, { x, y, size, font: bold ? fontBold : font, color });
+					newPage.drawText(sanitize(t), { x, y, size, font: bold ? fontBold : font, color });
 				};
 
 				// Header for new page

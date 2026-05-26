@@ -29,6 +29,20 @@ type RowData = {
 export default function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
 	const router = useRouter();
 
+	// Persist current page in the URL so the browser back button restores position
+	const [currentPage, setCurrentPage] = React.useState<number>(() => {
+		if (typeof window === "undefined") return 1;
+		const p = parseInt(new URLSearchParams(window.location.search).get("page") ?? "1", 10);
+		return Number.isFinite(p) && p > 0 ? p : 1;
+	});
+
+	const handlePageChange = (page: number) => {
+		setCurrentPage(page);
+		const params = new URLSearchParams(window.location.search);
+		params.set("page", String(page));
+		window.history.replaceState(null, "", `?${params.toString()}`);
+	};
+
 	// Selections
 	const [selectedEmirate, setSelectedEmirate] = React.useState<string | null>(null);
 	const [selectedBuilding, setSelectedBuilding] = React.useState<string | null>(null);
@@ -251,7 +265,7 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 			</div>
 
 			{/* Table */}
-			<DataTable columns={columns} data={filteredData} pagination sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />
+			<DataTable columns={columns} data={filteredData} pagination paginationDefaultPage={currentPage} onChangePage={handlePageChange} sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />
 		</div>
 	);
 }

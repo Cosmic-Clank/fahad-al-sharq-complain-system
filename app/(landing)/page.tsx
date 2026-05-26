@@ -121,7 +121,11 @@ export default function LandingPage() {
 
 					{/* Buttons Section */}
 					<div className='flex items-center gap-2 sm:gap-3'>
-						<Link href='/complain' className='hidden sm:inline-flex rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
+						<a href='#contact-us' className='hidden sm:inline-flex items-center gap-1 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 transition hover:bg-slate-100'>
+							<Phone className='h-3.5 w-3.5' />
+							Contact Us
+						</a>
+						<Link href='/complain' className='hidden sm:inline-flex rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-[#1ca5e4] transition hover:bg-[#1693cd]'>
 							Submit complaint
 						</Link>
 						<Link href='/login' className='inline-flex items-center gap-1 sm:gap-2 rounded-lg bg-[#1ca5e4] px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-[#1ca5e4]/25 transition hover:bg-[#1693cd] hover:shadow-lg'>
@@ -163,10 +167,14 @@ export default function LandingPage() {
 								Book a service/complain
 								<ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
 							</Link>
-							<a href='/profile.pdf' target='_blank' rel='noopener noreferrer' className='group inline-flex items-center gap-2 rounded-xl border-2 border-white/30 bg-white/10 px-7 py-4 text-base font-semibold text-white backdrop-blur-sm transition hover:scale-[1.02] hover:bg-white/20 hover:border-white/50'>
+							<a href='/profile.pdf' target='_blank' rel='noopener noreferrer' className='group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-orange-500/40 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-orange-500/50'>
 								<FileText className='h-5 w-5' />
 								Company Profile
 							</a>
+							<Link href='/private-complain' className='group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-orange-500/40 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-orange-500/50'>
+								<Lock className='h-5 w-5' />
+								Private Complaint
+							</Link>
 						</div>
 					</div>
 
@@ -335,6 +343,28 @@ export default function LandingPage() {
 								<Phone className='h-5 w-5' />
 								Call +971 XX XXX XXXX
 							</Link> */}
+						</div>
+					</div>
+				</section>
+
+				{/* Contact Us Section */}
+				<section id='contact-us' className='scroll-mt-24 rounded-3xl border border-[#1ca5e4]/30 bg-gradient-to-br from-[#1ca5e4]/10 via-blue-50/50 to-white p-8 shadow-xl sm:p-12'>
+					<div className='text-center space-y-6'>
+						<div className='inline-flex items-center gap-2 rounded-full bg-[#1ca5e4]/10 px-4 py-2 text-sm font-medium text-[#1ca5e4]'>
+							<Phone className='h-4 w-4' />
+							<span>Get in touch</span>
+						</div>
+						<h2 className='text-3xl font-bold text-slate-900 sm:text-4xl'>Contact us</h2>
+						<p className='mx-auto max-w-xl text-lg text-slate-600'>Reach out to our team for any inquiries, bookings, or support. We're available to help you.</p>
+						<div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4'>
+							{["0566068030", "0553665540", "0505446612", "0523744667"].map((num) => (
+								<a key={num} href={`tel:${num}`} className='group flex items-center justify-center gap-3 rounded-2xl border-2 border-[#1ca5e4]/20 bg-white px-6 py-5 shadow-sm transition hover:border-[#1ca5e4]/60 hover:shadow-md hover:bg-[#1ca5e4]/5'>
+									<div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#1ca5e4]/10 group-hover:bg-[#1ca5e4]/20 transition flex-shrink-0'>
+										<Phone className='h-5 w-5 text-[#1ca5e4]' />
+									</div>
+									<span className='text-base font-semibold text-slate-800 tracking-wide'>{num}</span>
+								</a>
+							))}
 						</div>
 					</div>
 				</section>

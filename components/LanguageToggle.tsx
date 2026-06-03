@@ -33,13 +33,32 @@ function setArabicCookies() {
 	document.cookie = `googtrans=/en/ar; path=/; domain=${hostname}; SameSite=Lax`;
 }
 
+function getCookieDomainCandidates(hostname: string) {
+	const candidates = new Set<string>();
+	const parts = hostname.split(".").filter(Boolean);
+
+	candidates.add(hostname);
+	candidates.add(`.${hostname}`);
+
+	for (let index = 0; index < parts.length - 1; index++) {
+		const domain = parts.slice(index).join(".");
+		candidates.add(domain);
+		candidates.add(`.${domain}`);
+	}
+
+	return Array.from(candidates);
+}
+
 function clearGoogtransCookies() {
 	const hostname = window.location.hostname;
-	const past = "expires=Thu, 01 Jan 1970 00:00:00 UTC";
-	document.cookie = `googtrans=; ${past}; path=/; SameSite=Lax`;
-	document.cookie = `googtrans=; ${past}; path=/; domain=${hostname}; SameSite=Lax`;
-	// also clear any subdomain cookie that Google may have set
-	document.cookie = `googtrans=; ${past}; path=/; domain=.${hostname}; SameSite=Lax`;
+	const expires = "expires=Thu, 01 Jan 1970 00:00:00 GMT";
+	const clearValue = `googtrans=; ${expires}; max-age=0; path=/; SameSite=Lax`;
+
+	document.cookie = clearValue;
+
+	for (const domain of getCookieDomainCandidates(hostname)) {
+		document.cookie = `${clearValue}; domain=${domain}`;
+	}
 }
 
 export default function LanguageToggle() {

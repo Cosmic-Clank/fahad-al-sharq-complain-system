@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown, Languages } from "lucide-react";
 
 function getGoogtransCookie(): string | null {
 	if (typeof document === "undefined") return null;
@@ -33,27 +34,43 @@ export default function LanguageToggle() {
 		setIsArabic(getGoogtransCookie() === "/en/ar");
 	}, []);
 
-	const toggle = () => {
-		if (isArabic) {
-			clearGoogtransCookies();
-		} else {
+	const changeLanguage = (language: "en" | "ar") => {
+		if (language === "ar") {
 			setArabicCookies();
+		} else {
+			clearGoogtransCookies();
 		}
 		window.location.reload();
 	};
 
-	// Render nothing until we've read the cookie — prevents wrong-label flash
+	// Render nothing until we've read the cookie - prevents wrong-label flash
 	if (isArabic === null) return null;
 
 	return (
-		<button
-			onClick={toggle}
-			aria-label={isArabic ? "Switch to English" : "التبديل إلى العربية"}
+		<div
 			style={{ fontFamily: isArabic ? "'Segoe UI', 'Arial', sans-serif" : undefined }}
-			className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-white border border-gray-200 rounded-full px-4 py-2 text-sm font-semibold text-gray-700 shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all cursor-pointer select-none"
+			className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center overflow-hidden rounded-full border border-gray-200 bg-white/95 text-sm font-semibold text-gray-800 shadow-lg shadow-black/10 backdrop-blur transition-all hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-xl"
 		>
-			<span className="text-base leading-none">{isArabic ? "🇬🇧" : "🇦🇪"}</span>
-			<span>{isArabic ? "English" : "عربي"}</span>
-		</button>
+			<label htmlFor="language-select" className="flex items-center gap-2 px-4 py-2 text-gray-600">
+				<Languages className="h-4 w-4" aria-hidden="true" />
+				<span>Language</span>
+			</label>
+			<div className="relative border-l border-gray-200">
+				<select
+					id="language-select"
+					value={isArabic ? "ar" : "en"}
+					onChange={(event) => changeLanguage(event.target.value as "en" | "ar")}
+					aria-label="Language"
+					className="h-10 appearance-none bg-transparent py-0 pl-4 pr-9 text-sm font-semibold text-gray-900 outline-none transition-colors cursor-pointer hover:bg-gray-50 focus:bg-gray-50 focus:ring-2 focus:ring-inset focus:ring-gray-300"
+				>
+					<option value="en">English</option>
+					<option value="ar">Arabic</option>
+				</select>
+				<ChevronDown
+					className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
+					aria-hidden="true"
+				/>
+			</div>
+		</div>
 	);
 }

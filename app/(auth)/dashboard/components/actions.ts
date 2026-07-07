@@ -251,6 +251,15 @@ export async function deleteComplaint(complaintId: number) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
 
+	// Check if user is admin
+	const user = await prismaClient.user.findUnique({
+		where: { id: Number(session.user.id) },
+	});
+
+	if (!user || user.role !== "ADMIN") {
+		return { success: false, message: "Only admins can delete complaints." };
+	}
+
 	try {
 		// Verify the complaint exists
 		const complaint = await prismaClient.complaint.findUnique({

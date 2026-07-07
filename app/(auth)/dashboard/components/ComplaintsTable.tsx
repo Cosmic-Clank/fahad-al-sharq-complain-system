@@ -76,6 +76,7 @@ async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; s
 			id: String(item.id),
 			customerEmail: item.customerEmail || "-",
 			createdAt: item.createdAt.toDateString(),
+			createdAtISO: item.createdAt.toISOString(),
 			assignedTo: item.assignedTo ? item.assignedTo.username : null,
 			convenientTime: timeLabels[String(item.convenientTime)] ?? String(item.convenientTime),
 			status: statusComputed as StatusFilter,

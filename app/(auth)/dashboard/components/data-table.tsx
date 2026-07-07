@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import DataTable from "react-data-table-component";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SortDescIcon, Lock, Globe } from "lucide-react";
 import { getEmirates, getBuildingsByEmirate, type Building } from "./buildingActions";
@@ -20,6 +21,7 @@ type RowData = {
 	convenientTime: string;
 	description: string;
 	createdAt: string;
+	createdAtISO?: string;
 	status: string; // "Completed" | "In Progress" | "Incomplete"
 	completedBy?: string | null;
 	completedOn?: string | null;
@@ -29,19 +31,40 @@ type RowData = {
 export default function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
 	const router = useRouter();
 
-	// Persist current page in the URL so the browser back button restores position
-	const [currentPage, setCurrentPage] = React.useState<number>(() => {
-		if (typeof window === "undefined") return 1;
-		const p = parseInt(new URLSearchParams(window.location.search).get("page") ?? "1", 10);
-		return Number.isFinite(p) && p > 0 ? p : 1;
-	});
+	// Page and date filters live in the URL so the browser back button restores them.
+	// useSearchParams stays in sync with native history.replaceState (Next 14.1+),
+	// and matches on the server render, avoiding hydration mismatches.
+	const searchParams = useSearchParams();
+	const fromParam = searchParams.get("from") ?? "";
+	const toParam = searchParams.get("to") ?? "";
+	const rawPage = parseInt(searchParams.get("page") ?? "1", 10);
+	const pageParam = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+
+	const updateParams = (updates: Record<string, string | null>) => {
+		const params = new URLSearchParams(window.location.search);
+		for (const [key, value] of Object.entries(updates)) {
+			if (value === null || value === "") params.delete(key);
+			else params.set(key, value);
+		}
+		const qs = params.toString();
+		// Never touch history when nothing changes: a replaceState fired while the
+		// router is restoring a back/forward navigation deadlocks Next's action
+		// queue (server actions hang, router.push stops committing).
+		if (qs === new URLSearchParams(window.location.search).toString()) return;
+		window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+	};
 
 	const handlePageChange = (page: number) => {
-		setCurrentPage(page);
-		const params = new URLSearchParams(window.location.search);
-		params.set("page", String(page));
-		window.history.replaceState(null, "", `?${params.toString()}`);
+		// The table echoes back the page we passed via paginationDefaultPage when it
+		// (re)mounts — e.g. right after back-navigation. Only persist real changes.
+		if (page === currentPage) return;
+		updateParams({ page: page === 1 ? null : String(page) });
 	};
+
+	// Changing the date filter resets pagination
+	const handleFromChange = (value: string) => updateParams({ from: value || null, page: null });
+	const handleToChange = (value: string) => updateParams({ to: value || null, page: null });
+	const clearDateFilter = () => updateParams({ from: null, to: null, page: null });
 
 	// Selections
 	const [selectedEmirate, setSelectedEmirate] = React.useState<string | null>(null);
@@ -84,7 +107,7 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 		});
 	}, [selectedEmirate]);
 
-	// Filter complaints using buildingName based on emirate selection
+	// Filter complaints using buildingName based on emirate selection, plus submission date range
 	const filteredData = React.useMemo(() => {
 		let out = data;
 		if (selectedEmirate) {
@@ -94,8 +117,25 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 		if (selectedBuilding) {
 			out = out.filter((row) => row.buildingName === selectedBuilding);
 		}
+		if (fromParam) {
+			const fromDate = new Date(`${fromParam}T00:00:00`);
+			if (!isNaN(fromDate.getTime())) {
+				out = out.filter((row) => row.createdAtISO && new Date(row.createdAtISO) >= fromDate);
+			}
+		}
+		if (toParam) {
+			const toDate = new Date(`${toParam}T23:59:59.999`);
+			if (!isNaN(toDate.getTime())) {
+				out = out.filter((row) => row.createdAtISO && new Date(row.createdAtISO) <= toDate);
+			}
+		}
 		return out;
-	}, [data, selectedEmirate, selectedBuilding, buildings]);
+	}, [data, selectedEmirate, selectedBuilding, buildings, fromParam, toParam]);
+
+	// Clamp the URL page to what actually exists for the current filters
+	const [perPage, setPerPage] = React.useState(10);
+	const totalPages = Math.max(1, Math.ceil(filteredData.length / perPage));
+	const currentPage = Math.min(pageParam, totalPages);
 
 	const columns = [
 		{ name: "ID", selector: (row: RowData) => row.id, sortable: true, grow: 0 },
@@ -250,6 +290,30 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 				</div>
 			)}
 
+			{/* Date range filter */}
+			<div className='rounded-md border p-3 space-y-2'>
+				<Label className='text-sm font-semibold'>Filter by Date</Label>
+				<div className='flex flex-wrap items-end gap-3'>
+					<div className='space-y-1'>
+						<Label htmlFor='date-from' className='text-xs text-gray-600'>
+							From
+						</Label>
+						<Input id='date-from' type='date' value={fromParam} max={toParam || undefined} onChange={(e) => handleFromChange(e.target.value)} className='w-fit' />
+					</div>
+					<div className='space-y-1'>
+						<Label htmlFor='date-to' className='text-xs text-gray-600'>
+							To
+						</Label>
+						<Input id='date-to' type='date' value={toParam} min={fromParam || undefined} onChange={(e) => handleToChange(e.target.value)} className='w-fit' />
+					</div>
+					{(fromParam || toParam) && (
+						<Button variant='outline' onClick={clearDateFilter}>
+							Clear
+						</Button>
+					)}
+				</div>
+			</div>
+
 			{/* Status summary */}
 			<div className='rounded-md border p-3 flex items-center justify-between'>
 				<div>
@@ -265,7 +329,7 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 			</div>
 
 			{/* Table */}
-			<DataTable columns={columns} data={filteredData} pagination paginationDefaultPage={currentPage} onChangePage={handlePageChange} sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />
+			<DataTable columns={columns} data={filteredData} pagination paginationDefaultPage={currentPage} onChangePage={handlePageChange} onChangeRowsPerPage={(n) => setPerPage(n)} sortIcon={<SortDescIcon />} striped highlightOnHover pointerOnHover onRowClicked={handleRowClick} />
 		</div>
 	);
 }

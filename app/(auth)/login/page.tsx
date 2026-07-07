@@ -18,7 +18,11 @@ async function page() {
 		// Reload the page after redirecting
 		redirect("/dashboard/admin");
 	}
-	redirect("/");
+	if ((session.user as any).role === "INVENTORY_MANAGER") {
+		redirect("/dashboard/inventory_manager");
+	}
+	// Session exists but role is unrecognized (e.g. stale token) — let the user log in again
+	return <LoginForm />;
 }
 
 export default page;

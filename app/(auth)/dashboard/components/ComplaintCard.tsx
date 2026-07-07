@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 // NEW: Signature canvas
 import SignatureCanvas from "react-signature-canvas";
+import { formatQty } from "@/lib/inventory-units";
 
 // Define the data type for a single complaint
 interface ComplaintData {
@@ -61,7 +62,7 @@ interface ComplaintData {
 		quantityUsed: number;
 		notes: string | null;
 		createdAt: string;
-		inventory: { itemName: string; itemCode: string | null; category: string | null };
+		inventory: { itemName: string; itemCode: string | null; category: string | null; unit: string };
 		employee: { fullName: string };
 	}[];
 }
@@ -465,7 +466,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 										<p className='text-xs text-gray-400 mt-0.5'>by {usage.employee.fullName} · {usage.createdAt}</p>
 									</div>
 									<span className='ml-4 shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800'>
-										×{usage.quantityUsed}
+										×{formatQty(usage.quantityUsed, usage.inventory.unit)}
 									</span>
 								</div>
 							))}

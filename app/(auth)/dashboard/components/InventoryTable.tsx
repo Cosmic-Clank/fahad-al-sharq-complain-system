@@ -16,6 +16,7 @@ async function InventoryTable({ role = "inventory_manager" }: { role?: string })
 		category: item.category || "-",
 		description: item.description || "-",
 		quantity: item.quantity,
+		unit: item.unit,
 		unitPrice: item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : "-",
 		supplier: item.supplier || "-",
 		location: item.location || "-",

@@ -9,6 +9,7 @@ import { approveInventoryRequest, rejectInventoryRequest } from "./inventory-req
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
+import { formatQty } from "@/lib/inventory-units";
 
 interface RequestApprovalCardProps {
 	request: any;
@@ -94,7 +95,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 						<p><span className='font-medium'>Item ID:</span> #{request.inventory.id}</p>
 						<p><span className='font-medium'>Category:</span> {request.inventory.category || "N/A"}</p>
 						<p><span className='font-medium'>Division:</span> {request.inventory.division === "DUBAI" ? "Dubai" : "Sharjah"}</p>
-						<p><span className='font-medium'>Available Qty:</span> <span className='font-semibold text-blue-600'>{request.inventory.quantity} units</span></p>
+						<p><span className='font-medium'>Available Qty:</span> <span className='font-semibold text-blue-600'>{formatQty(request.inventory.quantity, request.inventory.unit)}</span></p>
 					</div>
 				</div>
 
@@ -107,7 +108,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 					</div>
 					<div>
 						<p className='text-sm font-medium text-gray-600'>Quantity Requested</p>
-						<p className='mt-1 text-2xl font-bold text-primary'>{request.quantity} units</p>
+						<p className='mt-1 text-2xl font-bold text-primary'>{formatQty(request.quantity, request.inventory.unit)}</p>
 					</div>
 					<div>
 						<p className='text-sm font-medium text-gray-600'>Reason</p>

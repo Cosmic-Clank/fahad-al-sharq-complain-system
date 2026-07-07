@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package } from "lucide-react";
+import { formatQty } from "@/lib/inventory-units";
 
 async function page() {
 	const transactions = await prismaClient.inventoryTransaction.findMany({
@@ -16,6 +17,7 @@ async function page() {
 					id: true,
 					itemName: true,
 					itemCode: true,
+					unit: true,
 				},
 			},
 			employee: {
@@ -40,16 +42,17 @@ async function page() {
 		}
 	};
 
-	const getSignedQty = (type: string, qty: number) => {
+	const getSignedQty = (type: string, qty: number, unit?: string | null) => {
+		const formatted = formatQty(qty, unit);
 		if (type === "ADD") {
-			return `+${qty}`;
+			return `+${formatted}`;
 		}
 
 		if (type === "REMOVE" || type === "REQUEST") {
-			return `-${qty}`;
+			return `-${formatted}`;
 		}
 
-		return `${qty}`;
+		return formatted;
 	};
 
 	return (
@@ -91,7 +94,7 @@ async function page() {
 										<Badge variant={getTypeBadgeVariant(txn.transactionType)}>{txn.transactionType}</Badge>
 									</TableCell>
 									<TableCell className='font-medium'>
-										{getSignedQty(txn.transactionType, txn.quantity)}
+										{getSignedQty(txn.transactionType, txn.quantity, txn.inventory?.unit)}
 									</TableCell>
 									<TableCell>
 										{txn.employee ? (

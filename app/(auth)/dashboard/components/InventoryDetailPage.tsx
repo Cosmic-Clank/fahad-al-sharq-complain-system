@@ -38,6 +38,7 @@ async function InventoryDetailPage({ id, role = "inventory_manager" }: Inventory
 		category: item.category || "",
 		description: item.description || "",
 		quantity: item.quantity,
+		unit: item.unit,
 		unitPrice: item.unitPrice || null,
 		supplier: item.supplier || "",
 		location: item.location || "",

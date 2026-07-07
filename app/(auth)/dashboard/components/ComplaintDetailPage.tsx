@@ -80,7 +80,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 					notes: true,
 					createdAt: true,
 					inventory: {
-						select: { itemName: true, itemCode: true, category: true },
+						select: { itemName: true, itemCode: true, category: true, unit: true },
 					},
 					employee: {
 						select: { fullName: true },
@@ -180,6 +180,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 				itemName: u.inventory.itemName,
 				itemCode: u.inventory.itemCode,
 				category: u.inventory.category,
+				unit: u.inventory.unit,
 			},
 			employee: { fullName: u.employee.fullName },
 		})),

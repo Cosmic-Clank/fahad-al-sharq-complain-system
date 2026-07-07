@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { updateInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
+import { UNIT_OPTIONS, formatQty, qtyStep, unitLabel } from "@/lib/inventory-units";
 
 interface InventoryItemData {
 	id: string;
@@ -22,6 +23,7 @@ interface InventoryItemData {
 	category: string;
 	description: string;
 	quantity: number;
+	unit: string;
 	unitPrice: number | null;
 	supplier: string;
 	location: string;
@@ -56,6 +58,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		category: item.category,
 		description: item.description,
 		quantity: item.quantity,
+		unit: item.unit,
 		unitPrice: item.unitPrice || "",
 		supplier: item.supplier,
 		location: item.location,
@@ -73,6 +76,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		formData.append("category", editedItem.category);
 		formData.append("description", editedItem.description);
 		formData.append("quantity", String(editedItem.quantity));
+		formData.append("unit", editedItem.unit);
 		formData.append("unitPrice", editedItem.unitPrice ? String(editedItem.unitPrice) : "");
 		formData.append("supplier", editedItem.supplier);
 		formData.append("location", editedItem.location);
@@ -142,7 +146,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 								<Label className='text-gray-500 text-xs'>Quantity</Label>
 								<div className='flex items-center gap-2 mt-1'>
 									<Package size={18} className='text-blue-600' />
-									<span className='text-2xl font-semibold'>{item.quantity}</span>
+									<span className='text-2xl font-semibold'>{formatQty(item.quantity, item.unit)}</span>
 								</div>
 							</div>
 							{item.unitPrice && (
@@ -235,7 +239,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 									<div>
 										<p className='font-medium'>
 											{txn.transactionType === "ADD" ? "+" : txn.transactionType === "REMOVE" || txn.transactionType === "REQUEST" ? "-" : "±"}
-											{txn.quantity} units
+											{formatQty(txn.quantity, item.unit)}
 										</p>
 										{txn.notes && <p className='text-sm text-gray-500'>{txn.notes}</p>}
 									</div>
@@ -279,10 +283,28 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 						</div>
 
 						<div>
-							<Label htmlFor='quantity'>
-								Quantity <span className='text-red-500'>*</span>
+							<Label htmlFor='unit'>
+								Unit <span className='text-red-500'>*</span>
 							</Label>
-							<Input id='quantity' type='number' value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} disabled={isLoading} />
+							<Select value={editedItem.unit} onValueChange={(value) => setEditedItem({ ...editedItem, unit: value })} disabled={isLoading}>
+								<SelectTrigger>
+									<SelectValue placeholder='Select unit' />
+								</SelectTrigger>
+								<SelectContent>
+									{UNIT_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div>
+							<Label htmlFor='quantity'>
+								Quantity ({unitLabel(editedItem.unit)}) <span className='text-red-500'>*</span>
+							</Label>
+							<Input id='quantity' type='number' step={qtyStep(editedItem.unit)} value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} disabled={isLoading} />
 						</div>
 
 						<div>

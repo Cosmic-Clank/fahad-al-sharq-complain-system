@@ -4,6 +4,7 @@
 import prisma from "@/lib/prisma";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Buffer } from "node:buffer";
+import { formatQty } from "@/lib/inventory-units";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -342,7 +343,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					quantityUsed: true,
 					notes: true,
 					createdAt: true,
-					inventory: { select: { itemName: true, itemCode: true } },
+					inventory: { select: { itemName: true, itemCode: true, unit: true } },
 					employee: { select: { fullName: true } },
 				},
 				orderBy: { createdAt: "asc" },
@@ -764,7 +765,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		let currentY = H - 150;
 
 		// Inventory Items Used section
-		const invUsages = (c as any).inventoryUsages as Array<{ id: number; quantityUsed: number; notes: string | null; createdAt: Date; inventory: { itemName: string; itemCode: string | null }; employee: { fullName: string } }> | undefined;
+		const invUsages = (c as any).inventoryUsages as Array<{ id: number; quantityUsed: number; notes: string | null; createdAt: Date; inventory: { itemName: string; itemCode: string | null; unit?: string }; employee: { fullName: string } }> | undefined;
 		if (invUsages && invUsages.length > 0) {
 			const invPanelH = Math.max(60, invUsages.length * LH + 48);
 			page.drawRectangle({ x: M, y: currentY - invPanelH, width: W - 2 * M, height: invPanelH, color: panel, borderColor: panelBorder, borderWidth: 1 });
@@ -772,7 +773,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 			let iy = currentY - 36;
 			for (const usage of invUsages) {
 				const itemLabel = usage.inventory.itemCode ? `${usage.inventory.itemName} (${usage.inventory.itemCode})` : usage.inventory.itemName;
-				const usageLine = `• ${itemLabel}  ×${usage.quantityUsed}  — used by ${usage.employee.fullName}`;
+				const usageLine = `• ${itemLabel}  ×${formatQty(usage.quantityUsed, usage.inventory.unit)}  — used by ${usage.employee.fullName}`;
 				text(usageLine, M + 12, iy, 10);
 				iy -= LH;
 				if (usage.notes) {
@@ -1005,7 +1006,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 					quantityUsed: true,
 					notes: true,
 					createdAt: true,
-					inventory: { select: { itemName: true, itemCode: true } },
+					inventory: { select: { itemName: true, itemCode: true, unit: true } },
 					employee: { select: { fullName: true } },
 				},
 				orderBy: { createdAt: "asc" },
@@ -1424,7 +1425,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 		let iy = currentY - 36;
 		for (const usage of complaint.inventoryUsages) {
 			const itemLabel = usage.inventory.itemCode ? `${usage.inventory.itemName} (${usage.inventory.itemCode})` : usage.inventory.itemName;
-			const usageLine = `• ${itemLabel}  ×${usage.quantityUsed}  — used by ${usage.employee.fullName}`;
+			const usageLine = `• ${itemLabel}  ×${formatQty(usage.quantityUsed, usage.inventory.unit)}  — used by ${usage.employee.fullName}`;
 			text2(usageLine, M + 12, iy, 10);
 			iy -= LH;
 			if (usage.notes) {

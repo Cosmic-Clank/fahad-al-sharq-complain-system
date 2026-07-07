@@ -6,6 +6,7 @@ import { PackageOpen, Package } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatQty } from "@/lib/inventory-units";
 
 async function page() {
 	const session = await auth();
@@ -23,6 +24,7 @@ async function page() {
 					itemName: true,
 					itemCode: true,
 					category: true,
+					unit: true,
 					imageUrl: true,
 					division: true,
 				},
@@ -85,7 +87,7 @@ async function page() {
 							<div className="mt-auto pt-2 border-t border-gray-100 flex items-center justify-between">
 								<span className="text-xs text-gray-500">In stock</span>
 								<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-bold bg-green-100 text-green-800">
-									{item.quantity}
+									{formatQty(item.quantity, item.inventory.unit)}
 								</span>
 							</div>
 						</Card>

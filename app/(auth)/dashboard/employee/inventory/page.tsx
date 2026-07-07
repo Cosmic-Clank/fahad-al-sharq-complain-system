@@ -7,6 +7,7 @@ import { Plus, Package } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatQty } from "@/lib/inventory-units";
 
 async function page() {
 	const session = await auth();
@@ -91,7 +92,7 @@ async function page() {
 										</div>
 									</div>
 									<div className='space-y-1 text-sm ml-7'>
-										<p><span className='font-medium'>Quantity Requested:</span> {request.quantity} units</p>
+										<p><span className='font-medium'>Quantity Requested:</span> {formatQty(request.quantity, request.inventory.unit)}</p>
 										<p><span className='font-medium'>Reason:</span> {request.reason}</p>
 										{request.notes && (
 											<p><span className='font-medium'>Notes:</span> {request.notes}</p>

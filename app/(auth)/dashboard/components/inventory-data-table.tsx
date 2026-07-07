@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { formatQty } from "@/lib/inventory-units";
 
 type InventoryRowData = {
 	id: string;
@@ -14,6 +15,7 @@ type InventoryRowData = {
 	category: string;
 	description: string;
 	quantity: number;
+	unit: string;
 	unitPrice: string;
 	supplier: string;
 	location: string;
@@ -61,7 +63,7 @@ export default function CustomInventoryDataTable({ data, role = "inventory_manag
 			},
 			sortable: true,
 		},
-		{ name: "Quantity", selector: (row: InventoryRowData) => row.quantity, sortable: true },
+		{ name: "Quantity", selector: (row: InventoryRowData) => row.quantity, format: (row: InventoryRowData) => formatQty(row.quantity, row.unit), sortable: true },
 		{ name: "Unit Price", selector: (row: InventoryRowData) => row.unitPrice, sortable: true },
 		{ name: "Supplier", selector: (row: InventoryRowData) => row.supplier, sortable: true },
 		{ name: "Location", selector: (row: InventoryRowData) => row.location, sortable: true },

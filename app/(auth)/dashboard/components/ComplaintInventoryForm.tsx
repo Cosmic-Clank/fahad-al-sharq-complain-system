@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loading } from "@/components/ui/loading";
 import { toast } from "sonner";
 import { getEmployeeInventoryForComplaint, addComplaintInventoryUsage } from "./actions";
+import { allowsDecimals, formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
 
 type StockItem = {
 	id: number;
@@ -17,6 +18,7 @@ type StockItem = {
 		itemName: string;
 		itemCode: string | null;
 		category: string | null;
+		unit: string;
 		imageUrl: string | null;
 	};
 };
@@ -42,6 +44,8 @@ export default function ComplaintInventoryForm({ complaintId, employeeId }: Prop
 
 	const selectedItem = stock.find((s) => s.inventory.id === selectedInventoryId);
 	const maxQty = selectedItem?.quantity ?? 1;
+	const selectedUnit = selectedItem?.inventory.unit;
+	const minQty = allowsDecimals(selectedUnit) ? 0.01 : 1;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -49,8 +53,12 @@ export default function ComplaintInventoryForm({ complaintId, employeeId }: Prop
 			toast.error("Please select an item.");
 			return;
 		}
-		if (quantity < 1 || quantity > maxQty) {
-			toast.error(`Quantity must be between 1 and ${maxQty}.`);
+		if (quantity < minQty || quantity > maxQty) {
+			toast.error(`Quantity must be between ${minQty} and ${formatQty(maxQty, selectedUnit)}.`);
+			return;
+		}
+		if (!isValidQtyForUnit(quantity, selectedUnit)) {
+			toast.error("Quantity must be a whole number for items counted in pieces.");
 			return;
 		}
 		setIsLoading(true);
@@ -117,7 +125,7 @@ export default function ComplaintInventoryForm({ complaintId, employeeId }: Prop
 						>
 							<Package className="w-4 h-4 text-gray-400 shrink-0" />
 							<span className="truncate flex-1">{s.inventory.itemName}</span>
-							<span className="text-xs text-gray-500 shrink-0">({s.quantity} left)</span>
+							<span className="text-xs text-gray-500 shrink-0">({formatQty(s.quantity, s.inventory.unit)} left)</span>
 						</button>
 					))}
 				</div>
@@ -128,15 +136,16 @@ export default function ComplaintInventoryForm({ complaintId, employeeId }: Prop
 					{/* Quantity */}
 					<div className="space-y-1">
 						<Label htmlFor="inv-qty" className="text-xs font-medium text-gray-600">
-							Quantity Used (max {maxQty})
+							Quantity Used in {unitLabel(selectedUnit)} (max {formatQty(maxQty, selectedUnit)})
 						</Label>
 						<Input
 							id="inv-qty"
 							type="number"
-							min={1}
+							min={minQty}
 							max={maxQty}
+							step={qtyStep(selectedUnit)}
 							value={quantity}
-							onChange={(e) => setQuantity(Math.min(maxQty, Math.max(1, Number(e.target.value))))}
+							onChange={(e) => setQuantity(Math.min(maxQty, Math.max(minQty, Number(e.target.value))))}
 							className="w-32"
 						/>
 					</div>

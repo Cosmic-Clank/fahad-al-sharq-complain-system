@@ -14,18 +14,26 @@ import { useRouter } from "next/navigation";
 import { createInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UNIT_OPTIONS, isValidQtyForUnit, qtyStep } from "@/lib/inventory-units";
 
-const inventoryFormSchema = z.object({
-	itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
-	itemCode: z.string().optional(),
-	category: z.string().optional(),
-	description: z.string().optional(),
-	quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
-	unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
-	supplier: z.string().optional(),
-	location: z.string().optional(),
-	division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
-});
+const inventoryFormSchema = z
+	.object({
+		itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
+		itemCode: z.string().optional(),
+		category: z.string().optional(),
+		description: z.string().optional(),
+		quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
+		unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
+		unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
+		supplier: z.string().optional(),
+		location: z.string().optional(),
+		division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
+	})
+	.superRefine((data, ctx) => {
+		if (!isValidQtyForUnit(data.quantity, data.unit)) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Quantity must be a whole number for items counted in pieces" });
+		}
+	});
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
 
@@ -43,6 +51,7 @@ function AddInventoryForm() {
 			category: "",
 			description: "",
 			quantity: 0,
+			unit: "PIECES",
 			unitPrice: undefined,
 			supplier: "",
 			location: "",
@@ -84,6 +93,7 @@ function AddInventoryForm() {
 		formData.append("category", values.category || "");
 		formData.append("description", values.description || "");
 		formData.append("quantity", String(values.quantity));
+		formData.append("unit", values.unit);
 		formData.append("unitPrice", values.unitPrice ? String(values.unitPrice) : "");
 		formData.append("supplier", values.supplier || "");
 		formData.append("location", values.location || "");
@@ -177,6 +187,33 @@ function AddInventoryForm() {
 					)}
 				/>
 
+				{/* Unit */}
+				<FormField
+					control={form.control}
+					name='unit'
+					render={({ field }) => (
+						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+							<FormLabel>Unit <span className='text-red-500'>*</span></FormLabel>
+							<Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+								<FormControl>
+									<SelectTrigger>
+										<SelectValue placeholder='Select unit' />
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									{UNIT_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<p className='text-xs text-gray-500'>Items measured in meters (e.g. pipes) can use decimal quantities.</p>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
 				{/* Quantity */}
 				<FormField
 					control={form.control}
@@ -185,7 +222,7 @@ function AddInventoryForm() {
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Quantity <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
-								<Input type='number' placeholder='Enter quantity' {...field} disabled={isSubmitting} />
+								<Input type='number' step={qtyStep(form.watch("unit"))} placeholder='Enter quantity' {...field} disabled={isSubmitting} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
 
 const createInventoryRequestSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
@@ -36,11 +37,18 @@ export async function createInventoryRequest(formData: FormData, employeeId: num
 			};
 		}
 
+		if (!isValidQtyForUnit(validatedData.quantity, item.unit)) {
+			return {
+				success: false,
+				message: "Quantity must be a whole number for items counted in pieces.",
+			};
+		}
+
 		// Validate requested quantity
 		if (validatedData.quantity > item.quantity) {
 			return {
 				success: false,
-				message: `Insufficient inventory. Available: ${item.quantity} units, Requested: ${validatedData.quantity} units`,
+				message: `Insufficient inventory. Available: ${item.quantity} ${unitLabel(item.unit)}, Requested: ${validatedData.quantity} ${unitLabel(item.unit)}`,
 			};
 		}
 
@@ -131,6 +139,7 @@ export async function getAvailableInventoryItems() {
 				itemName: true,
 				itemCode: true,
 				quantity: true,
+				unit: true,
 				imageUrl: true,
 				unitPrice: true,
 			},

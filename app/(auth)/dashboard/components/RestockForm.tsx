@@ -16,6 +16,7 @@ import { ItemsCombobox } from "@/components/ItemsCombobox";
 import { Package, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import { formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
 
 const restockFormSchema = z.object({
 	itemId: z.string().min(1, "Please select an item"),
@@ -30,6 +31,7 @@ interface InventoryItem {
 	itemName: string;
 	itemCode: string | null;
 	quantity: number;
+	unit: string;
 	imageUrl: string | null;
 }
 
@@ -89,6 +91,11 @@ function RestockForm({ initialItemId }: RestockFormProps) {
 	};
 
 	const onSubmit = async (values: RestockFormValues) => {
+		if (selectedItem && !isValidQtyForUnit(values.quantityToAdd, selectedItem.unit)) {
+			setSubmitError("Quantity must be a whole number for items counted in pieces.");
+			return;
+		}
+
 		setIsSubmitting(true);
 		setSubmitError(null);
 		setSubmitSuccess(null);
@@ -206,7 +213,7 @@ function RestockForm({ initialItemId }: RestockFormProps) {
 								)}
 								<p className="flex items-center gap-2">
 									<span className="font-medium">Current Quantity:</span>
-									<Badge variant="secondary">{selectedItem.quantity} units</Badge>
+									<Badge variant="secondary">{formatQty(selectedItem.quantity, selectedItem.unit)}</Badge>
 								</p>
 							</div>
 						</div>
@@ -219,11 +226,12 @@ function RestockForm({ initialItemId }: RestockFormProps) {
 					name='quantityToAdd'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Quantity to Add <span className='text-red-500'>*</span></FormLabel>
+							<FormLabel>Quantity to Add{selectedItem ? ` (${unitLabel(selectedItem.unit)})` : ""} <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
 								<Input
 									type='number'
-									min="1"
+									min="0"
+									step={qtyStep(selectedItem?.unit)}
 									placeholder='Enter quantity to add'
 									{...field}
 									disabled={isSubmitting || !selectedItem}

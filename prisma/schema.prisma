@@ -115,13 +115,19 @@ model Buildings {
   emirate		String @default("dubai")
 }
 
+enum Unit {
+  PIECES
+  METERS
+}
+
 model Inventory {
   id                Int       @id @default(autoincrement())
   itemName          String
   itemCode          String?
   category          String?
   description       String?
-  quantity          Int
+  quantity          Float
+  unit              Unit      @default(PIECES)
   unitPrice         Float?
   supplier          String?
   location          String?
@@ -156,7 +162,7 @@ enum InventoryRequestStatus {
 model InventoryTransaction {
   id                Int               @id @default(autoincrement())
   inventoryId       Int
-  quantity          Int
+  quantity          Float
   transactionType   TransactionType
   notes             String?
   employeeId        Int?
@@ -171,7 +177,7 @@ model InventoryRequest {
   id                Int                        @id @default(autoincrement())
   inventoryId       Int
   employeeId        Int
-  quantity          Int
+  quantity          Float
   status            InventoryRequestStatus    @default(PENDING)
   reason            String?
   notes             String?
@@ -193,7 +199,7 @@ model EmployeeInventory {
   id          Int      @id @default(autoincrement())
   employeeId  Int
   inventoryId Int
-  quantity    Int
+  quantity    Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -208,7 +214,7 @@ model ComplaintInventoryUsage {
   complaintId  Int
   employeeId   Int
   inventoryId  Int
-  quantityUsed Int
+  quantityUsed Float
   notes        String?
   createdAt    DateTime @default(now())
 

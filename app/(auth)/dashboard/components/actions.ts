@@ -10,6 +10,7 @@ import fs from "fs/promises";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { isValidQtyForUnit } from "@/lib/inventory-units";
 
 // Define the type for the form data you expect
 interface ResponseFormData {
@@ -456,6 +457,7 @@ export async function getEmployeeInventoryForComplaint(employeeId: number) {
 						itemName: true,
 						itemCode: true,
 						category: true,
+						unit: true,
 						imageUrl: true,
 					},
 				},
@@ -477,10 +479,15 @@ export async function addComplaintInventoryUsage(complaintId: number, employeeId
 
 		const stock = await prismaClient.employeeInventory.findUnique({
 			where: { employeeId_inventoryId: { employeeId, inventoryId } },
+			include: { inventory: { select: { unit: true } } },
 		});
 
 		if (!stock) {
 			return { success: false, message: "You do not have this item in your inventory." };
+		}
+
+		if (!isValidQtyForUnit(quantityUsed, stock.inventory.unit)) {
+			return { success: false, message: "Quantity must be a whole number for items counted in pieces." };
 		}
 
 		if (stock.quantity < quantityUsed) {

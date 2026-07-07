@@ -6,18 +6,28 @@ import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { nanoid } from "nanoid";
 import path from "path";
 import { revalidatePath } from "next/cache";
+import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
 
-const serverInventoryFormSchema = z.object({
-	itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
-	itemCode: z.string().optional().or(z.literal("")),
-	category: z.string().optional().or(z.literal("")),
-	description: z.string().optional().or(z.literal("")),
-	quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
-	unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
-	supplier: z.string().optional().or(z.literal("")),
-	location: z.string().optional().or(z.literal("")),
-	division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
-});
+const pieceQuantityCheck = (data: { unit: string; quantity: number }, ctx: z.RefinementCtx) => {
+	if (!isValidQtyForUnit(data.quantity, data.unit)) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Quantity must be a whole number for items counted in pieces" });
+	}
+};
+
+const serverInventoryFormSchema = z
+	.object({
+		itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
+		itemCode: z.string().optional().or(z.literal("")),
+		category: z.string().optional().or(z.literal("")),
+		description: z.string().optional().or(z.literal("")),
+		quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
+		unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
+		unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
+		supplier: z.string().optional().or(z.literal("")),
+		location: z.string().optional().or(z.literal("")),
+		division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
+	})
+	.superRefine(pieceQuantityCheck);
 
 export async function createInventoryItem(formData: FormData) {
 	try {
@@ -28,6 +38,7 @@ export async function createInventoryItem(formData: FormData) {
 			category: formData.get("category"),
 			description: formData.get("description"),
 			quantity: formData.get("quantity"),
+			unit: formData.get("unit") ?? "PIECES",
 			unitPrice: formData.get("unitPrice"),
 			supplier: formData.get("supplier"),
 			location: formData.get("location"),
@@ -93,6 +104,7 @@ export async function createInventoryItem(formData: FormData) {
 				category: validatedData.category || null,
 				description: validatedData.description || null,
 				quantity: validatedData.quantity,
+				unit: validatedData.unit,
 				unitPrice: validatedData.unitPrice ? Number(validatedData.unitPrice) : null,
 				supplier: validatedData.supplier || null,
 				location: validatedData.location || null,
@@ -139,18 +151,21 @@ export async function createInventoryItem(formData: FormData) {
 	}
 }
 
-const serverInventoryUpdateSchema = z.object({
-	id: z.string({ required_error: "Item ID is required" }),
-	itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
-	itemCode: z.string().optional().or(z.literal("")),
-	category: z.string().optional().or(z.literal("")),
-	description: z.string().optional().or(z.literal("")),
-	quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
-	unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
-	supplier: z.string().optional().or(z.literal("")),
-	location: z.string().optional().or(z.literal("")),
-	division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
-});
+const serverInventoryUpdateSchema = z
+	.object({
+		id: z.string({ required_error: "Item ID is required" }),
+		itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
+		itemCode: z.string().optional().or(z.literal("")),
+		category: z.string().optional().or(z.literal("")),
+		description: z.string().optional().or(z.literal("")),
+		quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
+		unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
+		unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
+		supplier: z.string().optional().or(z.literal("")),
+		location: z.string().optional().or(z.literal("")),
+		division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
+	})
+	.superRefine(pieceQuantityCheck);
 
 export async function updateInventoryItem(formData: FormData) {
 	try {
@@ -162,6 +177,7 @@ export async function updateInventoryItem(formData: FormData) {
 			category: formData.get("category"),
 			description: formData.get("description"),
 			quantity: formData.get("quantity"),
+			unit: formData.get("unit") ?? "PIECES",
 			unitPrice: formData.get("unitPrice"),
 			supplier: formData.get("supplier"),
 			location: formData.get("location"),
@@ -196,6 +212,7 @@ export async function updateInventoryItem(formData: FormData) {
 				category: validatedData.category || null,
 				description: validatedData.description || null,
 				quantity: validatedData.quantity,
+				unit: validatedData.unit,
 				unitPrice: validatedData.unitPrice ? Number(validatedData.unitPrice) : null,
 				supplier: validatedData.supplier || null,
 				location: validatedData.location || null,
@@ -273,6 +290,13 @@ export async function restockInventoryItem(formData: FormData) {
 			};
 		}
 
+		if (!isValidQtyForUnit(validatedData.quantityToAdd, item.unit)) {
+			return {
+				success: false,
+				message: "Quantity must be a whole number for items counted in pieces.",
+			};
+		}
+
 		// Update quantity
 		const newQuantity = item.quantity + validatedData.quantityToAdd;
 
@@ -297,7 +321,7 @@ export async function restockInventoryItem(formData: FormData) {
 
 		return {
 			success: true,
-			message: `Successfully added ${validatedData.quantityToAdd} units. New quantity: ${newQuantity}`,
+			message: `Successfully added ${validatedData.quantityToAdd} ${unitLabel(item.unit)}. New quantity: ${newQuantity} ${unitLabel(item.unit)}`,
 		};
 	} catch (error) {
 		if (error instanceof z.ZodError) {
@@ -328,6 +352,7 @@ export async function getAllInventoryItems() {
 				itemName: true,
 				itemCode: true,
 				quantity: true,
+				unit: true,
 				imageUrl: true,
 			},
 			orderBy: {

@@ -12,6 +12,8 @@ import { Loading } from "@/components/ui/loading";
 import { BookUser, Plus, CheckCircle, XCircle, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { createHandover, setHandoverStatus, signHandoverStage } from "../actions";
+import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
+import { exportHandoverPdf } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 
 export interface HandoverRow {
 	id: number;
@@ -181,6 +183,7 @@ export default function HandoversSection({ userId, employeeName, handovers }: { 
 											<PenLine className='w-4 h-4 mr-1' /> Sign Return
 										</Button>
 									)}
+									{(h.hasHandoverSignatures || h.hasReturnSignatures) && <DownloadPdfButton getPdf={() => exportHandoverPdf(h.id)} label='Form PDF' />}
 								</div>
 							</div>
 						</Card>

@@ -2,6 +2,8 @@ import React from "react";
 import prismaClient from "@/lib/prisma";
 import { CalendarCheck } from "lucide-react";
 import AttendanceSheet, { type SheetRecords } from "./components/AttendanceSheet";
+import DownloadPdfButton from "../components/DownloadPdfButton";
+import { exportAttendanceSheetPdf } from "../hrReportActions";
 import { currentMonthDubai } from "@/lib/hr-dates";
 
 async function page({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
@@ -66,7 +68,9 @@ async function page({ searchParams }: { searchParams: Promise<{ month?: string }
 				<p className='text-gray-600 mt-1'>Record daily sign-ins for every employee. Status is computed from each employee&apos;s scheduled start time.</p>
 			</div>
 
-			<AttendanceSheet month={month} employees={employees} records={records} />
+			<AttendanceSheet month={month} employees={employees} records={records}>
+				<DownloadPdfButton getPdf={exportAttendanceSheetPdf.bind(null, month)} label='Export PDF' />
+			</AttendanceSheet>
 		</div>
 	);
 }

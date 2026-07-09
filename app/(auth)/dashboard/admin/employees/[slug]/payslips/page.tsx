@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, ChevronRight, Receipt, AlertTriangle } from "lucide-react";
 import { computePayslip } from "@/lib/hr-payroll";
 import { currentMonthDubai, shiftMonth, monthLabel } from "@/lib/hr-dates";
+import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
+import { exportPayslipPdf } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 
 async function page({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ month?: string }> }) {
 	const slug = (await params).slug;
@@ -49,6 +51,7 @@ async function page({ params, searchParams }: { params: Promise<{ slug: string }
 							<ChevronRight className='w-4 h-4' />
 						</Link>
 					</Button>
+					<DownloadPdfButton getPdf={exportPayslipPdf.bind(null, userId, month)} label='Payslip PDF' />
 				</div>
 			</div>
 

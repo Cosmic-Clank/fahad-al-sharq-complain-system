@@ -2,6 +2,8 @@ import React from "react";
 import prismaClient from "@/lib/prisma";
 import HrProfileForm from "./components/HrProfileForm";
 import LeaveSalaryCard from "./components/LeaveSalaryCard";
+import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
+import { exportClearancePdf } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 import { computeLeaveSalary } from "@/lib/hr-payroll";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
@@ -39,6 +41,9 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 		<div className='space-y-6'>
 			<HrProfileForm userId={userId} initial={initial} />
 			<LeaveSalaryCard result={leaveSalary} />
+			<div className='max-w-2xl flex justify-end'>
+				<DownloadPdfButton getPdf={exportClearancePdf.bind(null, userId)} label='Accounting Clearance Form (PDF)' />
+			</div>
 		</div>
 	);
 }

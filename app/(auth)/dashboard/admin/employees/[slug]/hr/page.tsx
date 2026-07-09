@@ -1,12 +1,29 @@
 import React from "react";
 import prismaClient from "@/lib/prisma";
 import HrProfileForm from "./components/HrProfileForm";
+import LeaveSalaryCard from "./components/LeaveSalaryCard";
+import { computeLeaveSalary } from "@/lib/hr-payroll";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
 	const userId = Number(slug);
 
-	const profile = await prismaClient.employeeProfile.findUnique({ where: { userId } });
+	const [profile, leavePenalties] = await Promise.all([
+		prismaClient.employeeProfile.findUnique({ where: { userId } }),
+		prismaClient.penalty.findMany({
+			where: { userId, type: "LEAVE_SALARY_DEDUCTION", amount: { not: null } },
+			select: { amount: true },
+		}),
+	]);
+
+	const leaveSalary = computeLeaveSalary(
+		{
+			basicSalary: profile?.basicSalary ?? 0,
+			joiningDate: profile?.joiningDate ?? null,
+			leaveSalaryOverride: profile?.leaveSalaryOverride ?? null,
+		},
+		leavePenalties.map((p) => p.amount!)
+	);
 
 	const initial = {
 		nationality: profile?.nationality ?? "",
@@ -21,6 +38,7 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	return (
 		<div className='space-y-6'>
 			<HrProfileForm userId={userId} initial={initial} />
+			<LeaveSalaryCard result={leaveSalary} />
 		</div>
 	);
 }

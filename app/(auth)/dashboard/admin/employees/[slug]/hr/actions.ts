@@ -18,7 +18,8 @@ const profileSchema = z.object({
 	basicSalary: z.coerce.number().min(0, "Basic salary cannot be negative"),
 	allowances: z.coerce.number().min(0, "Allowances cannot be negative"),
 	workStartTime: z.string().regex(/^\d{2}:\d{2}$/, "Work start time must be HH:mm"),
-	leaveSalaryOverride: z.coerce.number().min(0).optional().or(z.literal("")),
+	// preprocess: "" must become undefined (z.coerce.number turns "" into 0)
+	leaveSalaryOverride: z.preprocess((v) => (v === "" || v === null ? undefined : v), z.coerce.number().min(0).optional()),
 	passportHeldByCompany: z.enum(["true", "false"]),
 });
 
@@ -62,7 +63,7 @@ export async function upsertEmployeeProfile(formData: FormData) {
 		basicSalary: round2(d.basicSalary),
 		allowances: round2(d.allowances),
 		workStartTime: d.workStartTime,
-		leaveSalaryOverride: d.leaveSalaryOverride === "" ? null : round2(Number(d.leaveSalaryOverride)),
+		leaveSalaryOverride: d.leaveSalaryOverride === undefined ? null : round2(d.leaveSalaryOverride),
 		passportHeldByCompany: d.passportHeldByCompany === "true",
 	};
 

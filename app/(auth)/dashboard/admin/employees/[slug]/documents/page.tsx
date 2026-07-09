@@ -1,8 +1,26 @@
 import React from "react";
+import prismaClient from "@/lib/prisma";
+import DocumentsSection from "./components/DocumentsSection";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
-	return <div className='text-gray-500 text-sm p-4'>Coming soon. (employee #{slug})</div>;
+	const userId = Number(slug);
+
+	const documents = await prismaClient.employeeDocument.findMany({
+		where: { userId },
+		orderBy: [{ expiryDate: "asc" }, { createdAt: "desc" }],
+		select: {
+			id: true,
+			type: true,
+			title: true,
+			documentNumber: true,
+			fileUrl: true,
+			expiryDate: true,
+			notes: true,
+		},
+	});
+
+	return <DocumentsSection userId={userId} documents={documents} />;
 }
 
 export default page;

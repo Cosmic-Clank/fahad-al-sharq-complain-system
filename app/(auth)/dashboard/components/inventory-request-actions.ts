@@ -4,6 +4,7 @@ import { z } from "zod";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
+import { logActivity } from "@/lib/activity-log";
 
 const createInventoryRequestSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
@@ -65,6 +66,15 @@ export async function createInventoryRequest(formData: FormData, employeeId: num
 				inventory: true,
 				employee: true,
 			},
+		});
+
+		await logActivity({
+			actorId: empId,
+			targetUserId: empId,
+			action: "INVENTORY_REQUEST_CREATE",
+			entityType: "InventoryRequest",
+			entityId: request.id,
+			details: `${request.employee.fullName} requested ${validatedData.quantity} ${unitLabel(item.unit)} of "${item.itemName}"`,
 		});
 
 		// Revalidate relevant paths

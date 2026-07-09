@@ -6,7 +6,15 @@ import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { nanoid } from "nanoid";
 import path from "path";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
+import { logActivity } from "@/lib/activity-log";
+
+async function currentActor() {
+	const session = await auth();
+	const id = Number(session?.user?.id);
+	return Number.isFinite(id) ? { id, name: session?.user?.name ?? "Unknown" } : null;
+}
 
 const pieceQuantityCheck = (data: { unit: string; quantity: number }, ctx: z.RefinementCtx) => {
 	if (!isValidQtyForUnit(data.quantity, data.unit)) {
@@ -123,6 +131,15 @@ export async function createInventoryItem(formData: FormData) {
 			},
 		});
 
+		const actor = await currentActor();
+		await logActivity({
+			actorId: actor?.id,
+			action: "INVENTORY_CREATE",
+			entityType: "Inventory",
+			entityId: inventoryItem.id,
+			details: `${actor?.name ?? "Someone"} created inventory item "${validatedData.itemName}" (${validatedData.quantity} ${unitLabel(validatedData.unit)})`,
+		});
+
 		// Revalidate relevant paths
 		revalidatePath("/dashboard/inventory_manager");
 		revalidatePath("/dashboard/admin/inventory");
@@ -232,6 +249,15 @@ export async function updateInventoryItem(formData: FormData) {
 			});
 		}
 
+		const actor = await currentActor();
+		await logActivity({
+			actorId: actor?.id,
+			action: "INVENTORY_UPDATE",
+			entityType: "Inventory",
+			entityId: itemId,
+			details: `${actor?.name ?? "Someone"} updated inventory item "${validatedData.itemName}"${quantityDiff !== 0 ? ` (quantity ${quantityDiff > 0 ? "+" : ""}${quantityDiff})` : ""}`,
+		});
+
 		// Revalidate relevant paths
 		revalidatePath("/dashboard/inventory_manager");
 		revalidatePath("/dashboard/admin/inventory");
@@ -313,6 +339,15 @@ export async function restockInventoryItem(formData: FormData) {
 				transactionType: "ADD",
 				notes: validatedData.notes || "Restocked via restock form",
 			},
+		});
+
+		const actor = await currentActor();
+		await logActivity({
+			actorId: actor?.id,
+			action: "INVENTORY_RESTOCK",
+			entityType: "Inventory",
+			entityId: itemId,
+			details: `${actor?.name ?? "Someone"} restocked "${item.itemName}" by ${validatedData.quantityToAdd} ${unitLabel(item.unit)} (new total ${newQuantity})`,
 		});
 
 		// Revalidate paths

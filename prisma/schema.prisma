@@ -31,6 +31,15 @@ model User {
   approvedRequests InventoryRequest[] @relation("ApprovedRequests")
   employeeInventory EmployeeInventory[] @relation("EmployeeInventoryItems")
   inventoryUsages ComplaintInventoryUsage[] @relation("EmployeeInventoryUsages")
+  employeeProfile EmployeeProfile?
+  attendanceRecords AttendanceRecord[]
+  employeeDocuments EmployeeDocument[]
+  airlineTickets AirlineTicket[]
+  penalties Penalty[]
+  bonuses Bonus[]
+  passportHandovers PassportHandover[]
+  activityLogsAuthored ActivityLog[] @relation("ActivityLogsAuthored")
+  activityLogsAbout ActivityLog[] @relation("ActivityLogsAbout")
 }
 
 enum Role {
@@ -207,6 +216,188 @@ model EmployeeInventory {
   inventory Inventory @relation("EmployeeInventoryStock", fields: [inventoryId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, inventoryId])
+}
+
+// ───────────────────────── HR System ─────────────────────────
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum EarlyLeaveReason {
+  SICK
+  ADDITIONAL_WORK
+  OTHER
+}
+
+enum EmployeeDocumentType {
+  PASSPORT
+  VISA
+  EMIRATES_ID
+  JOB_CONTRACT
+  LABOUR_CARD
+  OTHER
+}
+
+enum PenaltyType {
+  SALARY_DEDUCTION
+  LEAVE_SALARY_DEDUCTION
+  TICKET_REMOVAL
+}
+
+enum PassportHandoverStatus {
+  REQUESTED
+  APPROVED
+  HANDED_OVER
+  RETURNED
+  REJECTED
+}
+
+model EmployeeProfile {
+  id                    Int       @id @default(autoincrement())
+  userId                Int       @unique
+  nationality           String?
+  joiningDate           DateTime?
+  basicSalary           Float     @default(0)
+  allowances            Float     @default(0)
+  workStartTime         String    @default("09:00") // "HH:mm"
+  leaveSalaryOverride   Float?
+  passportHeldByCompany Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AttendanceRecord {
+  id               Int               @id @default(autoincrement())
+  userId           Int
+  date             String // "YYYY-MM-DD" (Dubai local)
+  status           AttendanceStatus
+  statusOverridden Boolean           @default(false)
+  arriveTime       String? // "HH:mm"
+  lunchOutTime     String?
+  lunchInTime      String?
+  leaveTime        String?
+  earlyLeaveReason EarlyLeaveReason?
+  earlyLeaveNote   String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+}
+
+model EmployeeDocument {
+  id             Int                  @id @default(autoincrement())
+  userId         Int
+  type           EmployeeDocumentType
+  title          String? // required in UI when type == OTHER
+  documentNumber String?
+  fileUrl        String? // full public Supabase URL
+  expiryDate     String? // "YYYY-MM-DD", typed manually
+  notes          String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiryDate])
+}
+
+model AirlineTicket {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  year        Int
+  destination String
+  value       Float?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Penalty {
+  id             Int         @id @default(autoincrement())
+  userId         Int
+  type           PenaltyType
+  amount         Float? // null for TICKET_REMOVAL
+  details        String?
+  note           String?
+  decidedBy      String
+  date           DateTime    @default(now())
+  effectiveMonth String // "YYYY-MM" — which payslip it affects
+  isAutomatic    Boolean     @default(false)
+  autoKey        String?     @unique // idempotency key for automatic deductions
+  letterFileUrl  String? // uploaded joint-letter scan
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, effectiveMonth])
+}
+
+model Bonus {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  note      String?
+  month     String // "YYYY-MM" payslip it applies to
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, month])
+}
+
+model PassportHandover {
+  id                              Int                    @id @default(autoincrement())
+  userId                          Int
+  status                          PassportHandoverStatus @default(REQUESTED)
+  requestReason                   String?
+  requestedAt                     DateTime               @default(now())
+  approvedAt                      DateTime?
+  handedOverAt                    DateTime?
+  returnedAt                      DateTime?
+  handledByAdminName              String?
+  employeeSignatureHandoverBase64 String?
+  adminSignatureHandoverBase64    String?
+  employeeSignatureReturnBase64   String?
+  adminSignatureReturnBase64      String?
+  notes                           String?
+  createdAt                       DateTime               @default(now())
+  updatedAt                       DateTime               @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model ActivityLog {
+  id           Int      @id @default(autoincrement())
+  actorId      Int?
+  targetUserId Int?
+  action       String // e.g. "INVENTORY_RESTOCK", "ATTENDANCE_UPSERT"
+  entityType   String // e.g. "Inventory", "AttendanceRecord"
+  entityId     Int?
+  details      String? // human-readable, includes name snapshots
+  createdAt    DateTime @default(now())
+
+  actor  User? @relation("ActivityLogsAuthored", fields: [actorId], references: [id], onDelete: SetNull)
+  target User? @relation("ActivityLogsAbout", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([targetUserId, createdAt])
+  @@index([actorId, createdAt])
 }
 
 model ComplaintInventoryUsage {

@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Package, Banknote, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus, Globe } from "lucide-react";
+import { Pencil, Package, Banknote, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus, Globe, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { updateInventoryItem } from "./inventory-actions";
+import { updateInventoryItem, deleteInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
 import { UNIT_OPTIONS, formatQty, qtyStep, unitLabel } from "@/lib/inventory-units";
@@ -66,6 +68,23 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		division: item.division,
 	});
 
+	const handleDelete = async () => {
+		setIsLoading(true);
+		try {
+			const result = await deleteInventoryItem(Number(item.id));
+			if (result.success) {
+				toast.success(result.message);
+				router.push(inventoryBasePath(role));
+			} else {
+				toast.error(result.message);
+			}
+		} catch (err) {
+			toast.error("Something went wrong. Please try again.");
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	const handleEditSubmit = async () => {
 		setIsLoading(true);
 		setError(null);
@@ -116,6 +135,30 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 						<Pencil size={16} />
 						Edit Item
 					</Button>
+					{role === "admin" && (
+						<AlertDialog>
+							<AlertDialogTrigger asChild>
+								<Button variant='destructive' className='flex items-center gap-2' disabled={isLoading}>
+									<Trash2 size={16} />
+									Delete
+								</Button>
+							</AlertDialogTrigger>
+							<AlertDialogContent>
+								<AlertDialogHeader>
+									<AlertDialogTitle>Delete &quot;{item.itemName}&quot;?</AlertDialogTitle>
+									<AlertDialogDescription>
+										This permanently removes the item along with its transaction history, pending requests, employee stock records, and complaint usage logs. This cannot be undone.
+									</AlertDialogDescription>
+								</AlertDialogHeader>
+								<AlertDialogFooter>
+									<AlertDialogCancel>Cancel</AlertDialogCancel>
+									<AlertDialogAction onClick={handleDelete} className='bg-red-600 hover:bg-red-700' disabled={isLoading}>
+										{isLoading ? "Deleting..." : "Delete Item"}
+									</AlertDialogAction>
+								</AlertDialogFooter>
+							</AlertDialogContent>
+						</AlertDialog>
+					)}
 				</div>
 			</div>
 

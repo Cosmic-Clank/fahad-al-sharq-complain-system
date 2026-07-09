@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check, AlertCircle, Package, Plus, ArrowUpCircle, Users, List } from "lucide-react";
+import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check, AlertCircle, Package, Plus, ArrowUpCircle, Users, List, CalendarCheck, BellRing } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -97,6 +97,19 @@ const inventoryItems = [
 	},
 ];
 
+const hrItems = [
+	{
+		title: "Attendance",
+		url: "/dashboard/admin/hr/attendance",
+		icon: CalendarCheck,
+	},
+	{
+		title: "Document Alerts",
+		url: "/dashboard/admin/hr/alerts",
+		icon: BellRing,
+	},
+];
+
 export function AppSidebar() {
 	return (
 		<Sidebar variant='inset' collapsible='icon'>
@@ -135,6 +148,23 @@ export function AppSidebar() {
 					<SidebarGroupContent>
 						<SidebarMenu>
 							{privateComplaintItems.map((item) => (
+								<SidebarMenuItem key={item.title}>
+									<SidebarMenuButton asChild>
+										<a href={item.url}>
+											<item.icon />
+											<span>{item.title}</span>
+										</a>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel>HR</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{hrItems.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton asChild>
 										<a href={item.url}>

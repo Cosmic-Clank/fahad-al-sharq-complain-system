@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { AlertCircle, Book, Check, Cross, Home, LucideOctagon, Package, PackageOpen, Plus } from "lucide-react";
+import { AlertCircle, Book, BookUser, Check, Cross, Home, LucideOctagon, Package, PackageOpen, Plus } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -69,6 +69,11 @@ const inventoryItems = [
 		title: "New Request",
 		url: "/dashboard/employee/inventory/request",
 		icon: Plus,
+	},
+	{
+		title: "My Passport",
+		url: "/dashboard/employee/passport",
+		icon: BookUser,
 	},
 ];
 

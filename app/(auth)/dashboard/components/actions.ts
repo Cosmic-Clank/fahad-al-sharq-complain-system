@@ -11,6 +11,7 @@ import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { isValidQtyForUnit } from "@/lib/inventory-units";
+import { logActivity } from "@/lib/activity-log";
 
 // Define the type for the form data you expect
 interface ResponseFormData {
@@ -76,7 +77,7 @@ export async function addComplaintResponse(formData: FormData) {
 	try {
 		// 🚨 USER: Implement your database logic here 🚨
 		// Example: Assuming you have a 'ComplaintResponse' model linked to 'Complaint'
-		await prismaClient.complaintResponse.create({
+		const response = await prismaClient.complaintResponse.create({
 			data: {
 				complaintId: Number(complaintId),
 				response: responseText.trim(),
@@ -85,6 +86,14 @@ export async function addComplaintResponse(formData: FormData) {
 				// Add fields for who responded (e.g., userId from auth context)
 				// userId: 'your_user_id_here',
 			},
+		});
+
+		await logActivity({
+			actorId: Number(session.user.id),
+			action: "COMPLAINT_RESPONSE",
+			entityType: "Complaint",
+			entityId: Number(complaintId),
+			details: `${session.user.name ?? "User"} responded to complaint #${complaintId}`,
 		});
 
 		// Revalidate the current page to show the new response immediately
@@ -283,6 +292,14 @@ export async function deleteComplaint(complaintId: number) {
 		// Finally delete the complaint
 		await prismaClient.complaint.delete({
 			where: { id: complaintId },
+		});
+
+		await logActivity({
+			actorId: Number(session.user.id),
+			action: "COMPLAINT_DELETE",
+			entityType: "Complaint",
+			entityId: complaintId,
+			details: `${session.user.name ?? "Admin"} deleted complaint #${complaintId} (${complaint.customerName}, ${complaint.buildingName})`,
 		});
 
 		revalidatePath("/dashboard");
@@ -503,6 +520,14 @@ export async function addComplaintInventoryUsage(complaintId: number, employeeId
 				data: { quantity: { decrement: quantityUsed } },
 			}),
 		]);
+
+		await logActivity({
+			actorId: employeeId,
+			targetUserId: employeeId,
+			action: "INVENTORY_USAGE_LOG",
+			entityType: "ComplaintInventoryUsage",
+			details: `Logged ${quantityUsed} of inventory item #${inventoryId} used on complaint #${complaintId}`,
+		});
 
 		revalidatePath(`/dashboard/employee/complaint/${complaintId}`);
 		revalidatePath(`/dashboard/admin/complaint/${complaintId}`);

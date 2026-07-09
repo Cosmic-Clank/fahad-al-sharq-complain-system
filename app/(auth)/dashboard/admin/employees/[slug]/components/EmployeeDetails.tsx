@@ -1,9 +1,7 @@
 import prismaClient from "@/lib/prisma";
 import { format } from "date-fns";
-import { User, CalendarDays, Clock, AlertTriangle, CheckCircle, History, Badge as IdBadge } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import React from "react";
-import { Badge } from "@/components/ui/badge";
-import EmployeeEditDialog from "./EmployeeEditDialog";
 
 export default async function EmployeeDetails({ slug }: { slug: string }) {
 	const employeeId = Number(slug);
@@ -49,37 +47,7 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 	}
 
 	return (
-		<div className='w-full px-4 sm:px-6 lg:px-12 py-8 space-y-10'>
-			{/* Header Card */}
-			<div className='w-full bg-white/60 backdrop-blur-md rounded-xl border border-primary/20 shadow-sm p-4 sm:p-6 space-y-4'>
-				<div className='flex items-center justify-between flex-wrap gap-4'>
-					<h1 className='text-2xl sm:text-3xl font-semibold text-primary flex items-center gap-2'>
-						<User className='w-6 h-6 shrink-0' />
-						{employee.fullName}
-					</h1>
-					<EmployeeEditDialog employee={employee} />
-				</div>
-				<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-700'>
-					<div className='flex items-center gap-2 min-w-0'>
-						<IdBadge className='w-4 h-4 text-primary shrink-0' />
-						<span className='font-medium'>Username:</span> <span className='truncate'>{employee.username}</span>
-					</div>
-					<div className='flex items-center gap-2 min-w-0'>
-						<Badge variant='outline' className='uppercase text-xs bg-primary/10 text-primary'>
-							{employee.role}
-						</Badge>
-					</div>
-					<div className='flex items-center gap-2 min-w-0'>
-						<CalendarDays className='w-4 h-4 text-primary shrink-0' />
-						<span className='font-medium'>Joined:</span> {format(new Date(employee.createdAt), "PPP")}
-					</div>
-					<div className='flex items-center gap-2 min-w-0'>
-						<History className='w-4 h-4 text-primary shrink-0' />
-						<span className='font-medium'>Updated:</span> {format(new Date(employee.updatedAt), "PPP")}
-					</div>
-				</div>
-			</div>
-
+		<div className='w-full space-y-10'>
 			{/* Timeline */}
 			<div className='relative border-l-2 border-primary/30 pl-4 sm:pl-6 space-y-10'>
 				<h2 className='text-xl sm:text-2xl font-semibold text-primary flex items-center gap-2 mb-2'>

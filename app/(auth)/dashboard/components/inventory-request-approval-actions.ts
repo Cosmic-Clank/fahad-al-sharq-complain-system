@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logActivity } from "@/lib/activity-log";
 
 export async function getAllInventoryRequests(status?: string) {
 	try {
@@ -115,6 +116,15 @@ export async function approveInventoryRequest(requestId: number, approverId: num
 			},
 		});
 
+		await logActivity({
+			actorId: Number(approverId),
+			targetUserId: request.employeeId,
+			action: "INVENTORY_REQUEST_APPROVE",
+			entityType: "InventoryRequest",
+			entityId: requestId,
+			details: `${approver?.fullName ?? "Approver"} approved request #${requestId}: ${request.quantity} of "${request.inventory.itemName}" for ${request.employee.fullName}`,
+		});
+
 		revalidatePath("/dashboard/inventory_manager/employees/requests");
 		revalidatePath("/dashboard/admin/inventory/requests");
 		return updatedRequest;
@@ -152,6 +162,15 @@ export async function rejectInventoryRequest(requestId: number, approverId: numb
 				employee: true,
 				approver: true,
 			},
+		});
+
+		await logActivity({
+			actorId: Number(approverId),
+			targetUserId: updatedRequest.employeeId,
+			action: "INVENTORY_REQUEST_REJECT",
+			entityType: "InventoryRequest",
+			entityId: requestId,
+			details: `${updatedRequest.approver?.fullName ?? "Approver"} rejected request #${requestId} of ${updatedRequest.employee.fullName}${rejectionReason ? `: ${rejectionReason}` : ""}`,
 		});
 
 		revalidatePath("/dashboard/inventory_manager/employees/requests");

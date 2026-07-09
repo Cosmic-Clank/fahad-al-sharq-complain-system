@@ -378,6 +378,40 @@ export async function restockInventoryItem(formData: FormData) {
 	}
 }
 
+// Delete an inventory item (admin only). Related transactions, requests,
+// employee stock and complaint usages are removed by DB cascade.
+export async function deleteInventoryItem(itemId: number) {
+	const session = await auth();
+	if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+		return { success: false, message: "Only admins can delete inventory items." };
+	}
+
+	try {
+		const item = await prismaClient.inventory.findUnique({ where: { id: itemId } });
+		if (!item) {
+			return { success: false, message: "Item not found." };
+		}
+
+		await prismaClient.inventory.delete({ where: { id: itemId } });
+
+		await logActivity({
+			actorId: Number(session.user.id),
+			action: "INVENTORY_DELETE",
+			entityType: "Inventory",
+			entityId: itemId,
+			details: `${session.user.name ?? "Admin"} deleted inventory item "${item.itemName}" (had ${item.quantity} ${unitLabel(item.unit)})`,
+		});
+
+		revalidatePath("/dashboard/inventory_manager");
+		revalidatePath("/dashboard/admin/inventory");
+
+		return { success: true, message: `"${item.itemName}" deleted.` };
+	} catch (error) {
+		console.error("Error deleting inventory item:", error);
+		return { success: false, message: "Failed to delete item. Please try again." };
+	}
+}
+
 // Get all inventory items for dropdown
 export async function getAllInventoryItems() {
 	try {

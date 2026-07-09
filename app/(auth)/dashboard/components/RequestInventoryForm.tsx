@@ -216,7 +216,7 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 									<Badge variant="secondary">{formatQty(selectedItem.quantity, selectedItem.unit)}</Badge>
 								</p>
 								{selectedItem.unitPrice && (
-									<p><span className="font-medium">Unit Price:</span> ${selectedItem.unitPrice.toFixed(2)}</p>
+									<p><span className="font-medium">Unit Price:</span> AED {selectedItem.unitPrice.toFixed(2)}</p>
 								)}
 							</div>
 						</div>

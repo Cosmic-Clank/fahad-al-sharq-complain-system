@@ -17,6 +17,7 @@ import { Package, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
+import { inventoryBasePath } from "@/lib/inventory-paths";
 
 const restockFormSchema = z.object({
 	itemId: z.string().min(1, "Please select an item"),
@@ -37,9 +38,10 @@ interface InventoryItem {
 
 interface RestockFormProps {
 	initialItemId?: string;
+	role?: string;
 }
 
-function RestockForm({ initialItemId }: RestockFormProps) {
+function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -86,7 +88,7 @@ function RestockForm({ initialItemId }: RestockFormProps) {
 
 		// Update URL to reflect selected item
 		if (itemId) {
-			router.push(`/dashboard/inventory_manager/restock/${itemId}`);
+			router.push(`${inventoryBasePath(role)}/restock/${itemId}`);
 		}
 	};
 

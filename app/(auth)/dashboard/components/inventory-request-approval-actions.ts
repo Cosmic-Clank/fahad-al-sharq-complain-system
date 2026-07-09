@@ -116,6 +116,7 @@ export async function approveInventoryRequest(requestId: number, approverId: num
 		});
 
 		revalidatePath("/dashboard/inventory_manager/employees/requests");
+		revalidatePath("/dashboard/admin/inventory/requests");
 		return updatedRequest;
 	} catch (error) {
 		console.error("Error approving inventory request:", error);
@@ -154,6 +155,7 @@ export async function rejectInventoryRequest(requestId: number, approverId: numb
 		});
 
 		revalidatePath("/dashboard/inventory_manager/employees/requests");
+		revalidatePath("/dashboard/admin/inventory/requests");
 		return updatedRequest;
 	} catch (error) {
 		console.error("Error rejecting inventory request:", error);

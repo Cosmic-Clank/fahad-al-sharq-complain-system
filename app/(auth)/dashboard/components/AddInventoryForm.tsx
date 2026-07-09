@@ -15,6 +15,7 @@ import { createInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UNIT_OPTIONS, isValidQtyForUnit, qtyStep } from "@/lib/inventory-units";
+import { inventoryBasePath } from "@/lib/inventory-paths";
 
 const inventoryFormSchema = z
 	.object({
@@ -37,7 +38,7 @@ const inventoryFormSchema = z
 
 type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
 
-function AddInventoryForm() {
+function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 	const [images, setImages] = React.useState<File[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -107,7 +108,7 @@ function AddInventoryForm() {
 			const res = await createInventoryItem(formData);
 
 			if (res.success) {
-				router.push("/dashboard/inventory_manager");
+				router.push(inventoryBasePath(role));
 			} else {
 				setSubmitError(res.message || "Failed to create inventory item");
 			}

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { formatQty } from "@/lib/inventory-units";
+import { inventoryBasePath } from "@/lib/inventory-paths";
 
 type InventoryRowData = {
 	id: string;
@@ -29,12 +30,12 @@ export default function CustomInventoryDataTable({ data, role = "inventory_manag
 	const router = useRouter();
 
 	const handleRowClick = (row: InventoryRowData) => {
-		router.push(`/dashboard/${role}/item/${row.id}`);
+		router.push(`${inventoryBasePath(role)}/item/${row.id}`);
 	};
 
 	const handleRestockClick = (e: React.MouseEvent, itemId: string) => {
 		e.stopPropagation(); // Prevent row click
-		router.push(`/dashboard/${role}/restock/${itemId}`);
+		router.push(`${inventoryBasePath(role)}/restock/${itemId}`);
 	};
 
 	const columns = [

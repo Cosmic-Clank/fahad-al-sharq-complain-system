@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Package, DollarSign, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus, Globe } from "lucide-react";
+import { Pencil, Package, Banknote, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus, Globe } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
 import { UNIT_OPTIONS, formatQty, qtyStep, unitLabel } from "@/lib/inventory-units";
+import { inventoryBasePath } from "@/lib/inventory-paths";
 
 interface InventoryItemData {
 	id: string;
@@ -107,7 +108,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 					Back
 				</Button>
 				<div className='flex items-center gap-2'>
-					<Button variant='outline' onClick={() => router.push(`/dashboard/${role}/restock/${item.id}`)} className='flex items-center gap-2'>
+					<Button variant='outline' onClick={() => router.push(`${inventoryBasePath(role)}/restock/${item.id}`)} className='flex items-center gap-2'>
 						<Plus size={16} />
 						Restock
 					</Button>
@@ -153,8 +154,8 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 								<div>
 									<Label className='text-gray-500 text-xs'>Unit Price</Label>
 									<div className='flex items-center gap-2 mt-1'>
-										<DollarSign size={18} className='text-green-600' />
-										<span className='text-2xl font-semibold'>${item.unitPrice.toFixed(2)}</span>
+										<Banknote size={18} className='text-green-600' />
+										<span className='text-2xl font-semibold'>AED {item.unitPrice.toFixed(2)}</span>
 									</div>
 								</div>
 							)}

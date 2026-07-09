@@ -125,7 +125,7 @@ export async function createInventoryItem(formData: FormData) {
 
 		// Revalidate relevant paths
 		revalidatePath("/dashboard/inventory_manager");
-		revalidatePath("/dashboard/admin");
+		revalidatePath("/dashboard/admin/inventory");
 
 		return {
 			success: true,
@@ -234,7 +234,7 @@ export async function updateInventoryItem(formData: FormData) {
 
 		// Revalidate relevant paths
 		revalidatePath("/dashboard/inventory_manager");
-		revalidatePath("/dashboard/admin");
+		revalidatePath("/dashboard/admin/inventory");
 
 		return {
 			success: true,
@@ -317,7 +317,7 @@ export async function restockInventoryItem(formData: FormData) {
 
 		// Revalidate paths
 		revalidatePath("/dashboard/inventory_manager");
-		revalidatePath("/dashboard/admin");
+		revalidatePath("/dashboard/admin/inventory");
 
 		return {
 			success: true,

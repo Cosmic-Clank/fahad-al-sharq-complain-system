@@ -1,4 +1,5 @@
 import prismaClient from "@/lib/prisma";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { format } from "date-fns";
 import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import React from "react";
@@ -10,7 +11,7 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 		where: {
 			id: employeeId,
 			role: {
-				in: ["EMPLOYEE", "INVENTORY_MANAGER"],
+				in: HR_STAFF_ROLES,
 			},
 		},
 		select: {

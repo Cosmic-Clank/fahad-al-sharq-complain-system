@@ -46,6 +46,7 @@ enum Role {
   EMPLOYEE
   ADMIN
   INVENTORY_MANAGER
+  HR_MANAGER
 }
 
 enum ConvenientTime {

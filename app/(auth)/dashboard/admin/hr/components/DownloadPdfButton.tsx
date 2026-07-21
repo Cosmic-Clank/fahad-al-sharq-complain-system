@@ -26,7 +26,7 @@ export default function DownloadPdfButton({ getPdf, label = "Download PDF", size
 				return;
 			}
 			const byteArray = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
-			const blob = new Blob([byteArray], { type: "application/pdf" });
+			const blob = new Blob([byteArray], { type: result.mime ?? "application/pdf" });
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;

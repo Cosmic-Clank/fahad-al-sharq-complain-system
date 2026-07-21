@@ -49,9 +49,11 @@ const columns = [
 // Prop interface for CustomDataTable
 interface CustomDataTableProps {
 	data: RowData[];
+	basePath?: string; // where row clicks navigate
+	canManage?: boolean; // create/delete buttons (admin only)
 }
 
-function CustomDataTable({ data }: CustomDataTableProps) {
+function CustomDataTable({ data, basePath = "/dashboard/admin/employees", canManage = true }: CustomDataTableProps) {
 	const [selectedRows, setSelectedRows] = useState<RowData[]>([]);
 	const [isDeleting, setIsDeleting] = useState(false); // State for delete button loading
 	const [deleteMessage, setDeleteMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -98,14 +100,15 @@ function CustomDataTable({ data }: CustomDataTableProps) {
 				striped
 				highlightOnHover
 				pointerOnHover
-				selectableRows // Enable row selection
+				selectableRows={canManage} // Row selection only where deletion is allowed
 				onSelectedRowsChange={handleRowSelected}
 				className='rounded-lg overflow-hidden' // Apply some styling to the table container
-				onRowClicked={(row) => router.push(`/dashboard/admin/employees/${row.id}`)} // Navigate to employee details on row click
+				onRowClicked={(row) => router.push(`${basePath}/${row.id}`)} // Navigate to employee details on row click
 			/>
 
 			{deleteMessage && <div className={`mt-4 p-3 rounded-md text-sm ${deleteMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>{deleteMessage.text}</div>}
 
+			{canManage && (
 			<div className='flex flex-wrap justify-end p-4 gap-3'>
 				{" "}
 				{/* Adjust gap and add border-top */}
@@ -149,6 +152,7 @@ function CustomDataTable({ data }: CustomDataTableProps) {
 					</AlertDialogContent>
 				</AlertDialog>
 			</div>
+			)}
 		</div>
 	);
 }

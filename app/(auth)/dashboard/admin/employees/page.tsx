@@ -1,4 +1,5 @@
 import React from "react";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import CustomDataTable from "./components/data-table";
 import prismaClient from "@/lib/prisma";
 
@@ -12,7 +13,7 @@ async function page() {
 		},
 		where: {
 			role: {
-				in: ["EMPLOYEE", "INVENTORY_MANAGER"],
+				in: HR_STAFF_ROLES,
 			},
 		},
 	});

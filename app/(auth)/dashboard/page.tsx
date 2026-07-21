@@ -27,5 +27,8 @@ export default async function page() {
 	if (role === "INVENTORY_MANAGER") {
 		return redirect("/dashboard/inventory_manager");
 	}
+	if (role === "HR_MANAGER") {
+		return redirect("/dashboard/hr_manager");
+	}
 	return <NotAuthorized />;
 }

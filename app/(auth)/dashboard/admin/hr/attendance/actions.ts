@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -23,9 +24,9 @@ const attendanceSchema = z.object({
 	earlyLeaveNote: z.string().max(300).optional().or(z.literal("")),
 });
 
-async function requireAdmin() {
+async function requireHrAccess() {
 	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") return null;
+	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
 	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
 }
 
@@ -90,7 +91,7 @@ async function syncOtherDeductions(userId: number, month: string, employeeName: 
 }
 
 export async function upsertAttendanceDay(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can record attendance." };
 
 	const parsed = attendanceSchema.safeParse({
@@ -111,7 +112,7 @@ export async function upsertAttendanceDay(formData: FormData) {
 	const month = d.date.slice(0, 7);
 
 	const employee = await prismaClient.user.findUnique({
-		where: { id: d.userId, role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+		where: { id: d.userId, role: { in: HR_STAFF_ROLES } },
 		select: { id: true, fullName: true, employeeProfile: { select: { workStartTime: true } } },
 	});
 	if (!employee) return { success: false, message: "Employee not found." };
@@ -171,7 +172,7 @@ export async function upsertAttendanceDay(formData: FormData) {
 }
 
 export async function deleteAttendanceDay(userId: number, date: string) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can edit attendance." };
 	if (!YMD.test(date)) return { success: false, message: "Invalid date." };
 

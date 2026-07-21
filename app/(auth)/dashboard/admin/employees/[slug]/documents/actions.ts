@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import path from "path";
 import { nanoid } from "nanoid";
 import { auth } from "@/auth";
@@ -26,14 +27,14 @@ const documentSchema = z.object({
 	notes: z.string().max(500).optional().or(z.literal("")),
 });
 
-async function requireAdmin() {
+async function requireHrAccess() {
 	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") return null;
+	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
 	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
 }
 
 export async function saveEmployeeDocument(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can manage documents." };
 
 	const parsed = documentSchema.safeParse({
@@ -55,7 +56,7 @@ export async function saveEmployeeDocument(formData: FormData) {
 	}
 
 	const employee = await prismaClient.user.findUnique({
-		where: { id: d.userId, role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+		where: { id: d.userId, role: { in: HR_STAFF_ROLES } },
 		select: { id: true, fullName: true },
 	});
 	if (!employee) return { success: false, message: "Employee not found." };
@@ -119,7 +120,7 @@ export async function saveEmployeeDocument(formData: FormData) {
 }
 
 export async function deleteEmployeeDocument(documentId: number) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can delete documents." };
 
 	try {

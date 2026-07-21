@@ -1,9 +1,10 @@
 import React from "react";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import prismaClient from "@/lib/prisma";
 import { CalendarCheck } from "lucide-react";
 import AttendanceSheet, { type SheetRecords } from "./components/AttendanceSheet";
 import DownloadPdfButton from "../components/DownloadPdfButton";
-import { exportAttendanceSheetPdf } from "../hrReportActions";
+import { exportAttendanceSheetPdf, exportAttendanceSheetXlsx } from "../hrReportActions";
 import { currentMonthDubai } from "@/lib/hr-dates";
 
 async function page({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
@@ -12,7 +13,7 @@ async function page({ searchParams }: { searchParams: Promise<{ month?: string }
 
 	const [users, monthRecords] = await Promise.all([
 		prismaClient.user.findMany({
-			where: { role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+			where: { role: { in: HR_STAFF_ROLES } },
 			select: {
 				id: true,
 				fullName: true,
@@ -70,6 +71,7 @@ async function page({ searchParams }: { searchParams: Promise<{ month?: string }
 
 			<AttendanceSheet month={month} employees={employees} records={records}>
 				<DownloadPdfButton getPdf={exportAttendanceSheetPdf.bind(null, month)} label='Export PDF' />
+				<DownloadPdfButton getPdf={exportAttendanceSheetXlsx.bind(null, month)} label='Export Excel' />
 			</AttendanceSheet>
 		</div>
 	);

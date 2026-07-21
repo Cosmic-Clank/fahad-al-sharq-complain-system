@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Building2 } from "lucide-react";
-import { getUsageByBuilding, getUsageBuildingNames, exportUsageByBuildingXlsx, type UsageReportFilters } from "./inventory-report-actions";
+import { getUsageByBuilding, getUsageBuildingNames, exportUsageByBuildingXlsx, exportUsageByBuildingPdf, type UsageReportFilters } from "./inventory-report-actions";
 import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
 import { formatQty } from "@/lib/inventory-units";
 import { round2 } from "@/lib/hr-payroll";
@@ -66,7 +66,8 @@ export default async function UsageByBuildingReport({ filters }: { filters: Usag
 					<Button type='submit' size='sm'>
 						Apply
 					</Button>
-					<div className='ml-auto'>
+					<div className='ml-auto flex gap-2'>
+						<DownloadPdfButton getPdf={exportUsageByBuildingPdf.bind(null, filters)} label='Detailed PDF' />
 						<DownloadPdfButton getPdf={exportUsageByBuildingXlsx.bind(null, filters)} label='Export Excel' />
 					</div>
 				</form>

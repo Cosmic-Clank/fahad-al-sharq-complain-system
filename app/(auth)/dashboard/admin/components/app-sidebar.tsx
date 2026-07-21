@@ -81,6 +81,11 @@ const inventoryItems = [
 		icon: List,
 	},
 	{
+		title: "Usage by Building",
+		url: "/dashboard/admin/inventory/usage-report",
+		icon: Building,
+	},
+	{
 		title: "Restock",
 		url: "/dashboard/admin/inventory/restock/0",
 		icon: ArrowUpCircle,

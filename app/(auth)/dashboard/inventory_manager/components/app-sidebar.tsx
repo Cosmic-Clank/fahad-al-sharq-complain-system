@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, Package, Plus, ArrowUpCircle, CheckCircle, Users, List } from "lucide-react";
+import { Home, LogOut, Package, Plus, ArrowUpCircle, CheckCircle, Users, List, Building } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -13,6 +13,11 @@ const inventoryItems = [
 		title: "Transactions",
 		url: "/dashboard/inventory_manager/transactions",
 		icon: List,
+	},
+	{
+		title: "Usage by Building",
+		url: "/dashboard/inventory_manager/usage-report",
+		icon: Building,
 	},
 	{
 		title: "Restock",

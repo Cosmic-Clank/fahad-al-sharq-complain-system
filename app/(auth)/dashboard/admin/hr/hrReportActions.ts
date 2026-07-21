@@ -7,8 +7,9 @@ import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { daysInMonth, monthLabel, currentMonthDubai, todayYmdDubai } from "@/lib/hr-dates";
 import { computeLeaveSalary, computePayslip } from "@/lib/hr-payroll";
+import { buildAttendanceWorkbook, workbookToBase64, XLSX_MIME } from "@/lib/xlsx-reports";
 
-export type PdfResult = { success: true; fileName: string; base64: string } | { success: false; message: string };
+export type PdfResult = { success: true; fileName: string; base64: string; mime?: string } | { success: false; message: string };
 
 const A4W = 595.28;
 const A4H = 841.89;
@@ -44,6 +45,38 @@ function finish(doc: PDFDocument, fileName: string): Promise<PdfResult> {
 }
 
 // ─────────────────────────── 1. Attendance sheet ───────────────────────────
+
+/** Excel version of the monthly attendance sheet. */
+export async function exportAttendanceSheetXlsx(month: string): Promise<PdfResult> {
+	const actor = await requireHrAccess();
+	if (!actor) return { success: false, message: "Not authorized to export reports." };
+	if (!/^\d{4}-\d{2}$/.test(month)) return { success: false, message: "Invalid month." };
+
+	const [users, records] = await Promise.all([
+		prismaClient.user.findMany({
+			where: { role: { in: HR_STAFF_ROLES } },
+			select: { id: true, fullName: true },
+			orderBy: { fullName: "asc" },
+		}),
+		prismaClient.attendanceRecord.findMany({
+			where: { date: { startsWith: month } },
+			select: { userId: true, date: true, status: true, earlyLeaveReason: true },
+		}),
+	]);
+
+	const byUser = new Map<number, Record<string, { status: string; earlyLeave: boolean }>>();
+	for (const r of records) {
+		if (!byUser.has(r.userId)) byUser.set(r.userId, {});
+		byUser.get(r.userId)![r.date] = { status: r.status, earlyLeave: r.earlyLeaveReason !== null };
+	}
+
+	const wb = buildAttendanceWorkbook(
+		month,
+		users.map((u) => ({ fullName: u.fullName, records: byUser.get(u.id) ?? {} }))
+	);
+
+	return { success: true, fileName: `attendance-${month}.xlsx`, base64: await workbookToBase64(wb), mime: XLSX_MIME };
+}
 
 export async function exportAttendanceSheetPdf(month: string): Promise<PdfResult> {
 	const admin = await requireHrAccess();

@@ -17,9 +17,9 @@ const TABS = [
 	{ label: "Activity", segment: "activity" },
 ];
 
-export default function ProfileTabs({ employeeId }: { employeeId: number }) {
+export default function ProfileTabs({ employeeId, basePath = "/dashboard/admin/employees" }: { employeeId: number; basePath?: string }) {
 	const pathname = usePathname();
-	const base = `/dashboard/admin/employees/${employeeId}`;
+	const base = `${basePath}/${employeeId}`;
 
 	return (
 		<nav className='overflow-x-auto'>

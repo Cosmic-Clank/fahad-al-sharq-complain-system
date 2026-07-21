@@ -21,6 +21,9 @@ async function page() {
 	if ((session.user as any).role === "INVENTORY_MANAGER") {
 		redirect("/dashboard/inventory_manager");
 	}
+	if ((session.user as any).role === "HR_MANAGER") {
+		redirect("/dashboard/hr_manager");
+	}
 	// Session exists but role is unrecognized (e.g. stale token) — let the user log in again
 	return <LoginForm />;
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import path from "path";
 import { nanoid } from "nanoid";
 import { auth } from "@/auth";
@@ -31,14 +32,14 @@ const bonusSchema = z.object({
 	month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be YYYY-MM"),
 });
 
-async function requireAdmin() {
+async function requireHrAccess() {
 	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") return null;
+	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
 	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
 }
 
 export async function createPenalty(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can add penalties." };
 
 	const parsed = penaltySchema.safeParse({
@@ -58,7 +59,7 @@ export async function createPenalty(formData: FormData) {
 	}
 
 	const employee = await prismaClient.user.findUnique({
-		where: { id: d.userId, role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+		where: { id: d.userId, role: { in: HR_STAFF_ROLES } },
 		select: { fullName: true },
 	});
 	if (!employee) return { success: false, message: "Employee not found." };
@@ -116,7 +117,7 @@ export async function createPenalty(formData: FormData) {
 }
 
 export async function deletePenalty(penaltyId: number) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can delete penalties." };
 
 	try {
@@ -150,7 +151,7 @@ export async function deletePenalty(penaltyId: number) {
 }
 
 export async function createBonus(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can add bonuses." };
 
 	const parsed = bonusSchema.safeParse({
@@ -163,7 +164,7 @@ export async function createBonus(formData: FormData) {
 	const d = parsed.data;
 
 	const employee = await prismaClient.user.findUnique({
-		where: { id: d.userId, role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+		where: { id: d.userId, role: { in: HR_STAFF_ROLES } },
 		select: { fullName: true },
 	});
 	if (!employee) return { success: false, message: "Employee not found." };
@@ -192,7 +193,7 @@ export async function createBonus(formData: FormData) {
 }
 
 export async function deleteBonus(bonusId: number) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can delete bonuses." };
 
 	try {

@@ -1,6 +1,7 @@
 "use server";
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import { Buffer } from "node:buffer";
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
@@ -25,9 +26,9 @@ function toWinAnsi(s: string): string {
 	return s.replace(/[^\x20-\x7E]/g, "?");
 }
 
-async function requireAdmin() {
+async function requireHrAccess() {
 	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") return null;
+	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
 	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
 }
 
@@ -45,13 +46,13 @@ function finish(doc: PDFDocument, fileName: string): Promise<PdfResult> {
 // ─────────────────────────── 1. Attendance sheet ───────────────────────────
 
 export async function exportAttendanceSheetPdf(month: string): Promise<PdfResult> {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can export reports." };
 	if (!/^\d{4}-\d{2}$/.test(month)) return { success: false, message: "Invalid month." };
 
 	const [users, records] = await Promise.all([
 		prismaClient.user.findMany({
-			where: { role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+			where: { role: { in: HR_STAFF_ROLES } },
 			select: { id: true, fullName: true },
 			orderBy: { fullName: "asc" },
 		}),
@@ -111,7 +112,7 @@ export async function exportAttendanceSheetPdf(month: string): Promise<PdfResult
 // ─────────────────────────── 2. Payslip ───────────────────────────
 
 export async function exportPayslipPdf(userId: number, month: string): Promise<PdfResult> {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can export reports." };
 	if (!/^\d{4}-\d{2}$/.test(month)) return { success: false, message: "Invalid month." };
 
@@ -171,7 +172,7 @@ export async function exportPayslipPdf(userId: number, month: string): Promise<P
 // ─────────────────────────── 3. Accounting clearance form ───────────────────────────
 
 export async function exportClearancePdf(userId: number): Promise<PdfResult> {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can export reports." };
 
 	const [user, profile, penalties, bonuses] = await Promise.all([
@@ -244,7 +245,7 @@ export async function exportClearancePdf(userId: number): Promise<PdfResult> {
 // ─────────────────────────── 4. Passport handover form ───────────────────────────
 
 export async function exportHandoverPdf(handoverId: number): Promise<PdfResult> {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can export reports." };
 
 	const handover = await prismaClient.passportHandover.findUnique({

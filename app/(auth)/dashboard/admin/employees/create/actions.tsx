@@ -11,7 +11,7 @@ const serverEmployeeFormSchema = z.object({
 	fullName: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long." }).max(100, { message: "Full name must be at most 100 characters long." }),
 	username: z.string({ required_error: "username is required" }),
 	password: z.string({ required_error: "Password is required" }),
-	role: z.enum(["EMPLOYEE", "INVENTORY_MANAGER"], { required_error: "Role is required" }),
+	role: z.enum(["EMPLOYEE", "INVENTORY_MANAGER", "HR_MANAGER"], { required_error: "Role is required" }),
 	// .min(8, { message: "Password must be at least 8 characters long." })
 	// .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
 	// .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter." })

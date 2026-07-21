@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -17,14 +18,14 @@ const ticketSchema = z.object({
 	notes: z.string().max(500).optional().or(z.literal("")),
 });
 
-async function requireAdmin() {
+async function requireHrAccess() {
 	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") return null;
+	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
 	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
 }
 
 export async function saveAirlineTicket(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can manage tickets." };
 
 	const parsed = ticketSchema.safeParse({
@@ -39,7 +40,7 @@ export async function saveAirlineTicket(formData: FormData) {
 	const d = parsed.data;
 
 	const employee = await prismaClient.user.findUnique({
-		where: { id: d.userId, role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+		where: { id: d.userId, role: { in: HR_STAFF_ROLES } },
 		select: { fullName: true },
 	});
 	if (!employee) return { success: false, message: "Employee not found." };
@@ -81,7 +82,7 @@ export async function saveAirlineTicket(formData: FormData) {
 }
 
 export async function deleteAirlineTicket(ticketId: number) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can delete tickets." };
 
 	try {

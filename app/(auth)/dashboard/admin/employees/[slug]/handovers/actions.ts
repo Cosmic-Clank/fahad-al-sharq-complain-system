@@ -1,14 +1,15 @@
 "use server";
 
 import { z } from "zod";
+import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 
-async function requireAdmin() {
+async function requireHrAccess() {
 	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") return null;
+	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
 	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
 }
 
@@ -20,7 +21,7 @@ function revalidateHandovers(userId: number) {
 
 /** Admin creates a handover directly (pre-approved). */
 export async function createHandover(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can create handovers." };
 
 	const parsed = z
@@ -33,7 +34,7 @@ export async function createHandover(formData: FormData) {
 	const d = parsed.data;
 
 	const employee = await prismaClient.user.findUnique({
-		where: { id: d.userId, role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] } },
+		where: { id: d.userId, role: { in: HR_STAFF_ROLES } },
 		select: { fullName: true },
 	});
 	if (!employee) return { success: false, message: "Employee not found." };
@@ -70,7 +71,7 @@ export async function createHandover(formData: FormData) {
 }
 
 export async function setHandoverStatus(handoverId: number, status: "APPROVED" | "REJECTED") {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can update handovers." };
 
 	try {
@@ -116,7 +117,7 @@ const signSchema = z.object({
 
 /** Record signatures: HANDOVER stage gives the passport out, RETURN stage takes it back. */
 export async function signHandoverStage(formData: FormData) {
-	const admin = await requireAdmin();
+	const admin = await requireHrAccess();
 	if (!admin) return { success: false, message: "Only admins can record handovers." };
 
 	const parsed = signSchema.safeParse({

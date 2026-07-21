@@ -1,9 +1,15 @@
 "use server";
 import prismaClient from "@/lib/prisma";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 
 export async function deleteEmployees(employeeIds: string[]): Promise<{ success: boolean; message: string }> {
 	try {
+		const session = await auth();
+		if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+			return { success: false, message: "Only admins can delete employees." };
+		}
 		if (!employeeIds || employeeIds.length === 0) {
 			return { success: false, message: "No employee IDs provided for deletion." };
 		}
@@ -18,7 +24,7 @@ export async function deleteEmployees(employeeIds: string[]): Promise<{ success:
 			prismaClient.user.deleteMany({
 				where: {
 					id: { in: ids },
-					role: { in: ["EMPLOYEE", "INVENTORY_MANAGER"] },
+					role: { in: HR_STAFF_ROLES },
 				},
 			}),
 		]);

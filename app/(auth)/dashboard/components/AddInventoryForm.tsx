@@ -15,29 +15,14 @@ import { useRouter } from "next/navigation";
 import { createInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UNIT_OPTIONS, isValidQtyForUnit, qtyStep } from "@/lib/inventory-units";
+import { UNIT_OPTIONS, qtyStep } from "@/lib/inventory-units";
+import { inventoryItemSchema, INVENTORY_ITEM_MESSAGES } from "@/lib/inventory-item-schema";
 import { inventoryBasePath } from "@/lib/inventory-paths";
 
-const inventoryFormSchema = z
-	.object({
-		itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
-		itemCode: z.string().optional(),
-		category: z.string().optional(),
-		description: z.string().optional(),
-		quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
-		unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
-		unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
-		supplier: z.string().optional(),
-		location: z.string().optional(),
-		division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
-	})
-	.superRefine((data, ctx) => {
-		if (!isValidQtyForUnit(data.quantity, data.unit)) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Quantity must be a whole number for items counted in pieces" });
-		}
-	});
+// Every field is mandatory — rules shared with the server action
+const inventoryFormSchema = inventoryItemSchema;
 
-type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
+type InventoryFormValues = z.input<typeof inventoryFormSchema>;
 
 function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 	const [images, setImages] = React.useState<File[]>([]);
@@ -86,6 +71,10 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 	};
 
 	const onSubmit = async (values: InventoryFormValues) => {
+		if (images.length === 0) {
+			setSubmitError(translateMessage(INVENTORY_ITEM_MESSAGES.photoRequired));
+			return;
+		}
 		setIsSubmitting(true);
 		setSubmitError(null);
 
@@ -96,7 +85,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 		formData.append("description", values.description || "");
 		formData.append("quantity", String(values.quantity));
 		formData.append("unit", values.unit);
-		formData.append("unitPrice", values.unitPrice ? String(values.unitPrice) : "");
+		formData.append("unitPrice", values.unitPrice === undefined || values.unitPrice === null ? "" : String(values.unitPrice));
 		formData.append("supplier", values.supplier || "");
 		formData.append("location", values.location || "");
 		formData.append("division", values.division);
@@ -150,7 +139,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 					name='itemCode'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Item Code (Optional)</FormLabel>
+							<FormLabel>Item Code <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
 								<Input placeholder='e.g., SKU-001' {...field} disabled={isSubmitting} />
 							</FormControl>
@@ -165,7 +154,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 					name='category'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Category (Optional)</FormLabel>
+							<FormLabel>Category <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
 								<Input placeholder='e.g., Tools, Materials, Parts' {...field} disabled={isSubmitting} />
 							</FormControl>
@@ -180,7 +169,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 					name='description'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Description (Optional)</FormLabel>
+							<FormLabel>Description <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
 								<Textarea placeholder='Enter item description' {...field} disabled={isSubmitting} />
 							</FormControl>
@@ -237,9 +226,9 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 					name='unitPrice'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Unit Price (Optional)</FormLabel>
+							<FormLabel>Unit Price (AED) <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
-								<Input type='number' placeholder='Enter unit price' step='0.01' {...field} disabled={isSubmitting} />
+								<Input type='number' placeholder='Enter unit price' step='0.01' {...field} value={(field.value as string | number | undefined) ?? ""} disabled={isSubmitting} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -252,7 +241,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 					name='supplier'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Supplier (Optional)</FormLabel>
+							<FormLabel>Supplier <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
 								<Input placeholder='Enter supplier name' {...field} disabled={isSubmitting} />
 							</FormControl>
@@ -267,7 +256,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 					name='location'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Location (Optional)</FormLabel>
+							<FormLabel>Location <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
 								<Input placeholder='e.g., Warehouse A, Shelf 3' {...field} disabled={isSubmitting} />
 							</FormControl>
@@ -301,7 +290,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 
 				{/* Image Upload */}
 				<div className='p-6 bg-white rounded-sm border-l-4 border-gray-300'>
-					<Label className='block text-sm font-medium text-gray-700 mb-2'>Upload Image (Optional)</Label>
+					<Label className='block text-sm font-medium text-gray-700 mb-2'>Item Photo <span className='text-red-500'>*</span></Label>
 					<Input
 						accept='image/*'
 						type='file'

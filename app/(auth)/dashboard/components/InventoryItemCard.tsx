@@ -19,6 +19,7 @@ import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
 import { UNIT_OPTIONS, formatQty, qtyStep, unitLabel } from "@/lib/inventory-units";
 import { inventoryBasePath } from "@/lib/inventory-paths";
+import { inventoryItemSchema, INVENTORY_IMAGE_TYPES, INVENTORY_ITEM_MESSAGES, MAX_INVENTORY_IMAGE_BYTES } from "@/lib/inventory-item-schema";
 
 interface InventoryItemData {
 	id: string;
@@ -54,6 +55,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [newImage, setNewImage] = useState<File | null>(null);
 
 	// Edit form state
 	const [editedItem, setEditedItem] = useState({
@@ -86,7 +88,30 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		}
 	};
 
+	const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0] ?? null;
+		if (file && (!INVENTORY_IMAGE_TYPES.includes(file.type) || file.size > MAX_INVENTORY_IMAGE_BYTES)) {
+			setError(translateMessage("Invalid file. Max size is 5MB, supported types are JPEG, PNG."));
+			e.target.value = "";
+			setNewImage(null);
+			return;
+		}
+		setError(null);
+		setNewImage(file);
+	};
+
 	const handleEditSubmit = async () => {
+		// Every field is mandatory — same rules as the server, checked here first
+		const check = inventoryItemSchema.safeParse(editedItem);
+		if (!check.success) {
+			setError(translateMessage(check.error.errors[0].message));
+			return;
+		}
+		if (!item.imageUrl && !newImage) {
+			setError(translateMessage(INVENTORY_ITEM_MESSAGES.photoRequired));
+			return;
+		}
+
 		setIsLoading(true);
 		setError(null);
 
@@ -102,12 +127,14 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		formData.append("supplier", editedItem.supplier);
 		formData.append("location", editedItem.location);
 		formData.append("division", editedItem.division);
+		if (newImage) formData.append("images", newImage);
 
 		try {
 			const result = await updateInventoryItem(formData);
 
 			if (result.success) {
 				setIsEditDialogOpen(false);
+				setNewImage(null);
 				router.refresh(); // Refresh the page to show updated data
 			} else {
 				setError(translateMessage(result.message));
@@ -313,17 +340,23 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 						</div>
 
 						<div>
-							<Label htmlFor='itemCode'>Item Code (Optional)</Label>
+							<Label htmlFor='itemCode'>
+								Item Code <span className='text-red-500'>*</span>
+							</Label>
 							<Input id='itemCode' value={editedItem.itemCode} onChange={(e) => setEditedItem({ ...editedItem, itemCode: e.target.value })} disabled={isLoading} />
 						</div>
 
 						<div>
-							<Label htmlFor='category'>Category (Optional)</Label>
+							<Label htmlFor='category'>
+								Category <span className='text-red-500'>*</span>
+							</Label>
 							<Input id='category' value={editedItem.category} onChange={(e) => setEditedItem({ ...editedItem, category: e.target.value })} disabled={isLoading} />
 						</div>
 
 						<div>
-							<Label htmlFor='description'>Description (Optional)</Label>
+							<Label htmlFor='description'>
+								Description <span className='text-red-500'>*</span>
+							</Label>
 							<Textarea id='description' value={editedItem.description} onChange={(e) => setEditedItem({ ...editedItem, description: e.target.value })} disabled={isLoading} />
 						</div>
 
@@ -353,17 +386,23 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 						</div>
 
 						<div>
-							<Label htmlFor='unitPrice'>Unit Price (Optional)</Label>
+							<Label htmlFor='unitPrice'>
+								Unit Price (AED) <span className='text-red-500'>*</span>
+							</Label>
 							<Input id='unitPrice' type='number' step='0.01' value={editedItem.unitPrice} onChange={(e) => setEditedItem({ ...editedItem, unitPrice: e.target.value })} disabled={isLoading} />
 						</div>
 
 						<div>
-							<Label htmlFor='supplier'>Supplier (Optional)</Label>
+							<Label htmlFor='supplier'>
+								Supplier <span className='text-red-500'>*</span>
+							</Label>
 							<Input id='supplier' value={editedItem.supplier} onChange={(e) => setEditedItem({ ...editedItem, supplier: e.target.value })} disabled={isLoading} />
 						</div>
 
 						<div>
-							<Label htmlFor='location'>Location (Optional)</Label>
+							<Label htmlFor='location'>
+								Location <span className='text-red-500'>*</span>
+							</Label>
 							<Input id='location' value={editedItem.location} onChange={(e) => setEditedItem({ ...editedItem, location: e.target.value })} disabled={isLoading} />
 						</div>
 
@@ -378,6 +417,16 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 									<SelectItem value='SHARJAH'>Sharjah</SelectItem>
 								</SelectContent>
 							</Select>
+						</div>
+
+						<div>
+							<Label htmlFor='itemImage'>
+								Item Photo <span className='text-red-500'>*</span>
+							</Label>
+							<Input id='itemImage' type='file' accept='image/jpeg,image/png' onChange={handleImageChange} disabled={isLoading} />
+							<p className='text-xs text-gray-500 mt-1'>
+								{newImage ? `New photo: ${newImage.name}` : item.imageUrl ? "Leave empty to keep the current photo." : "This item has no photo yet — please add one."}
+							</p>
 						</div>
 
 						{error && <p className='text-red-500 text-sm bg-red-50 border border-red-200 rounded p-3'>{error}</p>}

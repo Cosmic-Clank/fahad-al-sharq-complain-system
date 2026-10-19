@@ -8,6 +8,7 @@ import path from "path";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
+import { inventoryItemFields, inventoryItemSchema, pieceQuantityCheck, INVENTORY_IMAGE_TYPES, INVENTORY_ITEM_MESSAGES, MAX_INVENTORY_IMAGE_BYTES } from "@/lib/inventory-item-schema";
 import { logActivity } from "@/lib/activity-log";
 
 async function currentActor() {
@@ -16,26 +17,32 @@ async function currentActor() {
 	return Number.isFinite(id) ? { id, name: session?.user?.name ?? "Unknown" } : null;
 }
 
-const pieceQuantityCheck = (data: { unit: string; quantity: number }, ctx: z.RefinementCtx) => {
-	if (!isValidQtyForUnit(data.quantity, data.unit)) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Quantity must be a whole number for items counted in pieces" });
+/** Uploads the item photo to the inventory-images bucket and returns its public URL. */
+async function uploadInventoryImage(file: File): Promise<{ url: string } | { error: string }> {
+	if (!INVENTORY_IMAGE_TYPES.includes(file.type) || file.size > MAX_INVENTORY_IMAGE_BYTES) {
+		return { error: `Invalid file. Max size is 5MB, supported types are JPEG, PNG.` };
 	}
-};
+	try {
+		const extension = path.extname(file.name) || ".jpg";
+		const uploadPath = path.posix.join("inventory-items", `${nanoid()}${extension}`);
+		const { data, error } = await supabaseAdminClient.storage.from("inventory-images").upload(uploadPath, file, { upsert: false });
+		if (error) {
+			console.error("Supabase upload error:", error);
+			return { error: `Failed to upload image. Please try again.` };
+		}
+		const BASE_URL = "https://koxptzqfmeasndsaecyo.supabase.co";
+		return { url: `${BASE_URL}/storage/v1/object/public/inventory-images/${data.path}` };
+	} catch (error) {
+		console.error("Error during image upload:", error);
+		return { error: `Failed to upload image. Please try again.` };
+	}
+}
 
-const serverInventoryFormSchema = z
-	.object({
-		itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
-		itemCode: z.string().optional().or(z.literal("")),
-		category: z.string().optional().or(z.literal("")),
-		description: z.string().optional().or(z.literal("")),
-		quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
-		unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
-		unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
-		supplier: z.string().optional().or(z.literal("")),
-		location: z.string().optional().or(z.literal("")),
-		division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
-	})
-	.superRefine(pieceQuantityCheck);
+/** The first non-empty file in the "images" field, if any. */
+function uploadedImage(formData: FormData): File | null {
+	const file = (formData.getAll("images") as File[]).find((f) => f && f.size > 0);
+	return file ?? null;
+}
 
 export async function createInventoryItem(formData: FormData) {
 	try {
@@ -54,68 +61,31 @@ export async function createInventoryItem(formData: FormData) {
 		};
 
 		// Validate data
-		const validatedData = serverInventoryFormSchema.parse(rawData);
+		const validatedData = inventoryItemSchema.parse(rawData);
 
-		// Handle image upload to Supabase
-		let imageUrl: string | null = null;
-		const files = formData.getAll("images") as File[];
-
-		if (files.length > 0) {
-			const file = files[0]; // Take only the first image
-
-			// Validate file
-			const maxSize = 5 * 1024 * 1024; // 5MB
-			const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-
-			if (!allowedTypes.includes(file.type) || file.size > maxSize) {
-				return {
-					success: false,
-					message: `Invalid file. Max size is 5MB, supported types are JPEG, PNG.`,
-				};
-			}
-
-			// Upload to Supabase
-			try {
-				const directoryName = `inventory-items`;
-				const extension = path.extname(file.name) || ".jpg";
-				const uniqueFileName = `${nanoid()}${extension}`;
-				const uploadPath = path.posix.join(directoryName, uniqueFileName);
-
-				// Check if bucket exists, if not the upload will fail but we handle it
-				const { data, error } = await supabaseAdminClient.storage.from("inventory-images").upload(uploadPath, file, { upsert: false });
-
-				if (error) {
-					console.error("Supabase upload error:", error);
-					return {
-						success: false,
-						message: `Failed to upload image. Please try again.`,
-					};
-				}
-
-				// Construct public URL for the uploaded image
-				const BASE_URL = "https://koxptzqfmeasndsaecyo.supabase.co";
-				imageUrl = `${BASE_URL}/storage/v1/object/public/inventory-images/${data.path}`;
-			} catch (error) {
-				console.error("Error during image upload:", error);
-				return {
-					success: false,
-					message: `Failed to upload image. Please try again.`,
-				};
-			}
+		// Photo is mandatory
+		const file = uploadedImage(formData);
+		if (!file) {
+			return { success: false, message: INVENTORY_ITEM_MESSAGES.photoRequired };
 		}
+		const upload = await uploadInventoryImage(file);
+		if ("error" in upload) {
+			return { success: false, message: upload.error };
+		}
+		const imageUrl = upload.url;
 
 		// Create inventory item in database
 		const inventoryItem = await prismaClient.inventory.create({
 			data: {
 				itemName: validatedData.itemName,
-				itemCode: validatedData.itemCode || null,
-				category: validatedData.category || null,
-				description: validatedData.description || null,
+				itemCode: validatedData.itemCode,
+				category: validatedData.category,
+				description: validatedData.description,
 				quantity: validatedData.quantity,
 				unit: validatedData.unit,
-				unitPrice: validatedData.unitPrice ? Number(validatedData.unitPrice) : null,
-				supplier: validatedData.supplier || null,
-				location: validatedData.location || null,
+				unitPrice: validatedData.unitPrice,
+				supplier: validatedData.supplier,
+				location: validatedData.location,
 				imageUrl: imageUrl,
 				division: validatedData.division,
 			},
@@ -169,19 +139,7 @@ export async function createInventoryItem(formData: FormData) {
 }
 
 const serverInventoryUpdateSchema = z
-	.object({
-		id: z.string({ required_error: "Item ID is required" }),
-		itemName: z.string({ required_error: "Item name is required" }).min(2, { message: "Item name must be at least 2 characters long" }).max(100, { message: "Item name must be at most 100 characters long" }),
-		itemCode: z.string().optional().or(z.literal("")),
-		category: z.string().optional().or(z.literal("")),
-		description: z.string().optional().or(z.literal("")),
-		quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
-		unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
-		unitPrice: z.coerce.number().positive().optional().or(z.literal("")),
-		supplier: z.string().optional().or(z.literal("")),
-		location: z.string().optional().or(z.literal("")),
-		division: z.enum(["DUBAI", "SHARJAH"], { required_error: "Division is required" }),
-	})
+	.object({ id: z.string({ required_error: "Item ID is required" }), ...inventoryItemFields })
 	.superRefine(pieceQuantityCheck);
 
 export async function updateInventoryItem(formData: FormData) {
@@ -217,6 +175,20 @@ export async function updateInventoryItem(formData: FormData) {
 			};
 		}
 
+		// Photo is mandatory: keep the existing one, or a new one must be uploaded
+		let imageUrl = currentItem.imageUrl;
+		const newImage = uploadedImage(formData);
+		if (newImage) {
+			const upload = await uploadInventoryImage(newImage);
+			if ("error" in upload) {
+				return { success: false, message: upload.error };
+			}
+			imageUrl = upload.url;
+		}
+		if (!imageUrl) {
+			return { success: false, message: INVENTORY_ITEM_MESSAGES.photoRequired };
+		}
+
 		// Calculate quantity difference
 		const quantityDiff = validatedData.quantity - currentItem.quantity;
 
@@ -225,14 +197,15 @@ export async function updateInventoryItem(formData: FormData) {
 			where: { id: itemId },
 			data: {
 				itemName: validatedData.itemName,
-				itemCode: validatedData.itemCode || null,
-				category: validatedData.category || null,
-				description: validatedData.description || null,
+				itemCode: validatedData.itemCode,
+				category: validatedData.category,
+				description: validatedData.description,
 				quantity: validatedData.quantity,
 				unit: validatedData.unit,
-				unitPrice: validatedData.unitPrice ? Number(validatedData.unitPrice) : null,
-				supplier: validatedData.supplier || null,
-				location: validatedData.location || null,
+				unitPrice: validatedData.unitPrice,
+				supplier: validatedData.supplier,
+				location: validatedData.location,
+				imageUrl,
 				division: validatedData.division,
 			},
 		});

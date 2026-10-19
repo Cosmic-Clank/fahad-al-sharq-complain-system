@@ -42,7 +42,8 @@ export default function DownloadPdfButton({ getPdf, label = "Download PDF", size
 	};
 
 	return (
-		<Button onClick={handleClick} size={size} variant={variant} disabled={isLoading}>
+		// type='button': this is often placed inside filter forms — a default "submit" would reload the page and abort the export
+		<Button type='button' onClick={handleClick} size={size} variant={variant} disabled={isLoading}>
 			{isLoading ? (
 				<>
 					<Loading />

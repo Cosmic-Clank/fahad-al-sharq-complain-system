@@ -113,7 +113,8 @@ const green = rgb(0.13, 0.55, 0.28);
 
 /** Helvetica is WinAnsi-only — replace unsupported (e.g. Arabic) characters. */
 function toWinAnsi(s: string): string {
-	return s.replace(/[^\x20-\x7E]/g, "?");
+	// Keep the dashes, middle dot and bullet used in this report — WinAnsi has them
+	return s.replace(/[^\x20-\x7E–—·•]/g, "?");
 }
 
 /**

@@ -309,11 +309,16 @@ export async function exportHandoverPdf(handoverId: number): Promise<PdfResult> 
 	if (handover.handledByAdminName) row("Handled by", handover.handledByAdminName);
 	if (handover.notes) row("Notes", handover.notes.slice(0, 70));
 
-	const drawSignature = async (title: string, dataUrl: string | null, x: number, yTop: number) => {
+	const drawSignature = async (title: string, dataUrl: string | null, x: number, yTop: number, dateLabel?: string) => {
 		const boxW = (A4W - 2 * M - 20) / 2;
 		const boxH = 90;
 		page.drawRectangle({ x, y: yTop - boxH, width: boxW, height: boxH, borderColor: line, borderWidth: 1 });
 		page.drawText(title, { x: x + 8, y: yTop - 16, size: 8.5, font: fontBold, color: subt });
+		if (dateLabel) {
+			// Top-right corner, clear of the signature image (which stays below yTop - 22)
+			const w = font.widthOfTextAtSize(dateLabel, 8.5);
+			page.drawText(dateLabel, { x: x + boxW - 8 - w, y: yTop - 16, size: 8.5, font, color: ink });
+		}
 		if (dataUrl) {
 			try {
 				let b64 = dataUrl;
@@ -338,8 +343,10 @@ export async function exportHandoverPdf(handoverId: number): Promise<PdfResult> 
 
 	page.drawText("Return signatures (passport back in company custody)", { x: M, y, size: 10.5, font: fontBold, color: ink });
 	y -= 10;
-	await drawSignature("Employee", handover.employeeSignatureReturnBase64, M, y);
-	await drawSignature("Admin", handover.adminSignatureReturnBase64, M + (A4W - 2 * M - 20) / 2 + 20, y);
+	// Blank line when not yet returned so it can be filled in by hand on a printed copy
+	const returnDate = `Return date: ${handover.returnedAt ? todayYmdDubai(handover.returnedAt) : "____________"}`;
+	await drawSignature("Employee", handover.employeeSignatureReturnBase64, M, y, returnDate);
+	await drawSignature("Admin", handover.adminSignatureReturnBase64, M + (A4W - 2 * M - 20) / 2 + 20, y, returnDate);
 
 	return finish(doc, `passport-handover-${handover.id}-${handover.user.username}.pdf`);
 }

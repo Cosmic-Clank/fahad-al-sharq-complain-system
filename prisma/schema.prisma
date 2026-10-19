@@ -192,6 +192,9 @@ model InventoryRequest {
   status            InventoryRequestStatus    @default(PENDING)
   reason            String?
   notes             String?
+  buildingName      String? // official building the items are for; "" = technician stock; null = older row (building parsed from reason)
+  location          String? // flat / room within the building
+  technicianName    String? // who the items are for, when requested by the storekeeper
   approvedBy        Int?
   approvedAt        DateTime?
   createdAt         DateTime                  @default(now())

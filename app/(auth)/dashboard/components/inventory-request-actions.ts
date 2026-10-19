@@ -5,11 +5,15 @@ import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
 import { logActivity } from "@/lib/activity-log";
+import { STOCK_VALUE } from "@/lib/inventory-request-building";
 
 const createInventoryRequestSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
 	quantity: z.coerce.number().positive("Quantity must be greater than 0"),
-	reason: z.string().min(2, "Reason must be at least 2 characters").max(500),
+	buildingName: z.string().min(1, "Please select a building (or Stock)"),
+	location: z.string().max(100).optional().or(z.literal("")),
+	technicianName: z.string().max(100).optional().or(z.literal("")),
+	reason: z.string().max(500).optional().or(z.literal("")),
 	notes: z.string().optional().or(z.literal("")),
 });
 
@@ -18,13 +22,25 @@ export async function createInventoryRequest(formData: FormData, employeeId: num
 		const rawData = {
 			inventoryId: formData.get("inventoryId"),
 			quantity: formData.get("quantity"),
-			reason: formData.get("reason"),
+			buildingName: formData.get("buildingName") ?? "",
+			location: formData.get("location") ?? "",
+			technicianName: formData.get("technicianName") ?? "",
+			reason: formData.get("reason") ?? "",
 			notes: formData.get("notes"),
 		};
 
 		const validatedData = createInventoryRequestSchema.parse(rawData);
 		const itemId = Number(validatedData.inventoryId);
 		const empId = Number(employeeId); // Ensure employeeId is a number
+
+		// Building must be an official one, or the stock option ("" is stored for stock)
+		const isStock = validatedData.buildingName === STOCK_VALUE;
+		if (!isStock) {
+			const building = await prismaClient.buildings.findFirst({ where: { buildingName: validatedData.buildingName }, select: { id: true } });
+			if (!building) {
+				return { success: false, message: "Please select a building (or Stock)" };
+			}
+		}
 
 		// Get the inventory item
 		const item = await prismaClient.inventory.findUnique({
@@ -59,8 +75,11 @@ export async function createInventoryRequest(formData: FormData, employeeId: num
 				inventoryId: itemId,
 				employeeId: empId,
 				quantity: validatedData.quantity,
-				reason: validatedData.reason,
+				reason: validatedData.reason || null,
 				notes: validatedData.notes || null,
+				buildingName: isStock ? "" : validatedData.buildingName,
+				location: validatedData.location?.trim() || null,
+				technicianName: validatedData.technicianName?.trim() || null,
 			},
 			include: {
 				inventory: true,

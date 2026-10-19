@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { createInventoryRequest, getAvailableInventoryItems } from "./inventory-request-actions";
 import { Loading } from "@/components/ui/loading";
 import { ItemsCombobox } from "@/components/ItemsCombobox";
+import { BuildingsCombobox } from "@/components/BuildingsCombobox";
+import { STOCK_LABEL, STOCK_VALUE } from "@/lib/inventory-request-building";
 import { Package, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
@@ -21,7 +23,10 @@ import { formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventor
 const requestFormSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
 	quantity: z.coerce.number().positive("Quantity must be greater than 0"),
-	reason: z.string().min(2, "Reason must be at least 2 characters").max(500),
+	buildingName: z.string().min(1, "Please select a building (or Stock)"),
+	location: z.string().max(100).optional(),
+	technicianName: z.string().max(100).optional(),
+	reason: z.string().max(500).optional(),
 	notes: z.string().optional(),
 });
 
@@ -39,9 +44,11 @@ interface InventoryItem {
 
 interface RequestInventoryFormProps {
 	employeeId: number;
+	/** Official building names for the Building dropdown. */
+	buildings: string[];
 }
 
-function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
+function RequestInventoryForm({ employeeId, buildings }: RequestInventoryFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -55,6 +62,9 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 		defaultValues: {
 			inventoryId: "",
 			quantity: 1,
+			buildingName: "",
+			location: "",
+			technicianName: "",
 			reason: "",
 			notes: "",
 		},
@@ -113,7 +123,10 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 		const formData = new FormData();
 		formData.append("inventoryId", values.inventoryId);
 		formData.append("quantity", String(values.quantity));
-		formData.append("reason", values.reason);
+		formData.append("buildingName", values.buildingName);
+		formData.append("location", values.location || "");
+		formData.append("technicianName", values.technicianName || "");
+		formData.append("reason", values.reason || "");
 		formData.append("notes", values.notes || "");
 
 		try {
@@ -146,6 +159,8 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 			</div>
 		);
 	}
+
+	const buildingOptions = [...buildings.map((name) => ({ value: name, label: name })), { value: STOCK_VALUE, label: STOCK_LABEL }];
 
 	const itemOptions = inventoryItems.map((item) => ({
 		value: String(item.id),
@@ -253,13 +268,60 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 					)}
 				/>
 
+				{/* Building — drives the Usage by Building report */}
+				<FormField
+					control={form.control}
+					name='buildingName'
+					render={({ field }) => (
+						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+							<FormLabel>
+								Building <span className='text-red-500'>*</span>
+							</FormLabel>
+							<FormControl>
+								<BuildingsCombobox options={buildingOptions} value={field.value} onChange={field.onChange} placeholder='Select the building these items are for...' />
+							</FormControl>
+							<p className='text-xs text-gray-500 mt-1'>Choose &quot;{STOCK_LABEL}&quot; when the items go to a technician&apos;s stock rather than a specific building.</p>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<div className='grid gap-3 sm:grid-cols-2'>
+					<FormField
+						control={form.control}
+						name='location'
+						render={({ field }) => (
+							<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+								<FormLabel>Flat / Room (Optional)</FormLabel>
+								<FormControl>
+									<Input placeholder='e.g. 210, PUMP ROOM' {...field} disabled={isSubmitting} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+					<FormField
+						control={form.control}
+						name='technicianName'
+						render={({ field }) => (
+							<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+								<FormLabel>Technician (Optional)</FormLabel>
+								<FormControl>
+									<Input placeholder='Who the items are for' {...field} disabled={isSubmitting} />
+								</FormControl>
+								<FormMessage />
+							</FormItem>
+						)}
+					/>
+				</div>
+
 				{/* Reason */}
 				<FormField
 					control={form.control}
 					name='reason'
 					render={({ field }) => (
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
-							<FormLabel>Reason for Request <span className='text-red-500'>*</span></FormLabel>
+							<FormLabel>Reason / Details (Optional)</FormLabel>
 							<FormControl>
 								<Textarea
 									placeholder='Explain why you need this item...'
@@ -269,7 +331,7 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 								/>
 							</FormControl>
 							<p className='text-xs text-gray-500 mt-1'>
-								{field.value.length}/500 characters
+								{(field.value ?? "").length}/500 characters
 							</p>
 							<FormMessage />
 						</FormItem>

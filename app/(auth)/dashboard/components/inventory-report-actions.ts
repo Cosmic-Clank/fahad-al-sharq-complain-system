@@ -9,6 +9,7 @@ import { formatQty } from "@/lib/inventory-units";
 import { round2 } from "@/lib/hr-payroll";
 import { todayYmdDubai } from "@/lib/hr-dates";
 import type { PdfResult } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
+import { makeBuildingResolver, STOCK_LABEL } from "@/lib/inventory-request-building";
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -25,64 +26,146 @@ async function requireInventoryAccess() {
 	return { id: Number(session.user.id), role };
 }
 
-/** Aggregate complaint inventory usages into per-building, per-item rows. */
+interface UsageEntry {
+	date: Date;
+	building: string; // STOCK_LABEL when not tied to a building
+	location: string | null;
+	quantity: number;
+	inventory: { id: number; itemName: string; itemCode: string | null; category: string | null; unit: string; unitPrice: number | null };
+	/** "request" = issued from the store for this building; "complaint" = logged on a complaint job. */
+	source: "request" | "complaint";
+	by: string;
+	technician: string | null;
+	complaint: { id: number; apartmentNumber: string; customerName: string } | null;
+	notes: string | null;
+}
+
+const INVENTORY_SELECT = { id: true, itemName: true, itemCode: true, category: true, unit: true, unitPrice: true } as const;
+
+/** Stock always sorts after real buildings. */
+function compareBuildings(a: string, b: string): number {
+	if (a === STOCK_LABEL || b === STOCK_LABEL) return a === b ? 0 : a === STOCK_LABEL ? 1 : -1;
+	return a.localeCompare(b);
+}
+
+/**
+ * Every inventory movement tied to a building: approved store requests (how the
+ * storekeeper actually issues materials) plus items logged on complaint jobs.
+ * Callers must check access.
+ */
+async function loadUsageEntries(filters: UsageReportFilters): Promise<UsageEntry[]> {
+	const from = filters.from && YMD.test(filters.from) ? new Date(`${filters.from}T00:00:00`) : null;
+	const to = filters.to && YMD.test(filters.to) ? new Date(`${filters.to}T23:59:59.999`) : null;
+	const inRange = (d: Date) => (!from || d >= from) && (!to || d <= to);
+
+	const [usages, requests, buildings] = await Promise.all([
+		prismaClient.complaintInventoryUsage.findMany({
+			select: {
+				quantityUsed: true,
+				notes: true,
+				createdAt: true,
+				employee: { select: { fullName: true } },
+				complaint: { select: { id: true, buildingName: true, apartmentNumber: true, customerName: true } },
+				inventory: { select: INVENTORY_SELECT },
+			},
+		}),
+		prismaClient.inventoryRequest.findMany({
+			where: { status: "APPROVED" },
+			select: {
+				quantity: true,
+				reason: true,
+				notes: true,
+				buildingName: true,
+				location: true,
+				technicianName: true,
+				createdAt: true,
+				approvedAt: true,
+				employee: { select: { fullName: true } },
+				inventory: { select: INVENTORY_SELECT },
+			},
+		}),
+		prismaClient.buildings.findMany({ select: { buildingName: true } }),
+	]);
+
+	const resolver = makeBuildingResolver(buildings.map((b) => b.buildingName));
+	const entries: UsageEntry[] = [];
+
+	for (const u of usages) {
+		entries.push({
+			date: u.createdAt,
+			building: u.complaint.buildingName,
+			location: u.complaint.apartmentNumber,
+			quantity: u.quantityUsed,
+			inventory: u.inventory,
+			source: "complaint",
+			by: u.employee.fullName,
+			technician: null,
+			complaint: { id: u.complaint.id, apartmentNumber: u.complaint.apartmentNumber, customerName: u.complaint.customerName },
+			notes: u.notes,
+		});
+	}
+
+	for (const r of requests) {
+		// Requests made after the Building field existed always set it ("" = stock);
+		// older ones (null) only have the storekeeper's free text in `reason`.
+		const hasExplicitBuilding = r.buildingName !== null;
+		const resolved = hasExplicitBuilding ? { building: r.buildingName || null, location: r.location } : resolver.fromReason(r.reason);
+		entries.push({
+			date: r.approvedAt ?? r.createdAt,
+			building: resolved.building ?? STOCK_LABEL,
+			location: resolved.location,
+			quantity: r.quantity,
+			inventory: r.inventory,
+			source: "request",
+			by: r.employee.fullName,
+			technician: r.technicianName ?? (hasExplicitBuilding ? null : r.notes?.trim() || null),
+			complaint: null,
+			notes: hasExplicitBuilding ? r.notes : null,
+		});
+	}
+
+	return entries
+		.filter((e) => inRange(e.date) && (!filters.building || e.building === filters.building))
+		.sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+/** Aggregate building usage into per-building, per-item rows. */
 export async function getUsageByBuilding(filters: UsageReportFilters): Promise<UsageXlsxRow[]> {
 	if (!(await requireInventoryAccess())) return [];
-	const where: any = {};
-	if (filters.from && YMD.test(filters.from)) {
-		where.createdAt = { ...(where.createdAt ?? {}), gte: new Date(`${filters.from}T00:00:00`) };
-	}
-	if (filters.to && YMD.test(filters.to)) {
-		where.createdAt = { ...(where.createdAt ?? {}), lte: new Date(`${filters.to}T23:59:59.999`) };
-	}
-	if (filters.building) {
-		where.complaint = { buildingName: filters.building };
-	}
-
-	const usages = await prismaClient.complaintInventoryUsage.findMany({
-		where,
-		select: {
-			quantityUsed: true,
-			complaint: { select: { buildingName: true } },
-			inventory: { select: { id: true, itemName: true, itemCode: true, category: true, unit: true, unitPrice: true } },
-		},
-	});
+	const entries = await loadUsageEntries(filters);
 
 	const grouped = new Map<string, UsageXlsxRow>();
-	for (const u of usages) {
-		const building = u.complaint.buildingName;
-		const key = `${building}|${u.inventory.id}`;
+	for (const e of entries) {
+		const key = `${e.building}|${e.inventory.id}`;
 		let row = grouped.get(key);
 		if (!row) {
 			row = {
-				buildingName: building,
-				itemName: u.inventory.itemName,
-				itemCode: u.inventory.itemCode,
-				category: u.inventory.category,
-				unit: u.inventory.unit,
+				buildingName: e.building,
+				itemName: e.inventory.itemName,
+				itemCode: e.inventory.itemCode,
+				category: e.inventory.category,
+				unit: e.inventory.unit,
 				totalQuantity: 0,
 				timesUsed: 0,
-				estimatedCost: u.inventory.unitPrice !== null ? 0 : null,
+				estimatedCost: e.inventory.unitPrice !== null ? 0 : null,
 			};
 			grouped.set(key, row);
 		}
-		row.totalQuantity += u.quantityUsed;
+		row.totalQuantity += e.quantity;
 		row.timesUsed += 1;
-		if (row.estimatedCost !== null && u.inventory.unitPrice !== null) {
-			row.estimatedCost += u.quantityUsed * u.inventory.unitPrice;
+		if (row.estimatedCost !== null && e.inventory.unitPrice !== null) {
+			row.estimatedCost += e.quantity * e.inventory.unitPrice;
 		}
 	}
 
-	return [...grouped.values()].sort((a, b) => a.buildingName.localeCompare(b.buildingName) || a.itemName.localeCompare(b.itemName));
+	return [...grouped.values()].sort((a, b) => compareBuildings(a.buildingName, b.buildingName) || a.itemName.localeCompare(b.itemName));
 }
 
-/** Distinct building names that have any recorded inventory usage. */
+/** Distinct buildings that have any recorded usage (stock last). */
 export async function getUsageBuildingNames(): Promise<string[]> {
 	if (!(await requireInventoryAccess())) return [];
-	const usages = await prismaClient.complaintInventoryUsage.findMany({
-		select: { complaint: { select: { buildingName: true } } },
-	});
-	return [...new Set(usages.map((u) => u.complaint.buildingName))].sort((a, b) => a.localeCompare(b));
+	const entries = await loadUsageEntries({});
+	return [...new Set(entries.map((e) => e.building))].sort(compareBuildings);
 }
 
 export async function exportUsageByBuildingXlsx(filters: UsageReportFilters): Promise<PdfResult> {
@@ -125,32 +208,15 @@ export async function exportUsageByBuildingPdf(filters: UsageReportFilters): Pro
 	const actor = await requireInventoryAccess();
 	if (!actor) return { success: false, message: "Not authorized to export reports." };
 
-	const where: any = {};
-	if (filters.from && YMD.test(filters.from)) where.createdAt = { ...(where.createdAt ?? {}), gte: new Date(`${filters.from}T00:00:00`) };
-	if (filters.to && YMD.test(filters.to)) where.createdAt = { ...(where.createdAt ?? {}), lte: new Date(`${filters.to}T23:59:59.999`) };
-	if (filters.building) where.complaint = { buildingName: filters.building };
-
-	const usages = await prismaClient.complaintInventoryUsage.findMany({
-		where,
-		orderBy: { createdAt: "asc" },
-		select: {
-			quantityUsed: true,
-			notes: true,
-			createdAt: true,
-			employee: { select: { fullName: true } },
-			complaint: { select: { id: true, buildingName: true, apartmentNumber: true, customerName: true } },
-			inventory: { select: { id: true, itemName: true, itemCode: true, category: true, unit: true, unitPrice: true } },
-		},
-	});
+	const usages = await loadUsageEntries(filters);
 
 	// Group detail entries per building, and build the per-item summaries
-	const byBuilding = new Map<string, typeof usages>();
+	const byBuilding = new Map<string, UsageEntry[]>();
 	for (const u of usages) {
-		const b = u.complaint.buildingName;
-		if (!byBuilding.has(b)) byBuilding.set(b, []);
-		byBuilding.get(b)!.push(u);
+		if (!byBuilding.has(u.building)) byBuilding.set(u.building, []);
+		byBuilding.get(u.building)!.push(u);
 	}
-	const buildings = [...byBuilding.keys()].sort((a, b) => a.localeCompare(b));
+	const buildings = [...byBuilding.keys()].sort(compareBuildings);
 
 	const doc = await PDFDocument.create();
 	const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -204,9 +270,9 @@ export async function exportUsageByBuildingPdf(filters: UsageReportFilters): Pro
 				s = { name: u.inventory.itemName, code: u.inventory.itemCode, unit: u.inventory.unit, qty: 0, times: 0, cost: u.inventory.unitPrice !== null ? 0 : null };
 				itemSummary.set(u.inventory.id, s);
 			}
-			s.qty += u.quantityUsed;
+			s.qty += u.quantity;
 			s.times += 1;
-			if (s.cost !== null && u.inventory.unitPrice !== null) s.cost += u.quantityUsed * u.inventory.unitPrice;
+			if (s.cost !== null && u.inventory.unitPrice !== null) s.cost += u.quantity * u.inventory.unitPrice;
 		}
 		const buildingCost = round2([...itemSummary.values()].reduce((sum, s) => sum + (s.cost ?? 0), 0));
 		grandCost += buildingCost;
@@ -240,8 +306,11 @@ export async function exportUsageByBuildingPdf(filters: UsageReportFilters): Pro
 		y -= 14;
 		for (const u of entries) {
 			ensure(u.notes ? 26 : 14);
-			const date = u.createdAt.toISOString().slice(0, 10);
-			const lineText = `${date}  —  ${u.inventory.itemName}: ${formatQty(u.quantityUsed, u.inventory.unit)}  ·  by ${u.employee.fullName}  ·  complaint #${u.complaint.id} (apt ${u.complaint.apartmentNumber}, ${u.complaint.customerName})`;
+			const date = todayYmdDubai(u.date);
+			const where = u.complaint
+				? `complaint #${u.complaint.id} (apt ${u.complaint.apartmentNumber}, ${u.complaint.customerName})`
+				: [u.location ? `flat/room ${u.location}` : null, u.technician ? `for ${u.technician}` : null, "issued from store"].filter(Boolean).join(", ");
+			const lineText = `${date}  —  ${u.inventory.itemName}: ${formatQty(u.quantity, u.inventory.unit)}  ·  by ${u.by}  ·  ${where}`;
 			text(lineText.length > 118 ? `${lineText.slice(0, 115)}...` : lineText, MARGIN + 10, 8.5);
 			y -= 12;
 			if (u.notes) {

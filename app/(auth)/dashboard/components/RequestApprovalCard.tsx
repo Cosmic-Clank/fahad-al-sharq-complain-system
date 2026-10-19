@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
 import { formatQty } from "@/lib/inventory-units";
+import { STOCK_LABEL } from "@/lib/inventory-request-building";
 
 interface RequestApprovalCardProps {
 	request: any;
@@ -111,10 +112,23 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 						<p className='text-sm font-medium text-gray-600'>Quantity Requested</p>
 						<p className='mt-1 text-2xl font-bold text-primary'>{formatQty(request.quantity, request.inventory.unit)}</p>
 					</div>
-					<div>
-						<p className='text-sm font-medium text-gray-600'>Reason</p>
-						<p className='mt-1 text-sm'>{request.reason}</p>
-					</div>
+					{/* buildingName is null on requests made before the Building field existed */}
+					{request.buildingName !== null && request.buildingName !== undefined && (
+						<div>
+							<p className='text-sm font-medium text-gray-600'>Building</p>
+							<p className='mt-1 text-sm font-medium'>
+								{request.buildingName || STOCK_LABEL}
+								{request.location ? ` · ${request.location}` : ""}
+							</p>
+							{request.technicianName && <p className='text-sm text-gray-500'>For: {request.technicianName}</p>}
+						</div>
+					)}
+					{request.reason && (
+						<div>
+							<p className='text-sm font-medium text-gray-600'>Reason</p>
+							<p className='mt-1 text-sm whitespace-pre-line'>{request.reason}</p>
+						</div>
+					)}
 					{request.notes && !request.notes.startsWith("REJECTION:") && (
 						<div>
 							<p className='text-sm font-medium text-gray-600'>Notes</p>

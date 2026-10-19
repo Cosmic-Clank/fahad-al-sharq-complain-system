@@ -3,6 +3,7 @@
 import ExcelJS from "exceljs";
 import { daysInMonth, monthLabel } from "./hr-dates";
 import { unitLabel } from "./inventory-units";
+import type { SalarySummary } from "./hr-salary-summary";
 
 const FILL = {
 	present: { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9F2E1" } } as ExcelJS.Fill,
@@ -163,3 +164,58 @@ export async function workbookToBase64(wb: ExcelJS.Workbook): Promise<string> {
 }
 
 export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export function buildSalarySummaryWorkbook(summary: SalarySummary): ExcelJS.Workbook {
+	const wb = new ExcelJS.Workbook();
+	wb.creator = "Fahad Al Sharq AC Systems LLC";
+	const ws = wb.addWorksheet(`Salaries ${summary.month}`, { views: [{ state: "frozen", xSplit: 1, ySplit: 4 }] });
+
+	const headers = ["Employee", "Basic", "Allowances", "Bonuses", "Gross", "Deductions", "Net Pay", "Present", "Late", "Absent"];
+	const money = "#,##0.00";
+
+	ws.mergeCells(1, 1, 1, headers.length);
+	ws.getCell(1, 1).value = `Fahad Al Sharq AC Systems LLC — Monthly Salary Summary — ${monthLabel(summary.month)}`;
+	ws.getCell(1, 1).font = { bold: true, size: 13 };
+	ws.mergeCells(2, 1, 2, headers.length);
+	ws.getCell(2, 1).value = "Amounts in AED. Net = basic + allowances + bonuses − salary deductions. Attendance = days recorded this month.";
+	ws.getCell(2, 1).font = { size: 9, color: { argb: "FF6B7280" } };
+
+	const header = ws.getRow(4);
+	headers.forEach((label, i) => {
+		const cell = header.getCell(1 + i);
+		cell.value = label;
+		cell.font = { bold: true, size: 10 };
+		cell.fill = FILL.header;
+		cell.alignment = { horizontal: i === 0 ? "left" : "center" };
+	});
+
+	const writeRow = (r: number, name: string, v: SalarySummary["totals"]) => {
+		const row = ws.getRow(r);
+		row.getCell(1).value = name;
+		[v.basic, v.allowances, v.bonuses, v.gross, v.deductions, v.net].forEach((n, i) => {
+			row.getCell(2 + i).value = n;
+			row.getCell(2 + i).numFmt = money;
+		});
+		[v.present, v.late, v.absent].forEach((n, i) => {
+			row.getCell(8 + i).value = n;
+			row.getCell(8 + i).alignment = { horizontal: "center" };
+		});
+		return row;
+	};
+
+	summary.rows.forEach((row, i) => {
+		const wsRow = writeRow(5 + i, row.hasProfile ? row.fullName : `${row.fullName} (no HR profile)`, row);
+		wsRow.getCell(7).font = { bold: true };
+	});
+	const totalRow = writeRow(5 + summary.rows.length, "TOTAL", summary.totals);
+	totalRow.eachCell((cell) => {
+		cell.font = { bold: true };
+		cell.fill = FILL.header;
+	});
+
+	ws.getColumn(1).width = 30;
+	for (let i = 2; i <= 7; i++) ws.getColumn(i).width = 13;
+	for (let i = 8; i <= 10; i++) ws.getColumn(i).width = 9;
+
+	return wb;
+}
+

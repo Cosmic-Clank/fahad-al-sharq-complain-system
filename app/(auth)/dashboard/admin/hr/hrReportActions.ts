@@ -7,7 +7,8 @@ import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { daysInMonth, monthLabel, currentMonthDubai, todayYmdDubai } from "@/lib/hr-dates";
 import { computeLeaveSalary, computePayslip } from "@/lib/hr-payroll";
-import { buildAttendanceWorkbook, workbookToBase64, XLSX_MIME } from "@/lib/xlsx-reports";
+import { buildAttendanceWorkbook, buildSalarySummaryWorkbook, workbookToBase64, XLSX_MIME } from "@/lib/xlsx-reports";
+import { getSalarySummary } from "@/lib/hr-salary-summary";
 
 export type PdfResult = { success: true; fileName: string; base64: string; mime?: string } | { success: false; message: string };
 
@@ -24,7 +25,8 @@ const red = rgb(0.78, 0.16, 0.16);
 
 /** Helvetica is WinAnsi-only — replace unsupported (e.g. Arabic) characters. */
 function toWinAnsi(s: string): string {
-	return s.replace(/[^\x20-\x7E]/g, "?");
+	// Keep the en/em dash and middle dot used in titles — WinAnsi has them
+	return s.replace(/[^\x20-\x7E–—·]/g, "?");
 }
 
 async function requireHrAccess() {
@@ -200,6 +202,97 @@ export async function exportPayslipPdf(userId: number, month: string): Promise<P
 	page.drawText("Accountant signature: ____________________", { x: A4W / 2 + 10, y, size: 9, font, color: subt });
 
 	return finish(doc, `payslip-${user.username}-${month}.pdf`);
+}
+
+// ─────────────────────────── 2b. Monthly salary summary (all employees) ───────────────────────────
+
+export async function exportSalarySummaryXlsx(month: string): Promise<PdfResult> {
+	const actor = await requireHrAccess();
+	if (!actor) return { success: false, message: "Not authorized to export reports." };
+	if (!/^\d{4}-\d{2}$/.test(month)) return { success: false, message: "Invalid month." };
+
+	const wb = buildSalarySummaryWorkbook(await getSalarySummary(month));
+	return { success: true, fileName: `salary-summary-${month}.xlsx`, base64: await workbookToBase64(wb), mime: XLSX_MIME };
+}
+
+export async function exportSalarySummaryPdf(month: string): Promise<PdfResult> {
+	const actor = await requireHrAccess();
+	if (!actor) return { success: false, message: "Not authorized to export reports." };
+	if (!/^\d{4}-\d{2}$/.test(month)) return { success: false, message: "Invalid month." };
+
+	const summary = await getSalarySummary(month);
+
+	// Landscape A4
+	const W = A4H;
+	const H = A4W;
+	const doc = await PDFDocument.create();
+	const font = await doc.embedFont(StandardFonts.Helvetica);
+	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+	// Column layout: name, 6 money columns, 3 attendance columns (all right-aligned except name)
+	const cols = [
+		{ label: "Employee", w: 180 },
+		{ label: "Basic", w: 75 },
+		{ label: "Allowances", w: 75 },
+		{ label: "Bonuses", w: 75 },
+		{ label: "Gross", w: 75 },
+		{ label: "Deductions", w: 75 },
+		{ label: "Net Pay", w: 75 },
+		{ label: "Present", w: 46 },
+		{ label: "Late", w: 46 },
+		{ label: "Absent", w: 46 },
+	];
+	const colRight = cols.map((_, i) => M + cols.slice(0, i + 1).reduce((s, c) => s + c.w, 0) - 4);
+	const rowH = 18;
+	const perPage = 22;
+
+	const drawRow = (page: PDFPage, y: number, cells: string[], bold: boolean, colors: ReturnType<typeof rgb>[] = []) => {
+		cells.forEach((text, i) => {
+			const f = bold ? fontBold : font;
+			const t = toWinAnsi(text);
+			const x = i === 0 ? M + 4 : colRight[i] - f.widthOfTextAtSize(t, 9);
+			page.drawText(t, { x, y, size: 9, font: f, color: colors[i] ?? ink });
+		});
+	};
+	const cellsFor = (name: string, v: typeof summary.totals) => [
+		name,
+		...[v.basic, v.allowances, v.bonuses, v.gross].map((n) => n.toFixed(2)),
+		v.deductions ? `-${v.deductions.toFixed(2)}` : "0.00",
+		v.net.toFixed(2),
+		String(v.present),
+		String(v.late),
+		String(v.absent),
+	];
+	// Deductions / late / absent only stand out when non-zero
+	const colorsFor = (v: typeof summary.totals) => [ink, ink, ink, ink, ink, v.deductions ? red : ink, green, ink, v.late ? amber : ink, v.absent ? red : ink];
+
+	const pageCount = Math.max(1, Math.ceil(summary.rows.length / perPage));
+	for (let p = 0; p < pageCount; p++) {
+		const page = doc.addPage([W, H]);
+		drawHeader(page, fontBold, font, `Monthly Salary Summary — ${monthLabel(month)}`, `Generated ${todayYmdDubai()} by ${actor.name} · Amounts in AED · Page ${p + 1} of ${pageCount}`, W);
+
+		let y = H - M - 80;
+		drawRow(page, y, cols.map((c) => c.label), true, cols.map(() => subt));
+		y -= 6;
+		page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1, color: line });
+
+		for (const row of summary.rows.slice(p * perPage, (p + 1) * perPage)) {
+			y -= rowH;
+			drawRow(page, y, cellsFor((row.hasProfile ? row.fullName : `${row.fullName} *`).slice(0, 34), row), false, colorsFor(row));
+			page.drawLine({ start: { x: M, y: y - 6 }, end: { x: W - M, y: y - 6 }, thickness: 0.5, color: line });
+		}
+
+		if (p === pageCount - 1) {
+			y -= rowH + 4;
+			page.drawRectangle({ x: M, y: y - 6, width: W - 2 * M, height: rowH, color: rgb(0.95, 0.96, 0.97) });
+			drawRow(page, y, cellsFor(`TOTAL (${summary.rows.length} employees)`, summary.totals), true, colorsFor(summary.totals));
+			if (summary.rows.some((r) => !r.hasProfile)) {
+				page.drawText("* No HR profile — salary fields are 0.", { x: M, y: y - 28, size: 8, font, color: subt });
+			}
+		}
+	}
+
+	return finish(doc, `salary-summary-${month}.pdf`);
 }
 
 // ─────────────────────────── 3. Accounting clearance form ───────────────────────────

@@ -1,5 +1,5 @@
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Users, CalendarCheck, BellRing } from "lucide-react";
+import { Users, CalendarCheck, BellRing, Wallet } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -18,6 +18,11 @@ const hrItems = [
 		title: "Document Alerts",
 		url: "/dashboard/hr_manager/alerts",
 		icon: BellRing,
+	},
+	{
+		title: "Salary Summary",
+		url: "/dashboard/hr_manager/salary-summary",
+		icon: Wallet,
 	},
 ];
 

@@ -1,6 +1,7 @@
 // app/complaint/[slug]/page.tsx
 // This is a Server Component by default in Next.js App Router
 import React from "react";
+import { publicVideoUrl } from "@/lib/complaint-evidence";
 import { notFound } from "next/navigation"; // For handling 404
 import prismaClient from "@/lib/prisma"; // Your Prisma client instance
 import ComplaintCard from "./ComplaintCard"; // The Client Component to display the complaint
@@ -37,6 +38,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			description: true,
 			isPrivate: true,
 			imagePaths: true,
+			videoPaths: true,
 
 			createdAt: true,
 			responses: {
@@ -128,6 +130,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		convenientTime: timeLabels[complaint.convenientTime], // Ensure convenientTime is a string
 		// IMPORTANT: Parse imagePaths if they are stored as JSON strings in the DB
 		imagePaths: complaint.imagePaths.map((imagePath) => `https://koxptzqfmeasndsaecyo.supabase.co/storage/v1/object/public/complaint-images/${imagePath}`),
+		videoPaths: complaint.videoPaths.map(publicVideoUrl),
 		// Format responses to match ComplaintData type
 		responses: complaint.responses.map((resp) => ({
 			id: String(resp.id),

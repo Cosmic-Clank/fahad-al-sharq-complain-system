@@ -76,6 +76,7 @@ model Complaint {
   apartmentNumber String // Optional field for apartment number
   description     String
   imagePaths      String[]
+  videoPaths      String[] @default([]) // complaint-videos bucket; customers must attach one
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   assignedToId   Int?

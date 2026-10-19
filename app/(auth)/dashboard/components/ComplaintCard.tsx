@@ -4,7 +4,7 @@
 import { translateMessage } from "@/lib/messages-ar";
 import { showAlert, askConfirm } from "@/lib/notify";
 import React, { useState, useRef } from "react";
-import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download, RotateCcw, Lock, Globe, Package } from "lucide-react";
+import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download, RotateCcw, Lock, Globe, Package, Video as VideoIcon } from "lucide-react";
 
 import ComplaintResponseForm from "./ComplaintResponseForm";
 import ComplaintInventoryForm from "./ComplaintInventoryForm";
@@ -40,6 +40,7 @@ interface ComplaintData {
 	convenientTime: string;
 	description: string;
 	imagePaths: string[];
+	videoPaths: string[];
 	createdAt: String;
 	responses: {
 		id: string;
@@ -265,6 +266,24 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 								<div key={index} className='relative w-full h-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center'>
 									<Link href={path} target='_blank' rel='noopener noreferrer'>
 										<img src={path} alt={`Complaint Image ${index + 1}`} sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw' style={{ objectFit: "cover" }} className='transition-transform duration-200 hover:scale-105' />
+									</Link>
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+				{complaint.videoPaths && complaint.videoPaths.length > 0 && (
+					<div className='mb-5'>
+						<p className='font-semibold text-gray-800 mb-3 flex items-center text-sm'>
+							<VideoIcon className='w-3 h-3 mr-1 text-orange-500' />
+							Attached Video:
+						</p>
+						<div className='grid gap-3 sm:grid-cols-2 max-w-3xl'>
+							{complaint.videoPaths.map((path, index) => (
+								<div key={index} className='space-y-1'>
+									<video src={path} controls preload='metadata' className='w-full rounded-md border border-gray-200 bg-black shadow-sm' />
+									<Link href={path} target='_blank' rel='noopener noreferrer' className='text-xs text-blue-600 hover:underline'>
+										Open video in new tab
 									</Link>
 								</div>
 							))}

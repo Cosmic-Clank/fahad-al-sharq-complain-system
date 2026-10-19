@@ -122,7 +122,17 @@ const MESSAGES_AR: Record<string, string> = {
 	"Failed to generate the PDF. Please try again.": "فشل إنشاء ملف PDF. يرجى المحاولة مرة أخرى.",
 	"Failed to fetch buildings": "فشل جلب المباني",
 
+	// ── Complaint evidence (photos + video) ──
+	"Please attach at least one photo of the problem.": "يرجى إرفاق صورة واحدة على الأقل للمشكلة.",
+	"Please attach a video of the problem.": "يرجى إرفاق فيديو للمشكلة.",
+	"Some photos are invalid: max size is 5MB, supported types are JPEG and PNG.": "بعض الصور غير صالحة: الحد الأقصى للحجم 5 ميجابايت، والأنواع المدعومة هي JPEG و PNG.",
+	"Invalid video: max size is 50MB, supported formats are MP4, MOV, WebM and 3GP.": "فيديو غير صالح: الحد الأقصى للحجم 50 ميجابايت، والصيغ المدعومة هي MP4 و MOV و WebM و 3GP.",
+	"Failed to upload the video. Please check your connection and try again.": "فشل رفع الفيديو. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+	"The video upload could not be found. Please attach the video again.": "تعذر العثور على الفيديو المرفوع. يرجى إرفاق الفيديو مرة أخرى.",
+	"Failed to submit complaint. Please try again.": "فشل تقديم الشكوى. يرجى المحاولة مرة أخرى.",
+
 	// ── Complaint form validation ──
+	"Appartment Number is required": "رقم الشقة مطلوب",
 	"Phone number is required": "رقم الهاتف مطلوب",
 	"Enter a valid UAE mobile (e.g., 0501234567 or +971501234567)": "أدخل رقم جوال إماراتي صحيح (مثال: 0501234567 أو ‎+971501234567)",
 	"Email is required": "البريد الإلكتروني مطلوب",

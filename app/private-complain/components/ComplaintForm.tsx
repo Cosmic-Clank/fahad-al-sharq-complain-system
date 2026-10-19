@@ -1,6 +1,6 @@
 // components/ComplaintForm.tsx
 "use client";
-import { showAlert } from "@/lib/notify";
+import { translateMessage } from "@/lib/messages-ar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BuildingsCombobox } from "../../../components/BuildingsCombobox";
 import { formSchema } from "@/lib/constants";
+import ComplaintEvidenceUpload from "@/components/ComplaintEvidenceUpload";
+import { EVIDENCE_MESSAGES, MIN_IMAGES } from "@/lib/complaint-evidence";
+import { uploadComplaintVideo, VideoUploadError } from "@/lib/upload-complaint-video";
 
 // IMPORTANT: This Zod schema should match the one in your server action for client-side validation
 
@@ -32,6 +33,8 @@ const problemCategories = {
 
 function ComplaintForm({ buildings }: { buildings: string[] }) {
 	const [images, setImages] = React.useState<File[]>([]);
+	const [video, setVideo] = React.useState<File | null>(null);
+	const [videoProgress, setVideoProgress] = React.useState<number | null>(null);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [submitError, setSubmitError] = React.useState<string | null>(null);
 	const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
@@ -52,79 +55,58 @@ function ComplaintForm({ buildings }: { buildings: string[] }) {
 		},
 	});
 
-	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files) {
-			const selectedFiles = Array.from(e.target.files);
-			const maxImages = 5;
-			const maxSize = 5 * 1024 * 1024;
-			const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-
-			if (selectedFiles.length > maxImages) {
-				setSubmitError(`You can upload a maximum of ${maxImages} images.`);
-				e.target.value = ""; // Clear the input
-				return;
-			}
-
-			const invalidFiles = selectedFiles.filter((file) => file.size > maxSize || !allowedTypes.includes(file.type));
-			if (invalidFiles.length > 0) {
-				setSubmitError(`Some files are invalid: Max size is 2MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`);
-				e.target.value = ""; // Clear the input
-				return;
-			}
-			setImages(selectedFiles);
-		}
-	};
-
-	// THIS IS THE UPDATED ONSUBMIT FUNCTION
 	const onSubmit = async (values: z.infer<typeof formSchema>) => {
-		setIsSubmitting(true);
 		setSubmitError(null); // Clear previous errors
 
-		const formData = new FormData();
+		// Evidence is mandatory: at least one photo and one video
+		if (images.length < MIN_IMAGES) {
+			setSubmitError(translateMessage(EVIDENCE_MESSAGES.photoRequired));
+			return;
+		}
+		if (!video) {
+			setSubmitError(translateMessage(EVIDENCE_MESSAGES.videoRequired));
+			return;
+		}
 
-		// Append all text fields from the validated `values` object
-		// The keys here (fullname, email, etc.) must match the names expected
-		// by `formData.get()` in your Server Action.
-		formData.append("fullname", values.fullname);
-		formData.append("email", values.email || ""); // Handle optional email
-		formData.append("phoneNumber", values.phoneNumber);
-		formData.append("address", values.address);
-		formData.append("buildingName", values.buildingName);
-		formData.append("apartmentNumber", values.apartmentNumber);
-		formData.append("convenientTime", values.convenientTime);
-		formData.append("isPrivate", "true");
-
-		// Concatenate selected problem with description text
-		const fullDescription = selectedProblem ? `${selectedProblem}\n${values.description}` : values.description;
-		formData.append("description", fullDescription || "");
-
-		// Append image files to the FormData object
-		// The 'images' key here must match formData.getAll('images') in your Server Action
-		images.forEach((file) => {
-			formData.append("images", file);
-		});
-
+		setIsSubmitting(true);
 		try {
-			// Call your server action directly with the FormData object
-			const res = await fetch("/api/complaints", {
-				method: "POST",
-				body: formData,
-			});
+			// Upload the video straight to storage first (too large for the API request body)
+			setVideoProgress(0);
+			const videoPath = await uploadComplaintVideo(video, { buildingName: values.buildingName, apartmentNumber: values.apartmentNumber }, setVideoProgress);
+
+			const formData = new FormData();
+			formData.append("fullname", values.fullname);
+			formData.append("email", values.email || ""); // Handle optional email
+			formData.append("phoneNumber", values.phoneNumber);
+			formData.append("address", values.address);
+			formData.append("buildingName", values.buildingName);
+			formData.append("apartmentNumber", values.apartmentNumber);
+			formData.append("convenientTime", values.convenientTime);
+			formData.append("isPrivate", "true");
+
+			// Concatenate selected problem with description text
+			const fullDescription = selectedProblem ? `${selectedProblem}\n${values.description}` : values.description;
+			formData.append("description", fullDescription || "");
+
+			images.forEach((file) => formData.append("images", file));
+			formData.append("videoPath", videoPath);
+
+			const res = await fetch("/api/complaints", { method: "POST", body: formData });
 			const data = await res.json();
-			// Handle potential errors or messages returned from the server action
 			if (!res.ok) {
-				throw new Error(data.message || "Something went wrong");
+				setSubmitError(translateMessage(data.message || "Something went wrong"));
+				return;
 			}
-			if (res.ok) {
-				router.push("/private-complain/success"); // Redirect to a success page
-			}
+			form.reset();
+			setImages([]);
+			setVideo(null);
+			router.push("/private-complain/success"); // Redirect to a success page
 		} catch (err) {
 			console.error("Error submitting complaint:", err);
-			setSubmitError("Failed to submit complaint. Please try again.");
+			setSubmitError(translateMessage(err instanceof VideoUploadError ? err.message : "Failed to submit complaint. Please try again."));
 		} finally {
 			setIsSubmitting(false);
-			setImages([]); // Clear images after submission
-			form.reset(); // Reset the form fields
+			setVideoProgress(null);
 		}
 	};
 
@@ -318,38 +300,7 @@ function ComplaintForm({ buildings }: { buildings: string[] }) {
 						</FormItem>
 					)}
 				/>
-				{/* Image Upload */}
-				<div className='p-4 border border-gray-200 dark:border-gray-700 rounded-sm bg-white dark:bg-gray-800'>
-					<Label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>Upload Images (Optional)</Label>
-					<Input
-						accept='image/*'
-						type='file'
-						multiple
-						name='images' // IMPORTANT: This name attribute matches formData.getAll('images') in Server Action
-						onChange={(e) => {
-							if (e.target.files && e.target.files.length > 5) {
-								showAlert("You can upload a maximum of 5 images.");
-								e.target.value = "";
-								return;
-							}
-							handleFileChange(e);
-						}}
-						className='w-full'
-					/>
-					{images.length > 0 && (
-						<div className='mt-2'>
-							<p className='text-sm text-gray-500 dark:text-gray-400 mb-2'>Selected files: {images.length}</p>
-							<div className='flex flex-wrap gap-2'>
-								{images.map((file, idx) => (
-									<div key={idx} className='w-20 h-20 border rounded overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-gray-900'>
-										<Image width={100} height={100} src={URL.createObjectURL(file)} alt={file.name} className='object-cover w-full h-full' onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)} />
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-					{images.length === 0 && <p className='text-sm text-gray-500 dark:text-gray-400 mt-2'>No files selected</p>}
-				</div>
+				<ComplaintEvidenceUpload images={images} onImagesChange={setImages} video={video} onVideoChange={setVideo} onError={setSubmitError} disabled={isSubmitting} videoProgress={videoProgress} />
 
 				{submitError && <p className='text-red-500 text-sm mt-2'>{submitError}</p>}
 

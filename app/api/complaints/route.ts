@@ -5,6 +5,7 @@ import prismaClient from "@/lib/prisma"; // Your Prisma client singleton
 import path from "path"; // Import Node.js path module
 import { nanoid } from "nanoid"; // For unique file names
 import supabaseAdminClient from "@/lib/supabaseAdmin";
+import { EVIDENCE_MESSAGES, IMAGE_BUCKET, IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES, MIN_IMAGES, VIDEO_BUCKET, VIDEO_PATH_PATTERN } from "@/lib/complaint-evidence";
 
 // IMPORTANT: Re-define your Zod schema on the server for validation!
 // Match this with your client-side formSchema, but enforce server-side validation.
@@ -45,10 +46,19 @@ export async function POST(req: NextRequest) {
 	const isPrivateRaw = formData.get("isPrivate");
 	const isPrivate = isPrivateRaw === "true" ? true : null;
 
+	// The video was uploaded directly to storage by the browser; only its path arrives here
+	const videoPathRaw = formData.get("videoPath");
+	const videoPath = typeof videoPathRaw === "string" && VIDEO_PATH_PATTERN.test(videoPathRaw) ? videoPathRaw : null;
+	// Best-effort removal of the already-uploaded video when the submission is rejected
+	const discardVideo = async () => {
+		if (videoPath) await supabaseAdminClient.storage.from(VIDEO_BUCKET).remove([videoPath]).catch(() => undefined);
+	};
+
 	// 2. Server-side validation using Zod
 	const validatedFields = serverFormSchema.safeParse(rawData);
 
 	if (!validatedFields.success) {
+		await discardVideo();
 		console.error("Validation Errors:", validatedFields.error.flatten().fieldErrors);
 		return NextResponse.json(
 			{
@@ -73,6 +83,7 @@ export async function POST(req: NextRequest) {
 	});
 
 	if (existing) {
+		await discardVideo();
 		return NextResponse.json(
 			{ message: "A complaint for this building and apartment was already submitted in the last 24 hours. Please wait before submitting another one." },
 			{ status: 429 }
@@ -80,16 +91,31 @@ export async function POST(req: NextRequest) {
 	}
 
 	// --- Start Image Upload to Supabase ---
-	const files = formData.getAll("images") as File[]; // 'images' should match your input name
+	// Skip empty file inputs (a blank <input type=file> posts a 0-byte entry)
+	const files = (formData.getAll("images") as File[]).filter((file) => file.size > 0);
 
 	const uploadedImagePaths: string[] = []; // This will now store only strings (paths)
 
-	const maxSize = 5 * 1024 * 1024; // 2MB max size
-	const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-	const maxImages = 5;
+	const maxSize = MAX_IMAGE_BYTES;
+	const allowedTypes = IMAGE_TYPES;
+	const maxImages = MAX_IMAGES;
 
 	if (files.length > maxImages) {
+		await discardVideo();
 		return NextResponse.json({ message: `You can upload a maximum of ${maxImages} images.` }, { status: 400 });
+	}
+
+	// Evidence is mandatory: at least one photo and one (already uploaded) video
+	if (files.length < MIN_IMAGES) {
+		await discardVideo();
+		return NextResponse.json({ message: EVIDENCE_MESSAGES.photoRequired }, { status: 400 });
+	}
+	if (!videoPath) {
+		return NextResponse.json({ message: EVIDENCE_MESSAGES.videoRequired }, { status: 400 });
+	}
+	const { data: videoExists } = await supabaseAdminClient.storage.from(VIDEO_BUCKET).exists(videoPath);
+	if (!videoExists) {
+		return NextResponse.json({ message: EVIDENCE_MESSAGES.videoMissing }, { status: 400 });
 	}
 
 	// Define the base upload directory relative to your project root.
@@ -99,11 +125,10 @@ export async function POST(req: NextRequest) {
 	if (files.length > 0) {
 		for (const file of files) {
 			const uploadPath = path.join(directoryName, nanoid());
-			// Skip empty file inputs if any (e.g. user selected nothing for an optional upload)
-			if (file.size === 0 && file.name === "undefined") continue;
 
 			if (!allowedTypes.includes(file.type) || file.size > maxSize) {
 				console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+				await discardVideo();
 				return NextResponse.json(
 					{
 						message: `Invalid file detected: ${file.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`,
@@ -112,10 +137,11 @@ export async function POST(req: NextRequest) {
 				);
 			}
 
-			const { data, error } = await supabaseAdminClient.storage.from("complaint-images").upload(uploadPath, file);
+			const { data, error } = await supabaseAdminClient.storage.from(IMAGE_BUCKET).upload(uploadPath, file);
 
 			if (error) {
 				console.error("Error uploading file to Supabase:", error);
+				await discardVideo();
 				return NextResponse.json(
 					{
 						message: `Failed to upload image ${file.name} to Database. Please try again.`,
@@ -144,11 +170,13 @@ export async function POST(req: NextRequest) {
 				convenientTime: convenientTime,
 				description: description,
 				imagePaths: uploadedImagePaths, // Assign the array of paths directly
+				videoPaths: [videoPath],
 			},
 		});
 	} catch (dbError) {
 		console.error("Error saving complaint to DB:", dbError);
-		return NextResponse.json({ message: "Failed to save complaint to the database. Please try again." + dbError }, { status: 500 });
+		await discardVideo();
+		return NextResponse.json({ message: "Failed to save complaint to the database. Please try again." }, { status: 500 });
 	}
 
 	// 4. Redirect to a success page

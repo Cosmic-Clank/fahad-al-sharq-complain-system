@@ -39,6 +39,7 @@ model User {
   bonuses Bonus[]
   passportHandovers PassportHandover[]
   leaveRequests LeaveRequest[]
+  jointLetters JointLetter[]
   activityLogsAuthored ActivityLog[] @relation("ActivityLogsAuthored")
   activityLogsAbout ActivityLog[] @relation("ActivityLogsAbout")
 }
@@ -344,6 +345,7 @@ model Penalty {
   isAutomatic    Boolean     @default(false)
   autoKey        String?     @unique // idempotency key for automatic deductions
   letterFileUrl  String? // uploaded joint-letter scan
+  jointLetters   JointLetter[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -459,4 +461,36 @@ model LeaveRequest {
 
   @@index([userId, status])
   @@index([startDate])
+}
+
+// ───────────────────────── Joint letters ─────────────────────────
+
+enum JointLetterType {
+  WARNING
+  PENALTY
+  NOTICE
+}
+
+/// Official letter signed jointly by the employee and the company (optionally about a penalty).
+model JointLetter {
+  id                      Int             @id @default(autoincrement())
+  userId                  Int
+  type                    JointLetterType
+  subject                 String
+  body                    String
+  letterDate              String // "YYYY-MM-DD" (Dubai local)
+  penaltyId               Int?
+  createdByName           String
+  employeeSignatureBase64 String?
+  adminSignatureBase64    String?
+  signedAt                DateTime?
+  signedByAdminName       String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  penalty Penalty? @relation(fields: [penaltyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([penaltyId])
 }

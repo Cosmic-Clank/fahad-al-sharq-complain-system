@@ -16,6 +16,7 @@ const TABS = [
 	{ label: "Leave", segment: "leave" },
 	{ label: "Payslips", segment: "payslips" },
 	{ label: "Activity", segment: "activity" },
+	{ label: "Joint Letters", segment: "letters" },
 ];
 
 export default function ProfileTabs({ employeeId, basePath = "/dashboard/admin/employees" }: { employeeId: number; basePath?: string }) {

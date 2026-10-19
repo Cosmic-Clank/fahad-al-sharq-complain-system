@@ -16,6 +16,8 @@ import { Gavel, Gift, Plus, Trash2, ExternalLink, Bot } from "lucide-react";
 import { toast } from "@/lib/notify";
 import { createPenalty, deletePenalty, createBonus, deleteBonus } from "../actions";
 import { currentMonthDubai } from "@/lib/hr-dates";
+import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
+import { exportJointLetterPdf } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 
 export interface PenaltyRow {
 	id: number;
@@ -27,6 +29,8 @@ export interface PenaltyRow {
 	effectiveMonth: string;
 	isAutomatic: boolean;
 	letterFileUrl: string | null;
+	/** Joint letters created in the app and linked to this penalty. */
+	jointLetters: { id: number; signed: boolean }[];
 	createdAt: string;
 }
 
@@ -172,13 +176,17 @@ export default function PenaltiesSection({ userId, penalties, bonuses }: { userI
 											</div>
 										</TableCell>
 										<TableCell>
-											{p.letterFileUrl ? (
-												<a href={p.letterFileUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-xs text-primary hover:underline'>
-													<ExternalLink className='w-3 h-3' /> View
-												</a>
-											) : (
-												"—"
-											)}
+											<div className='flex flex-col items-start gap-1'>
+												{p.letterFileUrl && (
+													<a href={p.letterFileUrl} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-xs text-primary hover:underline'>
+														<ExternalLink className='w-3 h-3' /> View scan
+													</a>
+												)}
+												{p.jointLetters.map((l) => (
+													<DownloadPdfButton key={l.id} getPdf={() => exportJointLetterPdf(l.id)} label={`Letter #${l.id}${l.signed ? "" : " (unsigned)"}`} variant='ghost' />
+												))}
+												{!p.letterFileUrl && p.jointLetters.length === 0 && "—"}
+											</div>
 										</TableCell>
 										<TableCell className='text-right'>
 											<AlertDialog>

@@ -10,6 +10,7 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 		prismaClient.penalty.findMany({
 			where: { userId },
 			orderBy: { createdAt: "desc" },
+			include: { jointLetters: { select: { id: true, signedAt: true } } },
 		}),
 		prismaClient.bonus.findMany({
 			where: { userId },
@@ -30,6 +31,7 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 				effectiveMonth: p.effectiveMonth,
 				isAutomatic: p.isAutomatic,
 				letterFileUrl: p.letterFileUrl,
+				jointLetters: p.jointLetters.map((l) => ({ id: l.id, signed: !!l.signedAt })),
 				createdAt: p.createdAt.toDateString(),
 			}))}
 			bonuses={bonuses.map((b) => ({

@@ -254,6 +254,24 @@ const MESSAGES_AR: Record<string, string> = {
 	"Choose the dates": "اختر التواريخ",
 	"Sign in the box above": "وقّع في المربع أعلاه",
 
+	// ── HR: joint letters ──
+	"Only admins can create joint letters.": "يمكن للمسؤولين فقط إنشاء الخطابات المشتركة.",
+	"Please choose the type of letter.": "يرجى اختيار نوع الخطاب.",
+	"Please enter a subject.": "يرجى إدخال الموضوع.",
+	"Please write the letter text.": "يرجى كتابة نص الخطاب.",
+	"Please choose the letter date.": "يرجى اختيار تاريخ الخطاب.",
+	"Both signatures are needed to sign the letter — or leave both empty to sign later.": "التوقيعان مطلوبان لتوقيع الخطاب — أو اتركهما فارغين للتوقيع لاحقاً.",
+	"Joint letter created and signed.": "تم إنشاء الخطاب المشترك وتوقيعه.",
+	"Joint letter saved — sign it when the employee is present.": "تم حفظ الخطاب المشترك — وقّعه عند حضور الموظف.",
+	"Failed to create the joint letter. Please try again.": "فشل إنشاء الخطاب المشترك. يرجى المحاولة مرة أخرى.",
+	"Joint letter not found.": "الخطاب المشترك غير موجود.",
+	"This letter is already signed.": "هذا الخطاب موقّع بالفعل.",
+	"Joint letter signed.": "تم توقيع الخطاب المشترك.",
+	"Signed letters cannot be deleted.": "لا يمكن حذف الخطابات الموقّعة.",
+	"Joint letter deleted.": "تم حذف الخطاب المشترك.",
+	"Delete this unsigned letter?": "هل تريد حذف هذا الخطاب غير الموقّع؟",
+	"Replace the letter text with the template for this type?": "هل تريد استبدال نص الخطاب بالقالب الخاص بهذا النوع؟",
+
 	// ── HR: passport handovers ──
 	"Handover not found.": "عملية التسليم غير موجودة.",
 	"There is already an open handover for this employee.": "توجد بالفعل عملية تسليم مفتوحة لهذا الموظف.",

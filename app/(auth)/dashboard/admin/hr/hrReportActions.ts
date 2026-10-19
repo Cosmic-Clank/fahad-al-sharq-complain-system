@@ -11,6 +11,7 @@ import { formatLeaveDate, LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS } from "@/lib/h
 import { buildAttendanceWorkbook, buildSalarySummaryWorkbook, workbookToBase64, XLSX_MIME } from "@/lib/xlsx-reports";
 import { getSalarySummary } from "@/lib/hr-salary-summary";
 import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
+import { describePenalty, JOINT_LETTER_TYPE_LABELS } from "@/lib/joint-letters";
 
 export type PdfResult = { success: true; fileName: string; base64: string; mime?: string } | { success: false; message: string };
 
@@ -533,4 +534,114 @@ export async function exportLeavePdf(leaveId: number): Promise<PdfResult> {
 	await drawSignature("Admin", leave.adminSignatureBase64, M + boxW + 20, signedOn(leave.adminSignatureBase64 ? leave.decidedAt : null));
 
 	return finish(doc, `leave-${leave.id}-${leave.user.username}.pdf`);
+}
+
+// ─────────────────────────── 6. Joint letter ───────────────────────────
+
+/** Greedy word-wrap of one paragraph to a max width (long words are hard-split). */
+function wrapLine(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+	const words = text.split(/\s+/).filter(Boolean);
+	const lines: string[] = [];
+	let current = "";
+	for (let word of words) {
+		while (font.widthOfTextAtSize(word, size) > maxWidth) {
+			let cut = word.length - 1;
+			while (cut > 1 && font.widthOfTextAtSize(word.slice(0, cut), size) > maxWidth) cut--;
+			if (current) {
+				lines.push(current);
+				current = "";
+			}
+			lines.push(word.slice(0, cut));
+			word = word.slice(cut);
+		}
+		const candidate = current ? `${current} ${word}` : word;
+		if (font.widthOfTextAtSize(candidate, size) <= maxWidth) current = candidate;
+		else {
+			lines.push(current);
+			current = word;
+		}
+	}
+	lines.push(current);
+	return lines;
+}
+
+export async function exportJointLetterPdf(letterId: number): Promise<PdfResult> {
+	const admin = await requireHrAccess();
+	if (!admin) return { success: false, message: "Only admins can export reports." };
+
+	const letter = await prismaClient.jointLetter.findUnique({
+		where: { id: letterId },
+		include: {
+			user: { select: { fullName: true, username: true } },
+			penalty: { select: { type: true, amount: true, effectiveMonth: true, details: true } },
+		},
+	});
+	if (!letter) return { success: false, message: "Joint letter not found." };
+
+	const doc = await PDFDocument.create();
+	const font = await doc.embedFont(StandardFonts.Helvetica);
+	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+	const contentW = A4W - 2 * M;
+
+	let page = doc.addPage([A4W, A4H]);
+	drawHeader(page, fontBold, font, `${JOINT_LETTER_TYPE_LABELS[letter.type] ?? letter.type} #${letter.id}`, `Joint letter · Date: ${formatLeaveDate(letter.letterDate)}`, A4W);
+	let y = A4H - M - 92;
+	const ensure = (needed: number) => {
+		if (y - needed < M) {
+			page = doc.addPage([A4W, A4H]);
+			y = A4H - M;
+		}
+	};
+	const field = (label: string, value: string) => {
+		page.drawText(label, { x: M, y, size: 10, font, color: subt });
+		page.drawText(toWinAnsi(value), { x: M + 70, y, size: 10, font: fontBold, color: ink });
+		y -= 16;
+	};
+
+	field("To:", `${letter.user.fullName} (@${letter.user.username})`);
+	field("Subject:", letter.subject.slice(0, 90));
+	if (letter.penalty) field("Penalty:", describePenalty(letter.penalty).slice(0, 90));
+	y -= 14;
+
+	// Body — paragraphs kept, long lines wrapped, continues onto new pages
+	const size = 10.5;
+	const leading = 15;
+	for (const paragraph of letter.body.replace(/\r\n/g, "\n").split("\n")) {
+		if (!paragraph.trim()) {
+			y -= leading * 0.6;
+			continue;
+		}
+		for (const text of wrapLine(toWinAnsi(paragraph), font, size, contentW)) {
+			ensure(leading);
+			page.drawText(text, { x: M, y, size, font, color: ink });
+			y -= leading;
+		}
+	}
+
+	// Signatures (kept together on one page)
+	const boxW = (contentW - 20) / 2;
+	const boxH = 90;
+	ensure(boxH + 50);
+	y -= 30;
+	page.drawText("Signatures", { x: M, y, size: 10.5, font: fontBold, color: ink });
+	y -= 10;
+	const signedOn = `Date: ${letter.signedAt ? todayYmdDubai(letter.signedAt) : "____________"}`;
+	const drawSignature = async (title: string, dataUrl: string | null, x: number) => {
+		page.drawRectangle({ x, y: y - boxH, width: boxW, height: boxH, borderColor: line, borderWidth: 1 });
+		page.drawText(title, { x: x + 8, y: y - 16, size: 8.5, font: fontBold, color: subt });
+		const w = font.widthOfTextAtSize(signedOn, 8.5);
+		page.drawText(signedOn, { x: x + boxW - 8 - w, y: y - 16, size: 8.5, font, color: ink });
+		if (!dataUrl) return; // unsigned: blank box to sign on paper
+		try {
+			const img = await doc.embedPng(Buffer.from(dataUrl.split(",")[1] ?? "", "base64"));
+			const scale = Math.min((boxW - 20) / img.width, (boxH - 30) / img.height);
+			page.drawImage(img, { x: x + 10, y: y - boxH + 8, width: img.width * scale, height: img.height * scale });
+		} catch {
+			page.drawText("(signature could not be rendered)", { x: x + 8, y: y - boxH / 2, size: 8, font, color: subt });
+		}
+	};
+	await drawSignature(`Employee — ${toWinAnsi(letter.user.fullName).slice(0, 28)}`, letter.employeeSignatureBase64, M);
+	await drawSignature(`For the company — ${toWinAnsi(letter.signedByAdminName ?? letter.createdByName).slice(0, 22)}`, letter.adminSignatureBase64, M + boxW + 20);
+
+	return finish(doc, `joint-letter-${letter.id}-${letter.user.username}.pdf`);
 }

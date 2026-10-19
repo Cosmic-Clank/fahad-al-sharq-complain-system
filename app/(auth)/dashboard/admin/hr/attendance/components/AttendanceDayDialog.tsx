@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loading } from "@/components/ui/loading";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { upsertAttendanceDay, deleteAttendanceDay } from "../actions";
 import { compareHHmm } from "@/lib/hr-dates";
+import { ATTENDANCE_TEXT } from "@/lib/hr-attendance-labels";
+import { useLanguage } from "@/hooks/use-language";
 
 export interface AttendanceCellRecord {
 	status: string;
@@ -46,6 +48,7 @@ export default function AttendanceDayDialog({ open, onOpenChange, employee, date
 	const [form, setForm] = useState({ ...EMPTY });
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const t = ATTENDANCE_TEXT[useLanguage()];
 
 	useEffect(() => {
 		if (open) {
@@ -149,15 +152,17 @@ export default function AttendanceDayDialog({ open, onOpenChange, employee, date
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='AUTO'>Automatic (from arrival time)</SelectItem>
-								<SelectItem value='PRESENT'>Present (manual)</SelectItem>
-								<SelectItem value='LATE'>Late (manual)</SelectItem>
-								<SelectItem value='ABSENT'>Absent (manual)</SelectItem>
+								{Object.entries(t.statusOption).map(([value, label]) => (
+									<SelectItem key={value} value={value}>
+										{label}
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
-						<p className='text-xs text-gray-500'>
-							Will be saved as: <span className={`font-semibold ${effectiveStatus === "PRESENT" ? "text-green-600" : effectiveStatus === "LATE" ? "text-amber-600" : "text-red-600"}`}>{effectiveStatus}</span>
-							{form.statusMode === "AUTO" && form.arriveTime && ` (arrived ${form.arriveTime}, start ${employee.workStartTime})`}
+						<p translate='no' className='notranslate text-xs text-gray-500'>
+							{t.willBeSavedAs}{" "}
+							<span className={`font-semibold ${effectiveStatus === "PRESENT" ? "text-green-600" : effectiveStatus === "LATE" ? "text-amber-600" : "text-red-600"}`}>{t.status[effectiveStatus] ?? effectiveStatus}</span>
+							{form.statusMode === "AUTO" && form.arriveTime && t.arrivedAt(form.arriveTime, employee.workStartTime)}
 						</p>
 					</div>
 
@@ -168,10 +173,11 @@ export default function AttendanceDayDialog({ open, onOpenChange, employee, date
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value='NONE'>No — full day</SelectItem>
-								<SelectItem value='SICK'>A. Sick</SelectItem>
-								<SelectItem value='ADDITIONAL_WORK'>B. Additional work</SelectItem>
-								<SelectItem value='OTHER'>C. Other</SelectItem>
+								{Object.entries(t.reasonOption).map(([value, label]) => (
+									<SelectItem key={value} value={value}>
+										{label}
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
 						{form.earlyLeaveReason === "OTHER" && <p className='text-xs text-amber-600'>Every 3rd "Other" early leave in a month automatically deducts 2 days of basic salary.</p>}
@@ -185,23 +191,23 @@ export default function AttendanceDayDialog({ open, onOpenChange, employee, date
 					)}
 				</div>
 
-				<DialogFooter className='flex items-center'>
+				<DialogFooter translate='no' className='notranslate flex items-center'>
 					{record && (
 						<Button variant='outline' className='text-red-600 mr-auto' onClick={handleDelete} disabled={isSaving || isDeleting}>
-							{isDeleting ? <Loading /> : "Clear entry"}
+							{isDeleting ? <Loading /> : t.clearEntry}
 						</Button>
 					)}
 					<Button variant='outline' onClick={() => onOpenChange(false)} disabled={isSaving}>
-						Cancel
+						{t.cancel}
 					</Button>
 					<Button onClick={handleSave} disabled={isSaving}>
 						{isSaving ? (
 							<>
 								<Loading />
-								Saving...
+								{t.saving}
 							</>
 						) : (
-							"Save"
+							t.save
 						)}
 					</Button>
 				</DialogFooter>

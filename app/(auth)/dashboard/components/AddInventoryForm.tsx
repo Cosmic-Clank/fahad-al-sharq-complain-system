@@ -1,5 +1,6 @@
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -110,7 +111,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 			if (res.success) {
 				router.push(inventoryBasePath(role));
 			} else {
-				setSubmitError(res.message || "Failed to create inventory item");
+				setSubmitError(translateMessage(res.message || "Failed to create inventory item"));
 			}
 		} catch (err) {
 			console.error("Error submitting form:", err);

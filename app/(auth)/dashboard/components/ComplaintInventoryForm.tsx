@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loading } from "@/components/ui/loading";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { getEmployeeInventoryForComplaint, addComplaintInventoryUsage } from "./actions";
 import { allowsDecimals, formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
 

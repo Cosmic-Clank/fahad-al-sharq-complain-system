@@ -1,5 +1,6 @@
 // components/ComplaintForm.tsx
 "use client";
+import { showAlert } from "@/lib/notify";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -327,7 +328,7 @@ function ComplaintForm({ buildings }: { buildings: string[] }) {
 						name='images' // IMPORTANT: This name attribute matches formData.getAll('images') in Server Action
 						onChange={(e) => {
 							if (e.target.files && e.target.files.length > 5) {
-								alert("You can upload a maximum of 5 images.");
+								showAlert("You can upload a maximum of 5 images.");
 								e.target.value = "";
 								return;
 							}

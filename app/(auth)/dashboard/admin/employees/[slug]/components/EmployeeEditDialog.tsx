@@ -1,5 +1,6 @@
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -65,7 +66,7 @@ export default function EmployeeEditDialog({ employee }: EmployeeEditDialogProps
 				setConfirmPassword("");
 				window.location.reload();
 			} else {
-				setError(result.message || "Failed to update employee details.");
+				setError(translateMessage(result.message || "Failed to update employee details."));
 			}
 		} catch (err) {
 			setError("Something went wrong. Please try again.");

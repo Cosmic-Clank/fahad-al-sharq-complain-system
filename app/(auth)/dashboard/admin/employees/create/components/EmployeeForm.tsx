@@ -1,6 +1,7 @@
 // components/EmployeeForm.tsx
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -62,14 +63,14 @@ function EmployeeForm() {
 			const result = await createEmployee(formData); // Call the server action
 
 			if (result.success) {
-				setSubmitSuccess(result.message);
+				setSubmitSuccess(translateMessage(result.message));
 				form.reset(); // Reset form fields on success
 				// Optional: Redirect after a short delay or show success and let user navigate
 				setTimeout(() => {
 					router.push("/dashboard/admin/employees"); // Redirect to the employees list page
 				}, 2000);
 			} else {
-				setSubmitError(result.message || "An unknown error occurred.");
+				setSubmitError(translateMessage(result.message || "An unknown error occurred."));
 				// If the server action returns specific field errors, you could map them
 				// back to react-hook-form fields like this:
 				// if (result.errors) {

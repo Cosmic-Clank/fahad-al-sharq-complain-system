@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loading } from "@/components/ui/loading";
 import { Gavel, Gift, Plus, Trash2, ExternalLink, Bot } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { createPenalty, deletePenalty, createBonus, deleteBonus } from "../actions";
 import { currentMonthDubai } from "@/lib/hr-dates";
 

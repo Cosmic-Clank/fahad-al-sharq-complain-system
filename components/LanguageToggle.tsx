@@ -2,30 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Languages } from "lucide-react";
-
-type Language = "en" | "ar";
-
-const LANGUAGE_STORAGE_KEY = "preferred-language";
-
-function getGoogtransCookie(): string | null {
-	if (typeof document === "undefined") return null;
-	const value = `; ${document.cookie}`;
-	const parts = value.split("; googtrans=");
-	if (parts.length === 2) return parts.pop()?.split(";").shift() ?? null;
-	return null;
-}
-
-function getStoredLanguage(): Language | null {
-	if (typeof window === "undefined") return null;
-	const language = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-	return language === "ar" || language === "en" ? language : null;
-}
-
-function getCurrentLanguage(): Language {
-	const storedLanguage = getStoredLanguage();
-	if (storedLanguage) return storedLanguage;
-	return getGoogtransCookie()?.endsWith("/ar") ? "ar" : "en";
-}
+import { getCurrentLanguage, LANGUAGE_STORAGE_KEY, type Language } from "@/lib/language";
 
 function setArabicCookies() {
 	const hostname = window.location.hostname;

@@ -15,6 +15,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import { translateMessage } from "@/lib/messages-ar"
 
 const Form = FormProvider
 
@@ -137,7 +138,7 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
 
 function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : props.children
+  const body = error ? translateMessage(String(error?.message ?? "")) : props.children
 
   if (!body) {
     return null
@@ -147,7 +148,8 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="form-message"
       id={formMessageId}
-      className={cn("text-destructive text-sm", className)}
+      // Validation text is translated above — keep Google Translate off it
+      className={cn("text-destructive text-sm", error && "notranslate", className)}
       {...props}
     >
       {body}

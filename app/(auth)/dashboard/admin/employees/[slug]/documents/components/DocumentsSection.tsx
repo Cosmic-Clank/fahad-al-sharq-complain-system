@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loading } from "@/components/ui/loading";
 import { FileText, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { saveEmployeeDocument, deleteEmployeeDocument } from "../actions";
 import { DOCUMENT_TYPE_LABELS, EXPIRY_LEVEL_LABELS, EXPIRY_LEVEL_STYLES } from "@/lib/hr-documents";
 import { expiryLevel } from "@/lib/hr-dates";

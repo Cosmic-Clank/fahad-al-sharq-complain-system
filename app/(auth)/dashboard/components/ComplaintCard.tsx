@@ -1,6 +1,8 @@
 // components/ComplaintCard.tsx
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
+import { showAlert, askConfirm } from "@/lib/notify";
 import React, { useState, useRef } from "react";
 import { Phone, FileText, Calendar, Image as ImageIcon, CornerDownRight, XCircle, MessageSquare, User, PersonStandingIcon, PinIcon, House, Download, RotateCcw, Lock, Globe, Package } from "lucide-react";
 
@@ -118,7 +120,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			if (result.success) {
 				window.location.reload();
 			} else {
-				setEndError(result.message || "Could not end work. Please try again.");
+				setEndError(translateMessage(result.message || "Could not end work. Please try again."));
 			}
 		} catch (e) {
 			setEndError("Something went wrong. Please try again.");
@@ -135,10 +137,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			if (result.success) {
 				window.location.href = "/dashboard";
 			} else {
-				alert(result.message || "Could not delete complaint. Please try again.");
+				showAlert(result.message || "Could not delete complaint. Please try again.");
 			}
 		} catch (e) {
-			alert("Something went wrong. Please try again.");
+			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsWorkTimesLoading(false);
 		}
@@ -146,7 +148,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 
 	// Handle delete response
 	const handleDeleteResponse = async (responseId: string) => {
-		if (!confirm("Are you sure you want to delete this response?")) return;
+		if (!askConfirm("Are you sure you want to delete this response?")) return;
 
 		setIsEditingLoading(true);
 		try {
@@ -154,10 +156,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			if (result.success) {
 				window.location.reload();
 			} else {
-				alert(result.message || "Could not delete response. Please try again.");
+				showAlert(result.message || "Could not delete response. Please try again.");
 			}
 		} catch (e) {
-			alert("Something went wrong. Please try again.");
+			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsEditingLoading(false);
 		}
@@ -171,10 +173,10 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			if (result.success) {
 				window.location.reload();
 			} else {
-				alert(result.message || "Could not update response. Please try again.");
+				showAlert(result.message || "Could not update response. Please try again.");
 			}
 		} catch (e) {
-			alert("Something went wrong. Please try again.");
+			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsEditingLoading(false);
 		}
@@ -333,7 +335,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 								if (result.success) {
 									window.location.reload();
 								} else {
-									alert(result.message);
+									showAlert(result.message);
 								}
 							}}>
 							<input type='hidden' name='complaintId' value={complaint.id} />

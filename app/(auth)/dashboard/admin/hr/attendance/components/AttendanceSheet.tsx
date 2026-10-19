@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AttendanceDayDialog, { type AttendanceCellRecord } from "./AttendanceDayDialog";
 import { daysInMonth, shiftMonth, monthLabel, todayYmdDubai } from "@/lib/hr-dates";
+import { ATTENDANCE_TEXT } from "@/lib/hr-attendance-labels";
+import { useLanguage } from "@/hooks/use-language";
 
 export interface SheetEmployee {
 	id: number;
@@ -16,15 +18,16 @@ export interface SheetEmployee {
 
 export type SheetRecords = Record<string, AttendanceCellRecord>; // key: `${userId}|${date}`
 
-const STATUS_CHIP: Record<string, { label: string; className: string }> = {
-	PRESENT: { label: "P", className: "bg-green-100 text-green-800" },
-	LATE: { label: "L", className: "bg-amber-100 text-amber-800" },
-	ABSENT: { label: "A", className: "bg-red-100 text-red-800" },
+const STATUS_CHIP_STYLES: Record<string, string> = {
+	PRESENT: "bg-green-100 text-green-800",
+	LATE: "bg-amber-100 text-amber-800",
+	ABSENT: "bg-red-100 text-red-800",
 };
 
 export default function AttendanceSheet({ month, employees, records, children }: { month: string; employees: SheetEmployee[]; records: SheetRecords; children?: React.ReactNode }) {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [selected, setSelected] = useState<{ employee: SheetEmployee; date: string } | null>(null);
+	const t = ATTENDANCE_TEXT[useLanguage()];
 
 	const days = daysInMonth(month);
 	const today = todayYmdDubai();
@@ -57,10 +60,12 @@ export default function AttendanceSheet({ month, employees, records, children }:
 					</Button>
 				</div>
 				<div className='flex items-center gap-3'>
-					<div className='flex items-center gap-2 text-xs text-gray-600'>
-						<span className='inline-flex w-5 h-5 items-center justify-center rounded bg-green-100 text-green-800 font-bold'>P</span> Present
-						<span className='inline-flex w-5 h-5 items-center justify-center rounded bg-amber-100 text-amber-800 font-bold'>L</span> Late
-						<span className='inline-flex w-5 h-5 items-center justify-center rounded bg-red-100 text-red-800 font-bold'>A</span> Absent
+					<div translate='no' className='notranslate flex items-center gap-2 text-xs text-gray-600'>
+						{(["PRESENT", "LATE", "ABSENT"] as const).map((status) => (
+							<React.Fragment key={status}>
+								<span className={`inline-flex w-5 h-5 items-center justify-center rounded font-bold ${STATUS_CHIP_STYLES[status]}`}>{t.chip[status]}</span> {t.status[status]}
+							</React.Fragment>
+						))}
 					</div>
 					{children}
 				</div>
@@ -96,17 +101,22 @@ export default function AttendanceSheet({ month, employees, records, children }:
 								<td className='sticky left-0 bg-white px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap z-10 border-r'>{employee.fullName}</td>
 								{days.map((date) => {
 									const record = records[`${employee.id}|${date}`];
-									const chip = record ? STATUS_CHIP[record.status] : null;
+									const chipStyle = record ? STATUS_CHIP_STYLES[record.status] : null;
 									return (
 										<td key={date} className={`text-center p-0.5 ${isWeekend(date) ? "bg-blue-50/40" : ""}`}>
 											<button
 												type='button'
 												onClick={() => openCell(employee, date)}
-												title={record ? `${record.status}${record.earlyLeaveReason ? ` · early leave: ${record.earlyLeaveReason}` : ""}` : "No entry — click to record"}
-												className={`w-7 h-7 rounded text-[11px] font-bold inline-flex items-center justify-center transition-colors cursor-pointer ${
-													chip ? chip.className : "text-gray-300 hover:bg-gray-100"
+												translate='no'
+												title={
+													record
+														? `${t.status[record.status] ?? record.status}${record.earlyLeaveReason ? ` · ${t.earlyLeave}: ${t.reason[record.earlyLeaveReason] ?? record.earlyLeaveReason}` : ""}`
+														: t.noEntry
+												}
+												className={`notranslate w-7 h-7 rounded text-[11px] font-bold inline-flex items-center justify-center transition-colors cursor-pointer ${
+													chipStyle ?? "text-gray-300 hover:bg-gray-100"
 												} ${record?.earlyLeaveReason ? "ring-2 ring-purple-300" : ""}`}>
-												{chip ? chip.label : "·"}
+												{record ? t.chip[record.status] ?? record.status : "·"}
 											</button>
 										</td>
 									);

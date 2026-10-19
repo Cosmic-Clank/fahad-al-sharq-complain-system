@@ -1,5 +1,6 @@
 "use client";
 
+import { showAlert } from "@/lib/notify";
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 			onApprovalChange?.();
 		} catch (error) {
 			console.error("Error approving request:", error);
-			alert(`Error: ${(error as Error).message}`);
+			showAlert(`Error: ${(error as Error).message}`);
 		} finally {
 			setIsApproving(false);
 		}
@@ -45,7 +46,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 			onApprovalChange?.();
 		} catch (error) {
 			console.error("Error rejecting request:", error);
-			alert(`Error: ${(error as Error).message}`);
+			showAlert(`Error: ${(error as Error).message}`);
 		} finally {
 			setIsRejecting(false);
 		}

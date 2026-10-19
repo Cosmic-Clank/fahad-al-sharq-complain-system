@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { Download } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import type { PdfResult } from "../hrReportActions";
 
 interface DownloadPdfButtonProps {

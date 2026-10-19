@@ -1,6 +1,8 @@
 // components/ComplaintResponseForm.tsx
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
+import { showAlert } from "@/lib/notify";
 import React, { useState, useRef } from "react";
 import { useFormStatus } from "react-dom"; // Hook for Server Action status
 import { Send } from "lucide-react"; // Icon for submit button
@@ -33,14 +35,14 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 			const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
 
 			if (selectedFiles.length > maxImages) {
-				alert(`You can upload a maximum of ${maxImages} images.`);
+				showAlert(`You can upload a maximum of ${maxImages} images.`);
 				e.target.value = ""; // Clear the input
 				return;
 			}
 
 			const invalidFiles = selectedFiles.filter((file) => file.size > maxSize || !allowedTypes.includes(file.type));
 			if (invalidFiles.length > 0) {
-				alert(`Some files are invalid: Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`);
+				showAlert(`Some files are invalid: Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`);
 				e.target.value = ""; // Clear the input
 				return;
 			}
@@ -65,14 +67,14 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 		const result = await addComplaintResponse(formData);
 
 		if (result.success) {
-			setMessage({ type: "success", text: result.message });
+			setMessage({ type: "success", text: translateMessage(result.message) });
 			setResponseText(""); // Clear the textarea
 			isLoading(false); // Set loading state to true
 
 			formRef.current?.reset(); // Reset form fields (if any other inputs)
 			window.location.reload(); // Reload the page to reflect the new response
 		} else {
-			setMessage({ type: "error", text: result.message });
+			setMessage({ type: "error", text: translateMessage(result.message) });
 			isLoading(false); // Set loading state to true
 		}
 	};
@@ -112,7 +114,7 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 						name='images' // IMPORTANT: This name attribute matches formData.getAll('images') in Server Action
 						onChange={(e) => {
 							if (e.target.files && e.target.files.length > 5) {
-								alert("You can upload a maximum of 5 images.");
+								showAlert("You can upload a maximum of 5 images.");
 								e.target.value = "";
 								return;
 							}

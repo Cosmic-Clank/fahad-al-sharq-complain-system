@@ -1,5 +1,6 @@
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -119,7 +120,7 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 			const res = await createInventoryRequest(formData, employeeId);
 
 			if (res.success) {
-				setSubmitSuccess(res.message);
+				setSubmitSuccess(translateMessage(res.message));
 				// Reset form
 				form.reset();
 				setSelectedItem(null);
@@ -128,7 +129,7 @@ function RequestInventoryForm({ employeeId }: RequestInventoryFormProps) {
 					router.push("/dashboard/employee/inventory");
 				}, 2000);
 			} else {
-				setSubmitError(res.message || "Failed to create inventory request");
+				setSubmitError(translateMessage(res.message || "Failed to create inventory request"));
 			}
 		} catch (err) {
 			console.error("Error submitting form:", err);

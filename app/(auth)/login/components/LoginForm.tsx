@@ -1,6 +1,7 @@
 // components/LoginForm.tsx
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { useForm } from "react-hook-form";
@@ -44,7 +45,7 @@ function LoginForm() {
 
 			if (!result.success) {
 				// If the server action returns a string, it's an error message
-				setLoginError(result.message); // Cast to string as per server action's return type for errors
+				setLoginError(translateMessage(result.message)); // Cast to string as per server action's return type for errors
 				return;
 			}
 			router.push("/dashboard"); // Redirect to the dashboard on successful login
@@ -53,7 +54,7 @@ function LoginForm() {
 		} catch (error: any) {
 			console.error("Client-side error during login:", error);
 			// Catch any unexpected client-side errors, or re-thrown errors from the server action
-			setLoginError(error.message || "An unexpected error occurred. Please try again.");
+			setLoginError(translateMessage(error.message || "An unexpected error occurred. Please try again."));
 		}
 	};
 

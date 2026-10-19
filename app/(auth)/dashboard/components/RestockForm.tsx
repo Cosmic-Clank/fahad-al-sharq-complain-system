@@ -1,5 +1,6 @@
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -111,7 +112,7 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 			const res = await restockInventoryItem(formData);
 
 			if (res.success) {
-				setSubmitSuccess(res.message);
+				setSubmitSuccess(translateMessage(res.message));
 				// Reset quantity field but keep item selected
 				form.setValue("quantityToAdd", 1);
 				form.setValue("notes", "");
@@ -130,7 +131,7 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 					});
 				}
 			} else {
-				setSubmitError(res.message || "Failed to restock item");
+				setSubmitError(translateMessage(res.message || "Failed to restock item"));
 			}
 		} catch (err) {
 			console.error("Error submitting form:", err);

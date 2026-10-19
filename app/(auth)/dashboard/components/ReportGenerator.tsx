@@ -1,6 +1,7 @@
 // components/ReportGenerator.tsx
 "use client";
 
+import { showAlert } from "@/lib/notify";
 import * as React from "react";
 import { FileDown, ChevronsUpDown, Check, Loader2, Filter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -183,7 +184,7 @@ export default function ReportGenerator() {
 				URL.revokeObjectURL(url);
 			} catch (e) {
 				console.error(e);
-				alert("Failed to generate PDF. Check server logs.");
+				showAlert("Failed to generate PDF. Check server logs.");
 			}
 		});
 	};

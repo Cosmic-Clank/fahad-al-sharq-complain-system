@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loading } from "@/components/ui/loading";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { upsertEmployeeProfile } from "../actions";
 
 interface HrProfileFormProps {

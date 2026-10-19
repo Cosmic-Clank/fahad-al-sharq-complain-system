@@ -1,5 +1,6 @@
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Package, Banknote, MapPin, Building2, Barcode, Tag, FileText, Calendar, ArrowLeft, Plus, Globe, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateInventoryItem, deleteInventoryItem } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
@@ -109,7 +110,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 				setIsEditDialogOpen(false);
 				router.refresh(); // Refresh the page to show updated data
 			} else {
-				setError(result.message);
+				setError(translateMessage(result.message));
 			}
 		} catch (err) {
 			setError("An unexpected error occurred. Please try again.");

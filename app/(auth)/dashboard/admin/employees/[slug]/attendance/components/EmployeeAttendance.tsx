@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AttendanceDayDialog, { type AttendanceCellRecord } from "@/app/(auth)/dashboard/admin/hr/attendance/components/AttendanceDayDialog";
 import { daysInMonth, shiftMonth, monthLabel, todayYmdDubai } from "@/lib/hr-dates";
+import { ATTENDANCE_TEXT } from "@/lib/hr-attendance-labels";
+import { useLanguage } from "@/hooks/use-language";
 
 const STATUS_STYLES: Record<string, string> = {
 	PRESENT: "bg-green-100 text-green-800",
@@ -14,15 +16,10 @@ const STATUS_STYLES: Record<string, string> = {
 	ABSENT: "bg-red-100 text-red-800",
 };
 
-const REASON_LABELS: Record<string, string> = {
-	SICK: "Sick",
-	ADDITIONAL_WORK: "Additional work",
-	OTHER: "Other",
-};
-
 export default function EmployeeAttendance({ month, employee, records }: { month: string; employee: { id: number; fullName: string; workStartTime: string }; records: Record<string, AttendanceCellRecord> }) {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
+	const t = ATTENDANCE_TEXT[useLanguage()];
 
 	const today = todayYmdDubai();
 	// Show days up to today for the current month, all days for past months
@@ -58,11 +55,19 @@ export default function EmployeeAttendance({ month, employee, records }: { month
 						</Link>
 					</Button>
 				</div>
-				<div className='flex gap-2 text-xs'>
-					<span className='px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-semibold'>Present: {stats.PRESENT}</span>
-					<span className='px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold'>Late: {stats.LATE}</span>
-					<span className='px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-semibold'>Absent: {stats.ABSENT}</span>
-					<span className='px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 font-semibold'>&quot;Other&quot; leaves: {stats.otherLeaves}</span>
+				<div translate='no' className='notranslate flex gap-2 text-xs'>
+					<span className='px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-semibold'>
+						{t.status.PRESENT}: {stats.PRESENT}
+					</span>
+					<span className='px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold'>
+						{t.status.LATE}: {stats.LATE}
+					</span>
+					<span className='px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-semibold'>
+						{t.status.ABSENT}: {stats.ABSENT}
+					</span>
+					<span className='px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 font-semibold'>
+						{t.otherLeaves}: {stats.otherLeaves}
+					</span>
 				</div>
 			</div>
 
@@ -91,7 +96,9 @@ export default function EmployeeAttendance({ month, employee, records }: { month
 										<TableCell className='font-medium'>{date}</TableCell>
 										<TableCell>
 											{record ? (
-												<span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[record.status] ?? ""}`}>{record.status}</span>
+												<span translate='no' className={`notranslate inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[record.status] ?? ""}`}>
+													{t.status[record.status] ?? record.status}
+												</span>
 											) : (
 												<span className='text-gray-300 text-xs'>—</span>
 											)}
@@ -102,8 +109,8 @@ export default function EmployeeAttendance({ month, employee, records }: { month
 										<TableCell className='text-sm'>{record?.leaveTime ?? "—"}</TableCell>
 										<TableCell className='text-sm'>
 											{record?.earlyLeaveReason ? (
-												<span className='inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800' title={record.earlyLeaveNote ?? undefined}>
-													{REASON_LABELS[record.earlyLeaveReason] ?? record.earlyLeaveReason}
+												<span translate='no' className='notranslate inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800' title={record.earlyLeaveNote ?? undefined}>
+													{t.reason[record.earlyLeaveReason] ?? record.earlyLeaveReason}
 												</span>
 											) : (
 												"—"

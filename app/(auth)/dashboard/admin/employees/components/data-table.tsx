@@ -1,6 +1,7 @@
 // components/CustomDataTable.tsx
 "use client";
 
+import { translateMessage } from "@/lib/messages-ar";
 import { SortDescIcon } from "lucide-react";
 import DataTable from "react-data-table-component";
 import React, { useState } from "react"; // Added useState
@@ -76,11 +77,11 @@ function CustomDataTable({ data, basePath = "/dashboard/admin/employees", canMan
 			const result = await deleteEmployees(idsToDelete); // Call the server action
 
 			if (result.success) {
-				setDeleteMessage({ type: "success", text: result.message });
+				setDeleteMessage({ type: "success", text: translateMessage(result.message) });
 				setSelectedRows([]); // Clear selection after successful deletion
 				// Note: The `revalidatePath` in the server action will handle data refresh.
 			} else {
-				setDeleteMessage({ type: "error", text: result.message });
+				setDeleteMessage({ type: "error", text: translateMessage(result.message) });
 			}
 		} catch (error) {
 			console.error("Client-side error during deletion:", error);

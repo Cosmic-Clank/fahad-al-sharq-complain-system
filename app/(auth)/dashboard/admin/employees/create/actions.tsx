@@ -58,7 +58,7 @@ export async function createEmployee(formData: FormData) {
 		// Or, if you want a full redirect after success (e.g., to a dashboard)
 		// redirect("/dashboard/admin/employees");
 
-		const roleLabel = validatedData.role === "INVENTORY_MANAGER" ? "Inventory Manager" : "Employee";
+		const roleLabel = { INVENTORY_MANAGER: "Inventory Manager", HR_MANAGER: "HR Manager" }[validatedData.role as string] ?? "Employee";
 		return { success: true, message: `${roleLabel} created successfully!` };
 	} catch (error) {
 		if (error instanceof z.ZodError) {

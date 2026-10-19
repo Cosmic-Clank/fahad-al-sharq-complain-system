@@ -7,8 +7,10 @@ import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { daysInMonth, monthLabel, currentMonthDubai, todayYmdDubai } from "@/lib/hr-dates";
 import { computeLeaveSalary, computePayslip } from "@/lib/hr-payroll";
+import { formatLeaveDate, LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS } from "@/lib/hr-leave";
 import { buildAttendanceWorkbook, buildSalarySummaryWorkbook, workbookToBase64, XLSX_MIME } from "@/lib/xlsx-reports";
 import { getSalarySummary } from "@/lib/hr-salary-summary";
+import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
 
 export type PdfResult = { success: true; fileName: string; base64: string; mime?: string } | { success: false; message: string };
 
@@ -72,9 +74,17 @@ export async function exportAttendanceSheetXlsx(month: string): Promise<PdfResul
 		byUser.get(r.userId)![r.date] = { status: r.status, earlyLeave: r.earlyLeaveReason !== null };
 	}
 
+	const leaveByKey = await getApprovedLeaveDays(month);
+	const leaveByUser = new Map<number, Record<string, string>>();
+	for (const [key, type] of Object.entries(leaveByKey)) {
+		const [uid, date] = key.split("|");
+		if (!leaveByUser.has(Number(uid))) leaveByUser.set(Number(uid), {});
+		leaveByUser.get(Number(uid))![date] = type;
+	}
+
 	const wb = buildAttendanceWorkbook(
 		month,
-		users.map((u) => ({ fullName: u.fullName, records: byUser.get(u.id) ?? {} }))
+		users.map((u) => ({ fullName: u.fullName, records: byUser.get(u.id) ?? {}, leave: leaveByUser.get(u.id) }))
 	);
 
 	return { success: true, fileName: `attendance-${month}.xlsx`, base64: await workbookToBase64(wb), mime: XLSX_MIME };
@@ -98,7 +108,9 @@ export async function exportAttendanceSheetPdf(month: string): Promise<PdfResult
 	]);
 
 	const byKey = new Map(records.map((r) => [`${r.userId}|${r.date}`, r]));
+	const leaveByKey = await getApprovedLeaveDays(month);
 	const days = daysInMonth(month);
+	const leaveBlue = rgb(0.03, 0.45, 0.68);
 
 	// Landscape A4
 	const W = A4H;
@@ -117,7 +129,7 @@ export async function exportAttendanceSheetPdf(month: string): Promise<PdfResult
 
 	for (let start = 0; start < Math.max(users.length, 1); start += perPage) {
 		const page = doc.addPage([W, H]);
-		drawHeader(page, fontBold, font, `Attendance Sheet — ${monthLabel(month)}`, `Generated ${todayYmdDubai()} by ${admin.name} · P = Present, L = Late, A = Absent, * = early leave`, W);
+		drawHeader(page, fontBold, font, `Attendance Sheet — ${monthLabel(month)}`, `Generated ${todayYmdDubai()} by ${admin.name} · P = Present, L = Late, A = Absent, V = On leave, * = early leave`, W);
 
 		let y = H - M - 76;
 		// Day header row
@@ -133,8 +145,11 @@ export async function exportAttendanceSheetPdf(month: string): Promise<PdfResult
 			page.drawText(name, { x: M, y, size: 8, font, color: ink });
 			days.forEach((d, i) => {
 				const rec = byKey.get(`${user.id}|${d}`);
-				if (!rec) return;
 				const x = M + nameColW + i * cellW + cellW / 2 - 3;
+				if (!rec) {
+					if (leaveByKey[`${user.id}|${d}`]) page.drawText("V", { x, y, size: 8, font: fontBold, color: leaveBlue });
+					return;
+				}
 				page.drawText(statusLetter(rec.status), { x, y, size: 8, font: fontBold, color: statusColor(rec.status) });
 				if (rec.earlyLeaveReason) page.drawText("*", { x: x + 6, y: y + 2, size: 7, font, color: rgb(0.45, 0.2, 0.65) });
 			});
@@ -442,4 +457,80 @@ export async function exportHandoverPdf(handoverId: number): Promise<PdfResult> 
 	await drawSignature("Admin", handover.adminSignatureReturnBase64, M + (A4W - 2 * M - 20) / 2 + 20, y, returnDate);
 
 	return finish(doc, `passport-handover-${handover.id}-${handover.user.username}.pdf`);
+}
+
+// ─────────────────────────── 5. Leave request form ───────────────────────────
+
+export async function exportLeavePdf(leaveId: number): Promise<PdfResult> {
+	const admin = await requireHrAccess();
+	if (!admin) return { success: false, message: "Only admins can export reports." };
+
+	const leave = await prismaClient.leaveRequest.findUnique({
+		where: { id: leaveId },
+		include: { user: { select: { fullName: true, username: true, employeeProfile: { select: { joiningDate: true } } } } },
+	});
+	if (!leave) return { success: false, message: "Leave request not found." };
+
+	const doc = await PDFDocument.create();
+	const font = await doc.embedFont(StandardFonts.Helvetica);
+	const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+	const page = doc.addPage([A4W, A4H]);
+
+	drawHeader(page, fontBold, font, `Leave Request Form #${leave.id}`, `Employee: ${leave.user.fullName} (@${leave.user.username}) · Status: ${LEAVE_STATUS_LABELS[leave.status] ?? leave.status}`, A4W);
+
+	let y = A4H - M - 90;
+	const row = (label: string, value: string) => {
+		y -= 18;
+		page.drawText(label, { x: M + 6, y, size: 9.5, font, color: subt });
+		page.drawText(toWinAnsi(value), { x: M + 170, y, size: 9.5, font: fontBold, color: ink });
+	};
+	const joining = leave.user.employeeProfile?.joiningDate;
+
+	row("Type of leave", LEAVE_TYPE_LABELS[leave.type] ?? leave.type);
+	row("From", formatLeaveDate(leave.startDate));
+	row("To", formatLeaveDate(leave.endDate));
+	row("Number of days", `${leave.days} calendar day${leave.days === 1 ? "" : "s"}`);
+	if (leave.reason) row("Reason", leave.reason.replace(/\s+/g, " ").slice(0, 70));
+	row("Joining date", joining ? todayYmdDubai(joining) : "Not on record");
+	row(leave.createdByAdminName ? "Recorded by" : "Requested on", leave.createdByAdminName ?? todayYmdDubai(leave.createdAt));
+	if (leave.decidedByName && (leave.status === "APPROVED" || leave.status === "REJECTED")) {
+		row(leave.status === "APPROVED" ? "Approved by" : "Rejected by", `${leave.decidedByName}${leave.decidedAt ? ` on ${todayYmdDubai(leave.decidedAt)}` : ""}`);
+	}
+	if (leave.decisionNote) row("Note", leave.decisionNote.replace(/\s+/g, " ").slice(0, 70));
+
+	y -= 40;
+	if (!leave.signatureRequired) {
+		page.drawText("Signatures not required: the employee had less than 2 years of service when this leave was requested.", { x: M, y, size: 9.5, font, color: subt });
+		return finish(doc, `leave-${leave.id}-${leave.user.username}.pdf`);
+	}
+
+	page.drawText("Signatures (required: 2+ years of service or joining date not on record)", { x: M, y, size: 10.5, font: fontBold, color: ink });
+	y -= 10;
+
+	const boxW = (A4W - 2 * M - 20) / 2;
+	const boxH = 90;
+	const drawSignature = async (title: string, dataUrl: string | null, x: number, dateLabel: string) => {
+		page.drawRectangle({ x, y: y - boxH, width: boxW, height: boxH, borderColor: line, borderWidth: 1 });
+		page.drawText(title, { x: x + 8, y: y - 16, size: 8.5, font: fontBold, color: subt });
+		const w = font.widthOfTextAtSize(dateLabel, 8.5);
+		page.drawText(dateLabel, { x: x + boxW - 8 - w, y: y - 16, size: 8.5, font, color: ink });
+		if (!dataUrl) {
+			page.drawText("(not signed)", { x: x + 8, y: y - boxH / 2, size: 8, font, color: subt });
+			return;
+		}
+		try {
+			const img = await doc.embedPng(Buffer.from(dataUrl.split(",")[1] ?? "", "base64"));
+			const scale = Math.min((boxW - 20) / img.width, (boxH - 30) / img.height);
+			page.drawImage(img, { x: x + 10, y: y - boxH + 8, width: img.width * scale, height: img.height * scale });
+		} catch {
+			page.drawText("(signature could not be rendered)", { x: x + 8, y: y - boxH / 2, size: 8, font, color: subt });
+		}
+	};
+
+	const signedOn = (d: Date | null) => `Date: ${d ? todayYmdDubai(d) : "____________"}`;
+	// Employee signs when requesting (or on HR's screen when recorded); admin signs when deciding
+	await drawSignature("Employee", leave.employeeSignatureBase64, M, signedOn(leave.employeeSignatureBase64 ? (leave.createdByAdminName ? leave.decidedAt : leave.createdAt) : null));
+	await drawSignature("Admin", leave.adminSignatureBase64, M + boxW + 20, signedOn(leave.adminSignatureBase64 ? leave.decidedAt : null));
+
+	return finish(doc, `leave-${leave.id}-${leave.user.username}.pdf`);
 }

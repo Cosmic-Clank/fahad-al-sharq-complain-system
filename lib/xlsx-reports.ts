@@ -7,6 +7,7 @@ import type { SalarySummary } from "./hr-salary-summary";
 
 const FILL = {
 	present: { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9F2E1" } } as ExcelJS.Fill,
+	leave: { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0F2FE" } } as ExcelJS.Fill,
 	late: { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDEBC8" } } as ExcelJS.Fill,
 	absent: { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9D3D3" } } as ExcelJS.Fill,
 	header: { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } } as ExcelJS.Fill,
@@ -16,6 +17,8 @@ export interface AttendanceXlsxEmployee {
 	fullName: string;
 	/** date ("YYYY-MM-DD") -> { status, earlyLeave } */
 	records: Record<string, { status: string; earlyLeave: boolean }>;
+	/** Approved leave: date → leave type. Shown as "V" when there is no attendance entry. */
+	leave?: Record<string, string>;
 }
 
 export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsxEmployee[]): ExcelJS.Workbook {
@@ -24,7 +27,7 @@ export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsx
 	const ws = wb.addWorksheet(`Attendance ${month}`, { views: [{ state: "frozen", xSplit: 1, ySplit: 4 }] });
 
 	const days = daysInMonth(month);
-	const totalCols = 1 + days.length + 4;
+	const totalCols = 1 + days.length + 5;
 
 	// Title + legend
 	ws.mergeCells(1, 1, 1, totalCols);
@@ -33,7 +36,7 @@ export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsx
 	title.font = { bold: true, size: 13 };
 	ws.mergeCells(2, 1, 2, totalCols);
 	const legend = ws.getCell(2, 1);
-	legend.value = "P = Present, L = Late, A = Absent, * = early leave";
+	legend.value = "P = Present, L = Late, A = Absent, V = On leave, * = early leave";
 	legend.font = { size: 9, color: { argb: "FF6B7280" } };
 
 	// Header row (row 4)
@@ -43,7 +46,7 @@ export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsx
 		headerRow.getCell(2 + i).value = Number(d.slice(8));
 	});
 	const totalsStart = 2 + days.length;
-	["Present", "Late", "Absent", "'Other' leaves"].forEach((label, i) => {
+	["Present", "Late", "Absent", "'Other' leaves", "On leave"].forEach((label, i) => {
 		headerRow.getCell(totalsStart + i).value = label;
 	});
 	headerRow.eachCell((cell) => {
@@ -61,9 +64,20 @@ export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsx
 		let late = 0;
 		let absent = 0;
 		let otherLeaves = 0;
+		let onLeave = 0;
 		days.forEach((d, i) => {
 			const rec = emp.records[d];
-			if (!rec) return;
+			if (!rec) {
+				if (emp.leave?.[d]) {
+					const cell = row.getCell(2 + i);
+					cell.value = "V";
+					cell.alignment = { horizontal: "center" };
+					cell.font = { size: 9, bold: true };
+					cell.fill = FILL.leave;
+					onLeave++;
+				}
+				return;
+			}
 			const cell = row.getCell(2 + i);
 			const letter = rec.status === "PRESENT" ? "P" : rec.status === "LATE" ? "L" : "A";
 			cell.value = rec.earlyLeave ? `${letter}*` : letter;
@@ -79,13 +93,14 @@ export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsx
 		row.getCell(totalsStart + 1).value = late;
 		row.getCell(totalsStart + 2).value = absent;
 		row.getCell(totalsStart + 3).value = otherLeaves;
-		for (let i = 0; i < 4; i++) row.getCell(totalsStart + i).alignment = { horizontal: "center" };
+		row.getCell(totalsStart + 4).value = onLeave;
+		for (let i = 0; i < 5; i++) row.getCell(totalsStart + i).alignment = { horizontal: "center" };
 	});
 
 	// Column widths
 	ws.getColumn(1).width = 26;
 	for (let i = 0; i < days.length; i++) ws.getColumn(2 + i).width = 4;
-	for (let i = 0; i < 4; i++) ws.getColumn(totalsStart + i).width = 12;
+	for (let i = 0; i < 5; i++) ws.getColumn(totalsStart + i).width = 12;
 
 	return wb;
 }
@@ -158,12 +173,6 @@ export function buildUsageWorkbook(rows: UsageXlsxRow[], rangeLabel: string): Ex
 	return wb;
 }
 
-export async function workbookToBase64(wb: ExcelJS.Workbook): Promise<string> {
-	const buffer = await wb.xlsx.writeBuffer();
-	return Buffer.from(buffer).toString("base64");
-}
-
-export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 export function buildSalarySummaryWorkbook(summary: SalarySummary): ExcelJS.Workbook {
 	const wb = new ExcelJS.Workbook();
 	wb.creator = "Fahad Al Sharq AC Systems LLC";
@@ -219,3 +228,9 @@ export function buildSalarySummaryWorkbook(summary: SalarySummary): ExcelJS.Work
 	return wb;
 }
 
+export async function workbookToBase64(wb: ExcelJS.Workbook): Promise<string> {
+	const buffer = await wb.xlsx.writeBuffer();
+	return Buffer.from(buffer).toString("base64");
+}
+
+export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

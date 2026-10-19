@@ -24,7 +24,22 @@ const STATUS_CHIP_STYLES: Record<string, string> = {
 	ABSENT: "bg-red-100 text-red-800",
 };
 
-export default function AttendanceSheet({ month, employees, records, children }: { month: string; employees: SheetEmployee[]; records: SheetRecords; children?: React.ReactNode }) {
+const LEAVE_CHIP_STYLE = "bg-sky-100 text-sky-800";
+
+export default function AttendanceSheet({
+	month,
+	employees,
+	records,
+	leaveDays = {},
+	children,
+}: {
+	month: string;
+	employees: SheetEmployee[];
+	records: SheetRecords;
+	/** Approved leave, keyed `${userId}|${date}` → leave type. */
+	leaveDays?: Record<string, string>;
+	children?: React.ReactNode;
+}) {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [selected, setSelected] = useState<{ employee: SheetEmployee; date: string } | null>(null);
 	const t = ATTENDANCE_TEXT[useLanguage()];
@@ -66,6 +81,7 @@ export default function AttendanceSheet({ month, employees, records, children }:
 								<span className={`inline-flex w-5 h-5 items-center justify-center rounded font-bold ${STATUS_CHIP_STYLES[status]}`}>{t.chip[status]}</span> {t.status[status]}
 							</React.Fragment>
 						))}
+						<span className={`inline-flex w-5 h-5 items-center justify-center rounded font-bold ${LEAVE_CHIP_STYLE}`}>{t.leaveChip}</span> {t.onLeave}
 					</div>
 					{children}
 				</div>
@@ -101,7 +117,9 @@ export default function AttendanceSheet({ month, employees, records, children }:
 								<td className='sticky left-0 bg-white px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap z-10 border-r'>{employee.fullName}</td>
 								{days.map((date) => {
 									const record = records[`${employee.id}|${date}`];
-									const chipStyle = record ? STATUS_CHIP_STYLES[record.status] : null;
+									const leaveType = leaveDays[`${employee.id}|${date}`];
+									// A recorded attendance entry wins; otherwise approved leave shows as V
+									const chipStyle = record ? STATUS_CHIP_STYLES[record.status] : leaveType ? LEAVE_CHIP_STYLE : null;
 									return (
 										<td key={date} className={`text-center p-0.5 ${isWeekend(date) ? "bg-blue-50/40" : ""}`}>
 											<button
@@ -111,12 +129,14 @@ export default function AttendanceSheet({ month, employees, records, children }:
 												title={
 													record
 														? `${t.status[record.status] ?? record.status}${record.earlyLeaveReason ? ` · ${t.earlyLeave}: ${t.reason[record.earlyLeaveReason] ?? record.earlyLeaveReason}` : ""}`
-														: t.noEntry
+														: leaveType
+															? `${t.onLeave} (${t.leaveType[leaveType] ?? leaveType})`
+															: t.noEntry
 												}
 												className={`notranslate w-7 h-7 rounded text-[11px] font-bold inline-flex items-center justify-center transition-colors cursor-pointer ${
 													chipStyle ?? "text-gray-300 hover:bg-gray-100"
 												} ${record?.earlyLeaveReason ? "ring-2 ring-purple-300" : ""}`}>
-												{record ? t.chip[record.status] ?? record.status : "·"}
+												{record ? t.chip[record.status] ?? record.status : leaveType ? t.leaveChip : "·"}
 											</button>
 										</td>
 									);

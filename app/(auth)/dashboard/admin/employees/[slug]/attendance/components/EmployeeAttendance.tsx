@@ -16,7 +16,18 @@ const STATUS_STYLES: Record<string, string> = {
 	ABSENT: "bg-red-100 text-red-800",
 };
 
-export default function EmployeeAttendance({ month, employee, records }: { month: string; employee: { id: number; fullName: string; workStartTime: string }; records: Record<string, AttendanceCellRecord> }) {
+export default function EmployeeAttendance({
+	month,
+	employee,
+	records,
+	leaveDays = {},
+}: {
+	month: string;
+	employee: { id: number; fullName: string; workStartTime: string };
+	records: Record<string, AttendanceCellRecord>;
+	/** Approved leave in this month, keyed by date → leave type. */
+	leaveDays?: Record<string, string>;
+}) {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 	const t = ATTENDANCE_TEXT[useLanguage()];
@@ -38,6 +49,7 @@ export default function EmployeeAttendance({ month, employee, records }: { month
 		},
 		{ PRESENT: 0, LATE: 0, ABSENT: 0, otherLeaves: 0 } as Record<string, number>
 	);
+	const leaveCount = days.filter((d) => leaveDays[d] && !records[d]).length;
 
 	return (
 		<div className='space-y-4'>
@@ -67,6 +79,9 @@ export default function EmployeeAttendance({ month, employee, records }: { month
 					</span>
 					<span className='px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 font-semibold'>
 						{t.otherLeaves}: {stats.otherLeaves}
+					</span>
+					<span className='px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 font-semibold'>
+						{t.onLeave}: {leaveCount}
 					</span>
 				</div>
 			</div>
@@ -98,6 +113,10 @@ export default function EmployeeAttendance({ month, employee, records }: { month
 											{record ? (
 												<span translate='no' className={`notranslate inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[record.status] ?? ""}`}>
 													{t.status[record.status] ?? record.status}
+												</span>
+											) : leaveDays[date] ? (
+												<span translate='no' className='notranslate inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-800'>
+													{t.onLeave} · {t.leaveType[leaveDays[date]] ?? leaveDays[date]}
 												</span>
 											) : (
 												<span className='text-gray-300 text-xs'>—</span>

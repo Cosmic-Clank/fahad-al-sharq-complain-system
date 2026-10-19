@@ -13,6 +13,7 @@ const TABS = [
 	{ label: "Tickets", segment: "tickets" },
 	{ label: "Penalties & Bonuses", segment: "penalties" },
 	{ label: "Handovers", segment: "handovers" },
+	{ label: "Leave", segment: "leave" },
 	{ label: "Payslips", segment: "payslips" },
 	{ label: "Activity", segment: "activity" },
 ];

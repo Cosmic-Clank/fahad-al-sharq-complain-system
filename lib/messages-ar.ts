@@ -220,6 +220,33 @@ const MESSAGES_AR: Record<string, string> = {
 	"Failed to save attendance. Please try again.": "فشل حفظ الحضور. يرجى المحاولة مرة أخرى.",
 	"Failed to remove attendance entry.": "فشل حذف سجل الحضور.",
 
+	// ── HR: leave requests ──
+	"Leave request sent — the admin will review it.": "تم إرسال طلب الإجازة — سيقوم المسؤول بمراجعته.",
+	"Leave request cancelled.": "تم إلغاء طلب الإجازة.",
+	"Cancel this leave request?": "هل تريد إلغاء طلب الإجازة هذا؟",
+	"Leave request not found.": "طلب الإجازة غير موجود.",
+	"Only requests that are still waiting can be cancelled.": "لا يمكن إلغاء إلا الطلبات التي لا تزال قيد الانتظار.",
+	"Only requests that are still waiting can be approved or rejected.": "لا يمكن الموافقة أو الرفض إلا على الطلبات التي لا تزال قيد الانتظار.",
+	"Please sign in the box before sending your request.": "يرجى التوقيع في المربع قبل إرسال طلبك.",
+	"You already have leave on some of these days. Check your requests below.": "لديك إجازة بالفعل في بعض هذه الأيام. راجع طلباتك أدناه.",
+	"Failed to send the leave request. Please try again.": "فشل إرسال طلب الإجازة. يرجى المحاولة مرة أخرى.",
+	"Only admins can approve leave.": "يمكن للمسؤولين فقط الموافقة على الإجازات.",
+	"Your signature is required to approve this leave.": "توقيعك مطلوب للموافقة على هذه الإجازة.",
+	"This employee already has leave on some of these days.": "لدى هذا الموظف إجازة بالفعل في بعض هذه الأيام.",
+	"Leave approved.": "تمت الموافقة على الإجازة.",
+	"Leave rejected.": "تم رفض الإجازة.",
+	"Failed to update the leave request.": "فشل تحديث طلب الإجازة.",
+	"Both signatures are required (2+ years of service or no joining date set).": "التوقيعان مطلوبان (خدمة سنتين أو أكثر أو عدم تسجيل تاريخ الالتحاق).",
+	"Leave recorded and approved.": "تم تسجيل الإجازة والموافقة عليها.",
+	"Failed to record the leave. Please try again.": "فشل تسجيل الإجازة. يرجى المحاولة مرة أخرى.",
+	"Please choose the type of leave.": "يرجى اختيار نوع الإجازة.",
+	"Please choose both a start and an end date.": "يرجى اختيار تاريخ البداية وتاريخ النهاية.",
+	"The end date must be on or after the start date.": "يجب أن يكون تاريخ النهاية في يوم البداية أو بعده.",
+	"Leave cannot start in the past. For past sick days choose Sick Leave.": "لا يمكن أن تبدأ الإجازة في الماضي. لأيام المرض السابقة اختر الإجازة المرضية.",
+	"Choose the type of leave": "اختر نوع الإجازة",
+	"Choose the dates": "اختر التواريخ",
+	"Sign in the box above": "وقّع في المربع أعلاه",
+
 	// ── HR: passport handovers ──
 	"Handover not found.": "عملية التسليم غير موجودة.",
 	"There is already an open handover for this employee.": "توجد بالفعل عملية تسليم مفتوحة لهذا الموظف.",
@@ -252,6 +279,8 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
 	[/^(.+) created successfully!$/, (m) => (ROLE_AR[m[1]] ? `تم إنشاء ${ROLE_AR[m[1]]} بنجاح!` : m[0])],
 	[/^(\d+) employee\(s\) deleted successfully\.$/, (m) => `تم حذف ${m[1]} موظف بنجاح.`],
 	[/^"(.+)" deleted\.$/, (m) => `تم حذف "${m[1]}".`],
+	[/^A single leave request can be at most (\d+) days\.$/, (m) => `يمكن أن يكون طلب الإجازة الواحد ${m[1]} يوماً كحد أقصى.`],
+	[/^Sick leave can only start up to (\d+) days in the past\.$/, (m) => `يمكن أن تبدأ الإجازة المرضية قبل ${m[1]} يوماً كحد أقصى.`],
 ];
 
 function translateAr(message: string): string {

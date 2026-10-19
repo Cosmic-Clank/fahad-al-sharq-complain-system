@@ -6,12 +6,13 @@ import AttendanceSheet, { type SheetRecords } from "./components/AttendanceSheet
 import DownloadPdfButton from "../components/DownloadPdfButton";
 import { exportAttendanceSheetPdf, exportAttendanceSheetXlsx } from "../hrReportActions";
 import { currentMonthDubai } from "@/lib/hr-dates";
+import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
 
 async function page({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
 	const params = await searchParams;
 	const month = params.month && /^\d{4}-\d{2}$/.test(params.month) ? params.month : currentMonthDubai();
 
-	const [users, monthRecords] = await Promise.all([
+	const [users, monthRecords, leaveDays] = await Promise.all([
 		prismaClient.user.findMany({
 			where: { role: { in: HR_STAFF_ROLES } },
 			select: {
@@ -36,6 +37,7 @@ async function page({ searchParams }: { searchParams: Promise<{ month?: string }
 				earlyLeaveNote: true,
 			},
 		}),
+		getApprovedLeaveDays(month),
 	]);
 
 	const employees = users.map((u) => ({
@@ -69,7 +71,7 @@ async function page({ searchParams }: { searchParams: Promise<{ month?: string }
 				<p className='text-gray-600 mt-1'>Record daily sign-ins for every employee. Status is computed from each employee&apos;s scheduled start time.</p>
 			</div>
 
-			<AttendanceSheet month={month} employees={employees} records={records}>
+			<AttendanceSheet month={month} employees={employees} records={records} leaveDays={leaveDays}>
 				<DownloadPdfButton getPdf={exportAttendanceSheetPdf.bind(null, month)} label='Export PDF' />
 				<DownloadPdfButton getPdf={exportAttendanceSheetXlsx.bind(null, month)} label='Export Excel' />
 			</AttendanceSheet>

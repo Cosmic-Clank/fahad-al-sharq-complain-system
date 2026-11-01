@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
 	experimental: {
 		serverActions: {
 			bodySizeLimit: "5mb",
-			allowedOrigins: ["http://fahadalsharq.com", "http://localhost"],
+			// hosts, not URLs — Next compares against the Origin header's host
+			allowedOrigins: ["fahadalsharq.com", "www.fahadalsharq.com", "localhost:3000"],
 		},
 	},
 	eslint: {

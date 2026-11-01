@@ -138,7 +138,7 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 	const currentPage = Math.min(pageParam, totalPages);
 
 	const columns = [
-		{ name: "ID", selector: (row: RowData) => row.id, sortable: true, grow: 0 },
+		{ name: "ID", selector: (row: RowData) => row.id, sortable: true, sortFunction: (a: RowData, b: RowData) => Number(a.id) - Number(b.id), grow: 0 },
 		{
 			name: "Type",
 			selector: (row: RowData) => (row.isPrivate ? "Private" : "Public"),
@@ -183,7 +183,7 @@ export default function CustomDataTable({ data, role, currentUser }: { data: Row
 			},
 			sortable: true,
 		},
-		{ name: "Submitted On", selector: (row: RowData) => row.createdAt, sortable: true },
+		{ name: "Submitted On", selector: (row: RowData) => row.createdAt, sortable: true, sortFunction: (a: RowData, b: RowData) => (a.createdAtISO ?? "").localeCompare(b.createdAtISO ?? "") },
 		{
 			name: "Status",
 			selector: (row: RowData) => row.status,

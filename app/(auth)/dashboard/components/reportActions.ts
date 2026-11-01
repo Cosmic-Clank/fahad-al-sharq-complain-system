@@ -2,7 +2,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFImage } from "pdf-lib";
 import { Buffer } from "node:buffer";
 import { formatQty } from "@/lib/inventory-units";
 import { requireRole } from "@/lib/authz";
@@ -84,7 +84,8 @@ function normalizeImagePaths(raw: unknown): string[] {
 
 async function fetchImageBytes(url: string): Promise<Uint8Array | null> {
 	try {
-		const res = await fetch(url, { cache: "no-store" });
+		// A stalled storage request must not hang the whole report
+		const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
 		if (!res.ok) return null;
 		return new Uint8Array(await res.arrayBuffer());
 	} catch {
@@ -104,6 +105,53 @@ async function maybeDownscaleJpeg(bytes: Uint8Array, maxW = 900, maxH = 900): Pr
 	}
 }
 
+
+/**
+ * Fetch, downscale and embed one photo; null when it can't be used. A single bad
+ * upload (HEIC renamed to .png, truncated file…) must not fail the whole PDF.
+ */
+async function embedPhoto(doc: PDFDocument, url: string): Promise<PDFImage | null> {
+	const raw = await fetchImageBytes(url);
+	if (!raw) return null;
+	try {
+		return await doc.embedJpg(await maybeDownscaleJpeg(raw, 900, 900));
+	} catch {
+		try {
+			return await doc.embedPng(raw); // sharp unavailable and the original is a PNG
+		} catch {
+			console.warn("Skipping an image that could not be embedded:", url);
+			return null;
+		}
+	}
+}
+
+/**
+ * Grid for the complaint photos: 3, 4 or 5 per row, whichever gives the tallest
+ * thumbnails in the space between the "Images" heading and the bottom margin
+ * (rows are thumbH + 34 apart). A fixed 3×110pt grid used to overflow when the
+ * description was long: row 1 covered the heading and photos 4–5 were dropped.
+ */
+function photoGrid(count: number, width: number, space: number, pad: number): { cols: number; thumbW: number; thumbH: number } {
+	let best = { cols: 3, thumbW: (width - pad * 2) / 3, thumbH: 0 };
+	for (const cols of [3, 4, 5]) {
+		const rows = Math.ceil(count / cols);
+		const thumbW = (width - pad * (cols - 1)) / cols;
+		const thumbH = Math.min(110, (space - (rows - 1) * 34) / rows);
+		if (thumbH > best.thumbH) best = { cols, thumbW, thumbH };
+	}
+	return { ...best, thumbH: Math.max(20, best.thumbH) };
+}
+
+/** The letterhead is the same on every page: embed it once per document and reuse it. */
+const headerImages = new WeakMap<PDFDocument, Promise<PDFImage>>();
+function embedHeaderOnce(doc: PDFDocument, base64Data: string): Promise<PDFImage> {
+	let img = headerImages.get(doc);
+	if (!img) {
+		img = doc.embedPng(Buffer.from(base64Data, "base64"));
+		headerImages.set(doc, img);
+	}
+	return img;
+}
 
 function humanizeHoursMinutes(totalMs: number) {
 	const totalMinutes = Math.max(0, Math.floor(totalMs / 60000));
@@ -157,6 +205,11 @@ function buildWhere(
 		if (!ALLOWED.has(criterion)) throw new Error("Invalid column");
 		if (value != null && String(value).trim() !== "" && value !== "__ANY__") {
 			(where as any)[criterion] = value;
+		}
+		// A date range narrows any other criterion too (preview and download must match)
+		if (startDate && endDate) {
+			const { start, endExclusive } = toUtcDayRange(startDate, endDate);
+			where.createdAt = { gte: start, lt: endExclusive };
 		}
 	}
 
@@ -397,8 +450,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 				if (base64Data.startsWith("data:")) {
 					base64Data = base64Data.split(",")[1];
 				}
-				const headerBytes = Buffer.from(base64Data, "base64");
-				const headerImage = await doc.embedPng(headerBytes);
+				const headerImage = await embedHeaderOnce(doc, base64Data);
 				const scale = W / headerImage.width;
 				const headerHeight = headerImage.height * scale;
 				page.drawImage(headerImage, {
@@ -659,27 +711,18 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
 		if (images.length > 0) {
-			const pad = 10,
-				thumbW = (W - 2 * M - 24 - pad * 2) / 3,
-				thumbH = 110;
-			let ix = M + 12,
-				iy = imgsTop - 36 - thumbH;
+			const pad = 10;
+			const { cols, thumbW, thumbH } = photoGrid(images.length, W - 2 * M - 24, imgsTop - 36 - (M + 76), pad);
 			for (let i = 0; i < images.length; i++) {
-				const raw = await fetchImageBytes(images[i]);
-				if (!raw) continue;
-				const down = await maybeDownscaleJpeg(raw, 900, 900);
-				const jpg = await doc.embedJpg(down);
+				const jpg = await embedPhoto(doc, images[i]);
+				if (!jpg) continue;
+				const ix = M + 12 + (i % cols) * (thumbW + pad);
+				const iy = imgsTop - 36 - thumbH - Math.floor(i / cols) * (thumbH + 34);
 				const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
 				const w = jpg.width * scale,
 					h = jpg.height * scale;
-				page.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy), width: w, height: h });
-				text(`Image ${i + 1}`, ix, Math.max(M + 64, iy - 10), 8, false, subt);
-				ix += thumbW + pad;
-				if (ix + thumbW > W - M - 12) {
-					ix = M + 12;
-					iy -= thumbH + 34;
-					if (iy < M + 90) break;
-				}
+				page.drawImage(jpg, { x: ix, y: iy, width: w, height: h });
+				text(`Image ${i + 1}`, ix, iy - 10, 8, false, subt);
 			}
 		} else {
 			text("No images attached.", M + 12, imgsTop - 36, 10, false, subt);
@@ -705,8 +748,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 				if (base64Data.startsWith("data:")) {
 					base64Data = base64Data.split(",")[1];
 				}
-				const headerBytes = Buffer.from(base64Data, "base64");
-				const headerImage = await doc.embedPng(headerBytes);
+				const headerImage = await embedHeaderOnce(doc, base64Data);
 				const scale = W / headerImage.width;
 				const headerHeight = headerImage.height * scale;
 				page.drawImage(headerImage, {
@@ -790,8 +832,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 							if (base64Data.startsWith("data:")) {
 								base64Data = base64Data.split(",")[1];
 							}
-							const headerBytes = Buffer.from(base64Data, "base64");
-							const headerImage = await doc.embedPng(headerBytes);
+							const headerImage = await embedHeaderOnce(doc, base64Data);
 							const scale = W / headerImage.width;
 							const headerHeight = headerImage.height * scale;
 							newPage.drawImage(headerImage, {
@@ -840,10 +881,8 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 						let ix = M + 12;
 						const iy = ry - 20;
 						for (let j = 0; j < Math.min(respImages.length, 3); j++) {
-							const raw = await fetchImageBytes(respImages[j]);
-							if (!raw) continue;
-							const down = await maybeDownscaleJpeg(raw, 900, 900);
-							const jpg = await doc.embedJpg(down);
+							const jpg = await embedPhoto(doc, respImages[j]);
+							if (!jpg) continue;
 							const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
 							const w = jpg.width * scale,
 								h = jpg.height * scale;
@@ -888,10 +927,8 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					let ix = M + 12;
 					const iy = ry - 20;
 					for (let j = 0; j < Math.min(respImages.length, 3); j++) {
-						const raw = await fetchImageBytes(respImages[j]);
-						if (!raw) continue;
-						const down = await maybeDownscaleJpeg(raw, 900, 900);
-						const jpg = await doc.embedJpg(down);
+						const jpg = await embedPhoto(doc, respImages[j]);
+						if (!jpg) continue;
 						const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
 						const w = jpg.width * scale,
 							h = jpg.height * scale;
@@ -1048,8 +1085,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 			if (base64Data.startsWith("data:")) {
 				base64Data = base64Data.split(",")[1];
 			}
-			const headerBytes = Buffer.from(base64Data, "base64");
-			const headerImage = await doc.embedPng(headerBytes);
+			const headerImage = await embedHeaderOnce(doc, base64Data);
 			const scale = W / headerImage.width;
 			const headerHeight = headerImage.height * scale;
 			page.drawImage(headerImage, {
@@ -1311,27 +1347,18 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	text(`Images (${images.length})`, M + 12, imgsTop - 18, 11, true);
 
 	if (images.length > 0) {
-		const pad = 10,
-			thumbW = (W - 2 * M - 24 - pad * 2) / 3,
-			thumbH = 110;
-		let ix = M + 12,
-			iy = imgsTop - 36 - thumbH;
+		const pad = 10;
+		const { cols, thumbW, thumbH } = photoGrid(images.length, W - 2 * M - 24, imgsTop - 36 - (M + 76), pad);
 		for (let i = 0; i < images.length; i++) {
-			const raw = await fetchImageBytes(images[i]);
-			if (!raw) continue;
-			const down = await maybeDownscaleJpeg(raw, 900, 900);
-			const jpg = await doc.embedJpg(down);
+			const jpg = await embedPhoto(doc, images[i]);
+			if (!jpg) continue;
+			const ix = M + 12 + (i % cols) * (thumbW + pad);
+			const iy = imgsTop - 36 - thumbH - Math.floor(i / cols) * (thumbH + 34);
 			const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
 			const w = jpg.width * scale,
 				h = jpg.height * scale;
-			page.drawImage(jpg, { x: ix, y: Math.max(M + 76, iy), width: w, height: h });
-			text(`Image ${i + 1}`, ix, Math.max(M + 64, iy - 10), 8, false, subt);
-			ix += thumbW + pad;
-			if (ix + thumbW > W - M - 12) {
-				ix = M + 12;
-				iy -= thumbH + 34;
-				if (iy < M + 90) break;
-			}
+			page.drawImage(jpg, { x: ix, y: iy, width: w, height: h });
+			text(`Image ${i + 1}`, ix, iy - 10, 8, false, subt);
 		}
 	} else {
 		text("No images attached.", M + 12, imgsTop - 36, 10, false, subt);
@@ -1354,8 +1381,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 			if (base64Data.startsWith("data:")) {
 				base64Data = base64Data.split(",")[1];
 			}
-			const headerBytes = Buffer.from(base64Data, "base64");
-			const headerImage = await doc.embedPng(headerBytes);
+			const headerImage = await embedHeaderOnce(doc, base64Data);
 			const scale = W / headerImage.width;
 			const headerHeight = headerImage.height * scale;
 			page2.drawImage(headerImage, {
@@ -1436,8 +1462,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 						if (base64Data.startsWith("data:")) {
 							base64Data = base64Data.split(",")[1];
 						}
-						const headerBytes = Buffer.from(base64Data, "base64");
-						const headerImage = await doc.embedPng(headerBytes);
+						const headerImage = await embedHeaderOnce(doc, base64Data);
 						const scale = W / headerImage.width;
 						const headerHeight = headerImage.height * scale;
 						newPage.drawImage(headerImage, {
@@ -1486,10 +1511,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 					let ix = M + 12;
 					const iy = ry - 20;
 					for (let j = 0; j < Math.min(respImages.length, 3); j++) {
-						const raw = await fetchImageBytes(respImages[j]);
-						if (!raw) continue;
-						const down = await maybeDownscaleJpeg(raw, 900, 900);
-						const jpg = await doc.embedJpg(down);
+						const jpg = await embedPhoto(doc, respImages[j]);
+						if (!jpg) continue;
 						const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
 						const w = jpg.width * scale,
 							h = jpg.height * scale;
@@ -1534,10 +1557,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				let ix = M + 12;
 				const iy = ry - 20;
 				for (let j = 0; j < Math.min(respImages.length, 3); j++) {
-					const raw = await fetchImageBytes(respImages[j]);
-					if (!raw) continue;
-					const down = await maybeDownscaleJpeg(raw, 900, 900);
-					const jpg = await doc.embedJpg(down);
+					const jpg = await embedPhoto(doc, respImages[j]);
+					if (!jpg) continue;
 					const scale = Math.min(thumbW / jpg.width, thumbH / jpg.height);
 					const w = jpg.width * scale,
 						h = jpg.height * scale;

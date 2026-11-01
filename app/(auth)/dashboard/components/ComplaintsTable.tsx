@@ -6,17 +6,19 @@ import { dubaiDateString } from "@/lib/dubai-time";
 
 type StatusFilter = "Completed" | "Incomplete" | "In Progress";
 
-async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; status?: StatusFilter }) {
+/** `privateOnly` = the "Private Complaints" sidebar pages; the normal lists show both (with a Private badge). */
+async function ComplaintsTable({ role, status, privateOnly = false }: { role: "admin" | "employee"; status?: StatusFilter; privateOnly?: boolean }) {
 	const session = await auth(); // Get the current user session
 	const data = await prismaClient.complaint.findMany({
 		where: {
 			createdAt: {
 				gte: new Date("2026-01-01"),
 			},
+			...(privateOnly ? { isPrivate: true } : {}),
 		},
 		select: {
 			id: true,
-			assignedTo: true,
+			assignedTo: { select: { username: true } },
 			customerName: true,
 			customerEmail: true,
 			customerPhone: true,
@@ -39,7 +41,7 @@ async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; s
 						},
 					},
 				},
-				orderBy: { date: "asc" },
+				orderBy: [{ date: "asc" }, { id: "asc" }],
 			},
 		},
 	});

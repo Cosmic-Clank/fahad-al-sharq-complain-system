@@ -49,7 +49,7 @@ export async function addComplaintResponse(formData: FormData) {
 	if (files.length > 0) {
 		for (const file of files) {
 			// Skip empty file inputs if any (e.g. user selected nothing for an optional upload)
-			if (file.size === 0 && file.name === "undefined") continue;
+			if (file.size === 0) continue;
 
 			if (!allowedTypes.includes(file.type) || file.size > maxSize) {
 				console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
@@ -114,25 +114,31 @@ export async function addStartWorkTime(formData: FormData) {
 
 	const complaintId = formData.get("complaintId") as string;
 
-	if (!complaintId) {
+	if (!complaintId || !Number.isInteger(Number(complaintId))) {
 		return { success: false, message: "Server error" };
 	}
 
 	try {
-		// One open session per complaint (a double click used to create two)
-		const open = await prismaClient.workTimes.findFirst({ where: { complaintId: Number(complaintId), endTime: null }, select: { id: true } });
-		if (open) {
+		const userId = Number(session.user.id);
+		// One open session per complaint. The lock serializes simultaneous Start presses
+		// (double tap, two devices) so they can't both pass the check.
+		const started = await prismaClient.$transaction(async (tx) => {
+			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('complaint-work-time'), ${Number(complaintId)}::int)`;
+			const open = await tx.workTimes.findFirst({ where: { complaintId: Number(complaintId), endTime: null }, select: { id: true } });
+			if (open) return false;
+			await tx.workTimes.create({
+				data: {
+					userId,
+					complaintId: Number(complaintId),
+					date: new Date(),
+					startTime: new Date(),
+				},
+			});
+			return true;
+		});
+		if (!started) {
 			return { success: false, message: "Work on this complaint has already started." };
 		}
-
-		await prismaClient.workTimes.create({
-			data: {
-				userId: Number(session.user.id), // Assuming you have a user ID in the session
-				complaintId: Number(complaintId),
-				date: new Date(),
-				startTime: new Date(),
-			},
-		});
 
 		return { success: true, message: "Work time added successfully!" };
 	} catch (error) {
@@ -194,57 +200,13 @@ export async function addEndWorkTime(formData: FormData) {
 		}
 	}
 
-	// Fallback to old initials system for backward compatibility
-	const workerInitialsRaw = formData.get("workerInitials") as string | null;
-	const customerInitialsRaw = formData.get("customerInitials") as string | null;
-
-	const normalize = (val: string | null) => (val ?? "").trim().toUpperCase();
-
-	const workerInitials = normalize(workerInitialsRaw);
-	const customerInitials = normalize(customerInitialsRaw);
-
-	const initialsOk = (s: string) => /^[A-Z.\-\s]{1,6}$/.test(s);
-
-	if (!workerInitials || !customerInitials || !initialsOk(workerInitials) || !initialsOk(customerInitials)) {
-		return {
-			success: false,
-			message: "Please provide valid initials (1–6 characters; letters, spaces, dots, or dashes).",
-		};
-	}
-
-	try {
-		const workTime = await prismaClient.workTimes.findFirst({
-			where: {
-				complaintId: Number(complaintId),
-				endTime: null,
-			},
-			orderBy: { date: "desc" },
-		});
-
-		if (!workTime) {
-			return { success: false, message: "No active work time found for this complaint." };
-		}
-
-		await prismaClient.workTimes.update({
-			where: { id: workTime.id },
-			data: {
-				endTime: new Date(),
-				workerInitials,
-				customerInitials,
-			},
-		});
-
-		return { success: true, message: "Work time ended successfully!" };
-	} catch (error) {
-		console.error("Error ending work time:", error);
-		return { success: false, message: "Failed to end work time. Please try again." };
-	}
+	return { success: false, message: "Both signatures are required." };
 }
 
-/** Users for the admin "assign complaint" picker — never return password hashes. */
+/** Technicians for the admin "assign complaint" picker — never return password hashes. */
 export async function fetchUsers() {
 	if (!(await requireRole(["ADMIN"]))) return [];
-	return prismaClient.user.findMany({ select: { id: true, username: true, fullName: true }, orderBy: { fullName: "asc" } });
+	return prismaClient.user.findMany({ where: { role: "EMPLOYEE" }, select: { id: true, username: true, fullName: true }, orderBy: { fullName: "asc" } });
 }
 
 export async function assignComplaintToUser(complaintId: number, userId: number) {
@@ -253,6 +215,10 @@ export async function assignComplaintToUser(complaintId: number, userId: number)
 	}
 
 	try {
+		// Complaints are only visible to employees, so only an employee can be the assignee
+		const assignee = await prismaClient.user.findFirst({ where: { id: userId, role: "EMPLOYEE" }, select: { id: true } });
+		if (!assignee) return { success: false, message: "Employee not found." };
+
 		const updatedComplaint = await prismaClient.complaint.update({
 			where: { id: complaintId },
 			data: { assignedToId: userId },

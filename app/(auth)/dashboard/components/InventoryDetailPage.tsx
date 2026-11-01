@@ -11,6 +11,7 @@ interface InventoryDetailPageProps {
 
 async function InventoryDetailPage({ id, role = "inventory_manager" }: InventoryDetailPageProps) {
 	const itemId = Number(id);
+	if (!Number.isInteger(itemId)) notFound();
 
 	// Fetch the inventory item with its transactions
 	const item = await prismaClient.inventory.findUnique({

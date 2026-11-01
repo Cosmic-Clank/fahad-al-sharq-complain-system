@@ -17,6 +17,7 @@ interface ComplaintDetailPageProps {
 // This is your Server Component that fetches data
 async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 	const complaintId = Number(slug);
+	if (!Number.isInteger(complaintId)) notFound();
 	const session = await auth(); // Get the current user session
 
 	// Fetch the single complaint from the database

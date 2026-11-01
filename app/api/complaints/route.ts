@@ -20,8 +20,9 @@ const serverFormSchema = z.object({
 			message: "Enter a valid UAE mobile (e.g., 0501234567 or +971501234567)",
 		}),
 	address: z.string({ required_error: "Address is required" }).min(5, { message: "Address must be at least 5 characters long" }).max(100, { message: "Address must be at most 100 characters long" }),
-	buildingName: z.string({ required_error: "Building name is required" }),
-	apartmentNumber: z.string({ required_error: "Apartment Number is required" }).min(1, { message: "Minimum 1 character" }), // Optional field for apartment number
+	buildingName: z.string({ required_error: "Building name is required" }).trim().min(1, { message: "Building name is required" }),
+	// trimmed so "101" and "101 " count as the same apartment in the 24h duplicate check
+	apartmentNumber: z.string({ required_error: "Apartment Number is required" }).trim().min(1, { message: "Minimum 1 character" }),
 	convenientTime: z.enum(["EIGHT_AM_TO_TEN_AM", "TEN_AM_TO_TWELVE_PM", "TWELVE_PM_TO_TWO_PM", "TWO_PM_TO_FOUR_PM", "FOUR_PM_TO_SIX_PM", "SIX_PM_TO_EIGHT_PM", "EIGHT_PM_TO_TEN_PM", "TEN_PM_TO_TWELVE_AM", "TWELVE_AM_TO_TWO_AM", "TWO_AM_TO_FOUR_AM", "FOUR_AM_TO_SIX_AM", "SIX_AM_TO_EIGHT_AM"], {
 		required_error: "Convenient time is required",
 	}),
@@ -49,9 +50,12 @@ export async function POST(req: NextRequest) {
 	// The video was uploaded directly to storage by the browser; only its path arrives here
 	const videoPathRaw = formData.get("videoPath");
 	const videoPath = typeof videoPathRaw === "string" && VIDEO_PATH_PATTERN.test(videoPathRaw) ? videoPathRaw : null;
+	// A video already attached to a complaint is never deleted or re-used: anyone who has seen its
+	// public URL could otherwise post a bad form with that path and have the evidence removed.
+	const videoInUse = videoPath ? Boolean(await prismaClient.complaint.findFirst({ where: { videoPaths: { has: videoPath } }, select: { id: true } })) : false;
 	// Best-effort removal of the already-uploaded video when the submission is rejected
 	const discardVideo = async () => {
-		if (videoPath) await supabaseAdminClient.storage.from(VIDEO_BUCKET).remove([videoPath]).catch(() => undefined);
+		if (videoPath && !videoInUse) await supabaseAdminClient.storage.from(VIDEO_BUCKET).remove([videoPath]).catch(() => undefined);
 	};
 
 	// 2. Server-side validation using Zod
@@ -113,46 +117,48 @@ export async function POST(req: NextRequest) {
 	if (!videoPath) {
 		return NextResponse.json({ message: EVIDENCE_MESSAGES.videoRequired }, { status: 400 });
 	}
+	if (videoInUse) {
+		return NextResponse.json({ message: EVIDENCE_MESSAGES.videoMissing }, { status: 400 });
+	}
 	const { data: videoExists } = await supabaseAdminClient.storage.from(VIDEO_BUCKET).exists(videoPath);
 	if (!videoExists) {
 		return NextResponse.json({ message: EVIDENCE_MESSAGES.videoMissing }, { status: 400 });
 	}
 
-	// Define the base upload directory relative to your project root.
-	// Use a slugified email for the directory name to be file-system safe
+	// Check every photo before uploading any, so a bad 3rd photo doesn't leave the first two behind
+	const invalidFile = files.find((file) => !allowedTypes.includes(file.type) || file.size > maxSize);
+	if (invalidFile) {
+		console.warn(`Rejected invalid file: ${invalidFile.name}, type: ${invalidFile.type}, size: ${invalidFile.size}`);
+		await discardVideo();
+		return NextResponse.json(
+			{
+				message: `Invalid file detected: ${invalidFile.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`,
+			},
+			{ status: 400 }
+		);
+	}
 
-	const directoryName = email.replace(/[^a-zA-Z0-9_-]/g, "_"); // Basic slugify
-	if (files.length > 0) {
-		for (const file of files) {
-			const uploadPath = path.join(directoryName, nanoid());
+	// Random folder per complaint (photo URLs are public — don't put the customer's email in them)
+	const directoryName = nanoid();
+	const discardImages = async () => {
+		if (uploadedImagePaths.length) await supabaseAdminClient.storage.from(IMAGE_BUCKET).remove(uploadedImagePaths).catch(() => undefined);
+	};
+	for (const file of files) {
+		const uploadPath = path.posix.join(directoryName, nanoid());
+		const { data, error } = await supabaseAdminClient.storage.from(IMAGE_BUCKET).upload(uploadPath, file);
 
-			if (!allowedTypes.includes(file.type) || file.size > maxSize) {
-				console.warn(`Skipping invalid file: ${file.name}, type: ${file.type}, size: ${file.size}`);
-				await discardVideo();
-				return NextResponse.json(
-					{
-						message: `Invalid file detected: ${file.name}. Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`,
-					},
-					{ status: 400 }
-				);
-			}
-
-			const { data, error } = await supabaseAdminClient.storage.from(IMAGE_BUCKET).upload(uploadPath, file);
-
-			if (error) {
-				console.error("Error uploading file to Supabase:", error);
-				await discardVideo();
-				return NextResponse.json(
-					{
-						message: `Failed to upload image ${file.name} to Database. Please try again.`,
-					},
-					{ status: 500 }
-				);
-			} else {
-				// Handle success
-				uploadedImagePaths.push(data.path); // Store the path returned by Supabase
-			}
+		if (error) {
+			console.error("Error uploading file to Supabase:", error);
+			await discardImages();
+			await discardVideo();
+			return NextResponse.json(
+				{
+					message: `Failed to upload image ${file.name} to Database. Please try again.`,
+				},
+				{ status: 500 }
+			);
 		}
+		uploadedImagePaths.push(data.path);
 	}
 	// --- End Image Upload to Supabase ---
 
@@ -175,6 +181,7 @@ export async function POST(req: NextRequest) {
 		});
 	} catch (dbError) {
 		console.error("Error saving complaint to DB:", dbError);
+		await discardImages();
 		await discardVideo();
 		return NextResponse.json({ message: "Failed to save complaint to the database. Please try again." }, { status: 500 });
 	}

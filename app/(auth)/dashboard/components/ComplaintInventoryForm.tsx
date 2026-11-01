@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loading } from "@/components/ui/loading";
 import { toast } from "@/lib/notify";
 import { getEmployeeInventoryForComplaint, addComplaintInventoryUsage } from "./actions";
-import { allowsDecimals, formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
+import { allowsDecimals, formatQty, isValidQtyForUnit, qtyStep, QTY_EPSILON, unitLabel } from "@/lib/inventory-units";
 
 type StockItem = {
 	id: number;
@@ -53,7 +53,7 @@ export default function ComplaintInventoryForm({ complaintId, employeeId }: Prop
 			toast.error("Please select an item.");
 			return;
 		}
-		if (quantity < minQty || quantity > maxQty) {
+		if (quantity < minQty || quantity > maxQty + QTY_EPSILON) {
 			toast.error(`Quantity must be between ${minQty} and ${formatQty(maxQty, selectedUnit)}.`);
 			return;
 		}

@@ -13,6 +13,7 @@ import Image from "next/image";
 import { formatQty } from "@/lib/inventory-units";
 import { STOCK_LABEL } from "@/lib/inventory-request-building";
 import { splitRejection } from "@/lib/inventory-requests";
+import { formatDubaiDate, formatDubaiDateTime } from "@/lib/dubai-time";
 
 interface RequestApprovalCardProps {
 	request: any;
@@ -163,7 +164,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 							<p className='font-medium text-sm'>{request.approver.fullName}</p>
 							<p className='text-xs text-gray-500'>@{request.approver.username}</p>
 							{request.approvedAt && (
-								<p className='text-xs text-gray-500 mt-1'>{new Date(request.approvedAt).toLocaleString()}</p>
+								<p className='text-xs text-gray-500 mt-1'>{formatDubaiDateTime(new Date(request.approvedAt))}</p>
 							)}
 						</div>
 					)}
@@ -177,7 +178,7 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 
 					<div>
 						<p className='text-xs text-gray-500 mb-2'>
-							Requested on {new Date(request.createdAt).toLocaleDateString()}
+							Requested on {formatDubaiDate(new Date(request.createdAt))}
 						</p>
 					</div>
 

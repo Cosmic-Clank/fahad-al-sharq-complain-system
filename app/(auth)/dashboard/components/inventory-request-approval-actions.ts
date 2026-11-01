@@ -33,6 +33,9 @@ function revalidateRequests() {
 	revalidatePath("/dashboard/admin/inventory/requests");
 	revalidatePath("/dashboard/employee/inventory");
 	revalidatePath("/dashboard/employee/my-inventory");
+	// stock levels changed
+	revalidatePath("/dashboard/inventory_manager");
+	revalidatePath("/dashboard/admin/inventory");
 }
 
 class InsufficientStockError extends Error {}

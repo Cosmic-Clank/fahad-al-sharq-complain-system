@@ -187,6 +187,7 @@ const MESSAGES_AR: Record<string, string> = {
 	"Only admins can manage buildings.": "يمكن للمسؤولين فقط إدارة المباني.",
 	"Inventory request not found.": "طلب المخزون غير موجود.",
 	"The stock changed since you opened this item. Reload the page and try again.": "تغيّر المخزون منذ فتحت هذا الصنف. أعد تحميل الصفحة وحاول مرة أخرى.",
+	"This item has part-meter quantities in stock, with technicians or in pending requests. It can't be switched to pieces.": "هذا الصنف له كميات بأجزاء من المتر في المخزن أو لدى الفنيين أو في طلبات معلّقة. لا يمكن تحويله إلى قطع.",
 	"Not enough stock to approve this request.":"المخزون غير كافٍ للموافقة على هذا الطلب.",
 	"Inventory request approved.": "تمت الموافقة على طلب المخزون.",
 	"Inventory request rejected.": "تم رفض طلب المخزون.",

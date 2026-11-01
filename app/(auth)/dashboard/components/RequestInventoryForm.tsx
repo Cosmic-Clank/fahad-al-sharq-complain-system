@@ -18,7 +18,7 @@ import { STOCK_LABEL, STOCK_VALUE } from "@/lib/inventory-request-building";
 import { Package, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
+import { formatQty, isValidQtyForUnit, qtyStep, QTY_EPSILON, unitLabel } from "@/lib/inventory-units";
 
 const requestFormSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
@@ -96,7 +96,7 @@ function RequestInventoryForm({ employeeId, buildings }: RequestInventoryFormPro
 		const value = Number(e.target.value);
 		form.setValue("quantity", value);
 
-		if (selectedItem && value > selectedItem.quantity) {
+		if (selectedItem && value > selectedItem.quantity + QTY_EPSILON) {
 			setSubmitError(`Cannot request more than ${formatQty(selectedItem.quantity, selectedItem.unit)} available`);
 		} else if (selectedItem && !isValidQtyForUnit(value, selectedItem.unit)) {
 			setSubmitError("Quantity must be a whole number for items counted in pieces.");
@@ -107,7 +107,7 @@ function RequestInventoryForm({ employeeId, buildings }: RequestInventoryFormPro
 
 	const onSubmit = async (values: RequestFormValues) => {
 		// Final validation
-		if (selectedItem && values.quantity > selectedItem.quantity) {
+		if (selectedItem && values.quantity > selectedItem.quantity + QTY_EPSILON) {
 			setSubmitError(`Cannot request more than ${formatQty(selectedItem.quantity, selectedItem.unit)} available`);
 			return;
 		}

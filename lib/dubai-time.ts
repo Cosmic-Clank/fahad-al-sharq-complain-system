@@ -12,6 +12,16 @@ export function formatDubaiDateTime(d: Date): string {
 	return d.toLocaleString("en-US", { timeZone: TZ });
 }
 
+/** Like toLocaleDateString() in en-US, but in Dubai time: "10/19/2026". */
+export function formatDubaiDate(d: Date): string {
+	return d.toLocaleDateString("en-US", { timeZone: TZ });
+}
+
+/** "October 19, 2026" (with time: "October 19, 2026 at 5:03 PM"), in Dubai time. */
+export function formatDubaiLong(d: Date, withTime = false): string {
+	return d.toLocaleString("en-US", { timeZone: TZ, dateStyle: "long", ...(withTime ? { timeStyle: "short" as const } : {}) });
+}
+
 /** Like toLocaleTimeString() in en-US, but in Dubai time: "5:03:00 PM". */
 export function formatDubaiTime(d: Date): string {
 	return d.toLocaleTimeString("en-US", { timeZone: TZ });

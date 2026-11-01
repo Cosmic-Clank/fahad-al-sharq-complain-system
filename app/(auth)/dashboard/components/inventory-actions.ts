@@ -6,17 +6,10 @@ import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { nanoid } from "nanoid";
 import path from "path";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { isValidQtyForUnit, QTY_EPSILON, unitLabel } from "@/lib/inventory-units";
 import { inventoryItemFields, inventoryItemSchema, pieceQuantityCheck, INVENTORY_IMAGE_TYPES, INVENTORY_ITEM_MESSAGES, MAX_INVENTORY_IMAGE_BYTES } from "@/lib/inventory-item-schema";
 import { logActivity } from "@/lib/activity-log";
 import { getActor, requireRole } from "@/lib/authz";
-
-async function currentActor() {
-	const session = await auth();
-	const id = Number(session?.user?.id);
-	return Number.isFinite(id) ? { id, name: session?.user?.name ?? "Unknown" } : null;
-}
 
 /** Uploads the item photo to the inventory-images bucket and returns its public URL. */
 async function uploadInventoryImage(file: File): Promise<{ url: string } | { error: string }> {
@@ -92,20 +85,14 @@ export async function createInventoryItem(formData: FormData) {
 				location: validatedData.location,
 				imageUrl: imageUrl,
 				division: validatedData.division,
+				// created together with the item, so stock never exists without its ADD record
+				transactions: {
+					create: { quantity: validatedData.quantity, transactionType: "ADD", notes: "Initial inventory addition" },
+				},
 			},
 		});
 
-		// Create an ADD transaction record
-		await prismaClient.inventoryTransaction.create({
-			data: {
-				inventoryId: inventoryItem.id,
-				quantity: validatedData.quantity,
-				transactionType: "ADD",
-				notes: "Initial inventory addition",
-			},
-		});
-
-		const actor = await currentActor();
+		const actor = await getActor();
 		await logActivity({
 			actorId: actor?.id,
 			action: "INVENTORY_CREATE",
@@ -219,7 +206,19 @@ export async function updateInventoryItem(formData: FormData) {
 			division: validatedData.division,
 		};
 
+		const toPieces = validatedData.unit === "PIECES" && currentItem.unit !== "PIECES";
+
 		const saved = await prismaClient.$transaction(async (tx) => {
+			if (toPieces) {
+				// Store, technicians' stock and pending requests must all be whole numbers first
+				const fresh = await tx.inventory.findUnique({ where: { id: itemId }, select: { quantity: true } });
+				const storeQty = changeQuantity ? validatedData.quantity : (fresh?.quantity ?? 0);
+				const held = await tx.employeeInventory.findMany({ where: { inventoryId: itemId }, select: { quantity: true } });
+				const pending = await tx.inventoryRequest.findMany({ where: { inventoryId: itemId, status: "PENDING" }, select: { quantity: true } });
+				if ([storeQty, ...held.map((h) => h.quantity), ...pending.map((p) => p.quantity)].some((q) => !isValidQtyForUnit(q, "PIECES"))) {
+					return "fractional" as const;
+				}
+			}
 			if (!changeQuantity) {
 				await tx.inventory.update({ where: { id: itemId }, data: details });
 				return true;
@@ -241,11 +240,14 @@ export async function updateInventoryItem(formData: FormData) {
 			}
 			return true;
 		});
+		if (saved === "fractional") {
+			return { success: false, message: "This item has part-meter quantities in stock, with technicians or in pending requests. It can't be switched to pieces." };
+		}
 		if (!saved) {
 			return { success: false, message: "The stock changed since you opened this item. Reload the page and try again." };
 		}
 
-		const actor = await currentActor();
+		const actor = await getActor();
 		await logActivity({
 			actorId: actor?.id,
 			action: "INVENTORY_UPDATE",
@@ -285,7 +287,7 @@ export async function updateInventoryItem(formData: FormData) {
 // Restock server action
 const restockSchema = z.object({
 	itemId: z.string().min(1, "Item selection is required"),
-	quantityToAdd: z.coerce.number().positive("Quantity must be greater than 0"),
+	quantityToAdd: z.coerce.number().finite().positive("Quantity must be greater than 0"),
 	notes: z.string().optional().or(z.literal("")),
 });
 
@@ -341,7 +343,7 @@ export async function restockInventoryItem(formData: FormData) {
 		]);
 		const newQuantity = Number(updated.quantity.toFixed(3));
 
-		const actor = await currentActor();
+		const actor = await getActor();
 		await logActivity({
 			actorId: actor?.id,
 			action: "INVENTORY_RESTOCK",
@@ -381,8 +383,8 @@ export async function restockInventoryItem(formData: FormData) {
 // Delete an inventory item (admin only). Related transactions, requests,
 // employee stock and complaint usages are removed by DB cascade.
 export async function deleteInventoryItem(itemId: number) {
-	const session = await auth();
-	if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+	const admin = await requireRole(["ADMIN"]);
+	if (!admin) {
 		return { success: false, message: "Only admins can delete inventory items." };
 	}
 
@@ -395,11 +397,11 @@ export async function deleteInventoryItem(itemId: number) {
 		await prismaClient.inventory.delete({ where: { id: itemId } });
 
 		await logActivity({
-			actorId: Number(session.user.id),
+			actorId: admin.id,
 			action: "INVENTORY_DELETE",
 			entityType: "Inventory",
 			entityId: itemId,
-			details: `${session.user.name ?? "Admin"} deleted inventory item "${item.itemName}" (had ${item.quantity} ${unitLabel(item.unit)})`,
+			details: `${admin.name} deleted inventory item "${item.itemName}" (had ${item.quantity} ${unitLabel(item.unit)})`,
 		});
 
 		revalidatePath("/dashboard/inventory_manager");

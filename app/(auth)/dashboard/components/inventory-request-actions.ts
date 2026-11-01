@@ -10,7 +10,7 @@ import { getActor, requireRole } from "@/lib/authz";
 
 const createInventoryRequestSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
-	quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+	quantity: z.coerce.number().finite().positive("Quantity must be greater than 0"),
 	buildingName: z.string().min(1, "Please select a building (or Stock)"),
 	location: z.string().max(100).optional().or(z.literal("")),
 	technicianName: z.string().max(100).optional().or(z.literal("")),
@@ -101,7 +101,8 @@ export async function createInventoryRequest(formData: FormData, _employeeId?: n
 
 		// Revalidate relevant paths
 		revalidatePath("/dashboard/employee/inventory");
-		revalidatePath(`/dashboard/inventory_manager/requests`);
+		revalidatePath("/dashboard/inventory_manager/employees/requests");
+		revalidatePath("/dashboard/admin/inventory/requests");
 
 		return {
 			success: true,

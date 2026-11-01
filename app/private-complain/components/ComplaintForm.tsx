@@ -67,6 +67,21 @@ function ComplaintForm({ buildings }: { buildings: string[] }) {
 			setSubmitError(translateMessage(EVIDENCE_MESSAGES.videoRequired));
 			return;
 		}
+		// Same rules as /api/complaints, checked before the (slow) video upload so nobody uploads only to be rejected
+		const problemText = (selectedProblem ? `${selectedProblem}
+${values.description ?? ""}` : values.description ?? "").trim();
+		if (!values.buildingName) {
+			setSubmitError(translateMessage("Please select your building."));
+			return;
+		}
+		if (problemText.length < 10) {
+			setSubmitError(translateMessage("Please choose the problem or describe it (at least 10 characters)."));
+			return;
+		}
+		if (problemText.length > 500) {
+			setSubmitError(translateMessage("Description must be at most 500 characters long"));
+			return;
+		}
 
 		setIsSubmitting(true);
 		try {

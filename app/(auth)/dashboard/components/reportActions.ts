@@ -973,10 +973,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const id = Number(complaintId);
 
 	const complaint = await prisma.complaint.findFirst({
-		where: {
-			id,
-			OR: [{ isPrivate: false }, { isPrivate: null }],
-		},
+		where: { id },
 		select: {
 			id: true,
 			customerName: true,

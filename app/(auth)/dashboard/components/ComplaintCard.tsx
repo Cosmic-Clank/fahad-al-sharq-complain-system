@@ -79,6 +79,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 	const maxDescriptionLength = 150;
 
 	const [isWorkTimesLoading, setIsWorkTimesLoading] = useState(false);
+	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
 	// NEW: dialog state + signature refs
 	const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
@@ -349,13 +350,18 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 							onSubmit={async (event) => {
 								event.preventDefault();
 								setIsWorkTimesLoading(true);
-								const formData = new FormData(event.currentTarget as HTMLFormElement);
-								const result = await addStartWorkTime(formData);
-								if (result.success) {
-									window.location.reload();
-								} else {
+								try {
+									const formData = new FormData(event.currentTarget as HTMLFormElement);
+									const result = await addStartWorkTime(formData);
+									if (result.success) {
+										window.location.reload();
+										return;
+									}
 									showAlert(result.message);
+								} catch {
+									showAlert("Something went wrong. Please try again.");
 								}
+								setIsWorkTimesLoading(false);
 							}}>
 							<input type='hidden' name='complaintId' value={complaint.id} />
 							<Button type='submit' className='w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition' disabled={isWorkTimesLoading}>
@@ -609,18 +615,25 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 				<ComplaintResponseForm complaintId={complaint.id} />
 				<Button
 					className='mt-4 text-sm text-white w-full hover:cursor-pointer'
+					disabled={isDownloadingPdf}
 					onClick={async () => {
-						const { base64, fileName } = await generateComplaintPdfById(complaint.id);
-						const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-						const blob = new Blob([byteArray], { type: "application/pdf" });
-						const url = URL.createObjectURL(blob);
-						const a = document.createElement("a");
-						a.href = url;
-						a.download = fileName;
-						a.click();
-						URL.revokeObjectURL(url);
+						setIsDownloadingPdf(true);
+						try {
+							const { base64, fileName } = await generateComplaintPdfById(complaint.id);
+							const byteArray = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+							const url = URL.createObjectURL(new Blob([byteArray], { type: "application/pdf" }));
+							const a = document.createElement("a");
+							a.href = url;
+							a.download = fileName;
+							a.click();
+							setTimeout(() => URL.revokeObjectURL(url), 1000); // revoking immediately can cancel the download
+						} catch {
+							showAlert("Failed to generate the PDF. Please try again.");
+						} finally {
+							setIsDownloadingPdf(false);
+						}
 					}}>
-					<Download className='w-4 h-4 mr-2' />
+					{isDownloadingPdf ? <Loading /> : <Download className='w-4 h-4 mr-2' />}
 					Download PDF
 				</Button>
 			</div>

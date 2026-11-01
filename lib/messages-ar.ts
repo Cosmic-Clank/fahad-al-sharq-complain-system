@@ -131,6 +131,11 @@ const MESSAGES_AR: Record<string, string> = {
 	"The video upload could not be found. Please attach the video again.": "تعذر العثور على الفيديو المرفوع. يرجى إرفاق الفيديو مرة أخرى.",
 	"Failed to submit complaint. Please try again.": "فشل تقديم الشكوى. يرجى المحاولة مرة أخرى.",
 
+	"Please select your building.": "يرجى اختيار المبنى.",
+	"Please choose the problem or describe it (at least 10 characters).": "يرجى اختيار المشكلة أو وصفها (10 أحرف على الأقل).",
+	"Work on this complaint has already started.": "بدأ العمل على هذه الشكوى بالفعل.",
+	"The photos are too large together (max 4.5 MB in total). Please choose fewer or smaller photos.": "حجم الصور معاً كبير جداً (الحد الأقصى 4.5 ميجابايت). يرجى اختيار صور أقل أو أصغر.",
+
 	// ── Complaint form validation ──
 	"Appartment Number is required": "رقم الشقة مطلوب",
 	"Phone number is required": "رقم الهاتف مطلوب",

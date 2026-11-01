@@ -127,7 +127,13 @@ export async function addStartWorkTime(formData: FormData) {
 	}
 
 	try {
-		const newWorkTime = await prismaClient.workTimes.create({
+		// One open session per complaint (a double click used to create two)
+		const open = await prismaClient.workTimes.findFirst({ where: { complaintId: Number(complaintId), endTime: null }, select: { id: true } });
+		if (open) {
+			return { success: false, message: "Work on this complaint has already started." };
+		}
+
+		await prismaClient.workTimes.create({
 			data: {
 				userId: Number(session.user.id), // Assuming you have a user ID in the session
 				complaintId: Number(complaintId),

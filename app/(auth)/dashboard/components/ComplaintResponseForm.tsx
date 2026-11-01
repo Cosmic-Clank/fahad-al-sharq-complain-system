@@ -41,6 +41,13 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 			}
 
 			const invalidFiles = selectedFiles.filter((file) => file.size > maxSize || !allowedTypes.includes(file.type));
+			// Server actions accept at most 5 MB per request (next.config.ts), photos included
+			const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+			if (totalBytes > 4.5 * 1024 * 1024) {
+				showAlert("The photos are too large together (max 4.5 MB in total). Please choose fewer or smaller photos.");
+				e.target.value = "";
+				return;
+			}
 			if (invalidFiles.length > 0) {
 				showAlert(`Some files are invalid: Max size is 5MB, supported types are ${allowedTypes.map((t) => t.split("/")[1]).join(", ")}.`);
 				e.target.value = ""; // Clear the input
@@ -57,25 +64,22 @@ const ComplaintResponseForm: React.FC<ComplaintResponseFormProps> = ({ complaint
 			setMessage({ type: "error", text: "Response cannot be empty." });
 			return;
 		}
-		isLoading(true); // Set loading state to true
-		// formData.delete("images"); // Clear any previous images to avoid duplicates
-		// images.forEach((file) => {
-		// 	formData.append("images", file);
-		// });
-		// Call the server action directly
-
-		const result = await addComplaintResponse(formData);
-
-		if (result.success) {
-			setMessage({ type: "success", text: translateMessage(result.message) });
-			setResponseText(""); // Clear the textarea
-			isLoading(false); // Set loading state to true
-
-			formRef.current?.reset(); // Reset form fields (if any other inputs)
-			window.location.reload(); // Reload the page to reflect the new response
-		} else {
-			setMessage({ type: "error", text: translateMessage(result.message) });
-			isLoading(false); // Set loading state to true
+		isLoading(true);
+		try {
+			const result = await addComplaintResponse(formData);
+			if (result.success) {
+				setMessage({ type: "success", text: translateMessage(result.message) });
+				setResponseText("");
+				formRef.current?.reset();
+				window.location.reload(); // show the new response
+			} else {
+				setMessage({ type: "error", text: translateMessage(result.message) });
+			}
+		} catch {
+			// e.g. the request was over the server's size limit
+			setMessage({ type: "error", text: translateMessage("Failed to add response. Please try again.") });
+		} finally {
+			isLoading(false);
 		}
 	};
 

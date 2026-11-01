@@ -6,7 +6,7 @@ import { PackageOpen, Package } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { formatQty } from "@/lib/inventory-units";
+import { formatQty, QTY_EPSILON } from "@/lib/inventory-units";
 import { withRole } from "@/lib/page-guard";
 
 async function page() {
@@ -18,7 +18,7 @@ async function page() {
 	}
 
 	const stock = await prismaClient.employeeInventory.findMany({
-		where: { employeeId, quantity: { gt: 0 } },
+		where: { employeeId, quantity: { gt: QTY_EPSILON } },
 		include: {
 			inventory: {
 				select: {

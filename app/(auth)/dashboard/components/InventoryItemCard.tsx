@@ -57,19 +57,27 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 	const [error, setError] = useState<string | null>(null);
 	const [newImage, setNewImage] = useState<File | null>(null);
 
-	// Edit form state
-	const [editedItem, setEditedItem] = useState({
+	// Edit form state — rebuilt from the item each time the dialog opens, so it never edits stale values
+	const formFromItem = () => ({
 		itemName: item.itemName,
 		itemCode: item.itemCode,
 		category: item.category,
 		description: item.description,
-		quantity: item.quantity,
+		quantity: String(item.quantity),
 		unit: item.unit,
 		unitPrice: item.unitPrice || "",
 		supplier: item.supplier,
 		location: item.location,
 		division: item.division,
 	});
+	const [editedItem, setEditedItem] = useState(formFromItem);
+
+	const openEditDialog = () => {
+		setEditedItem(formFromItem());
+		setNewImage(null);
+		setError(null);
+		setIsEditDialogOpen(true);
+	};
 
 	const handleDelete = async () => {
 		setIsLoading(true);
@@ -121,7 +129,8 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 		formData.append("itemCode", editedItem.itemCode);
 		formData.append("category", editedItem.category);
 		formData.append("description", editedItem.description);
-		formData.append("quantity", String(editedItem.quantity));
+		formData.append("quantity", editedItem.quantity);
+		formData.append("originalQuantity", String(item.quantity));
 		formData.append("unit", editedItem.unit);
 		formData.append("unitPrice", editedItem.unitPrice ? String(editedItem.unitPrice) : "");
 		formData.append("supplier", editedItem.supplier);
@@ -159,7 +168,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 						<Plus size={16} />
 						Restock
 					</Button>
-					<Button onClick={() => setIsEditDialogOpen(true)} className='flex items-center gap-2'>
+					<Button onClick={openEditDialog} className='flex items-center gap-2'>
 						<Pencil size={16} />
 						Edit Item
 					</Button>
@@ -382,7 +391,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 							<Label htmlFor='quantity'>
 								Quantity ({unitLabel(editedItem.unit)}) <span className='text-red-500'>*</span>
 							</Label>
-							<Input id='quantity' type='number' step={qtyStep(editedItem.unit)} value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} disabled={isLoading} />
+							<Input id='quantity' type='number' step={qtyStep(editedItem.unit)} value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: e.target.value })} disabled={isLoading} />
 						</div>
 
 						<div>

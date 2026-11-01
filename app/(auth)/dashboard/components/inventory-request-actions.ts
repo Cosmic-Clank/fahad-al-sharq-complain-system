@@ -3,7 +3,7 @@
 import { z } from "zod";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
+import { isValidQtyForUnit, QTY_EPSILON, unitLabel } from "@/lib/inventory-units";
 import { logActivity } from "@/lib/activity-log";
 import { STOCK_VALUE } from "@/lib/inventory-request-building";
 import { getActor, requireRole } from "@/lib/authz";
@@ -65,10 +65,10 @@ export async function createInventoryRequest(formData: FormData, _employeeId?: n
 		}
 
 		// Validate requested quantity
-		if (validatedData.quantity > item.quantity) {
+		if (validatedData.quantity > item.quantity + QTY_EPSILON) {
 			return {
 				success: false,
-				message: `Insufficient inventory. Available: ${item.quantity} ${unitLabel(item.unit)}, Requested: ${validatedData.quantity} ${unitLabel(item.unit)}`,
+				message: `Insufficient inventory. Available: ${Number(item.quantity.toFixed(3))} ${unitLabel(item.unit)}, Requested: ${validatedData.quantity} ${unitLabel(item.unit)}`,
 			};
 		}
 
@@ -166,7 +166,7 @@ export async function getAvailableInventoryItems() {
 		const items = await prismaClient.inventory.findMany({
 			where: {
 				quantity: {
-					gt: 0, // Only items with quantity greater than 0
+					gt: QTY_EPSILON, // Only items with stock left (ignores float leftovers like 1e-16)
 				},
 			},
 			select: {

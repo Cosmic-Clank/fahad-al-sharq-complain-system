@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
+import { isValidQtyForUnit, QTY_EPSILON, unitLabel } from "@/lib/inventory-units";
 import { inventoryItemFields, inventoryItemSchema, pieceQuantityCheck, INVENTORY_IMAGE_TYPES, INVENTORY_ITEM_MESSAGES, MAX_INVENTORY_IMAGE_BYTES } from "@/lib/inventory-item-schema";
 import { logActivity } from "@/lib/activity-log";
 import { getActor, requireRole } from "@/lib/authz";
@@ -196,37 +196,53 @@ export async function updateInventoryItem(formData: FormData) {
 			return { success: false, message: INVENTORY_ITEM_MESSAGES.photoRequired };
 		}
 
-		// Calculate quantity difference
-		const quantityDiff = validatedData.quantity - currentItem.quantity;
+		// The edit form sends the quantity it was opened with. If the admin didn't touch it, stock is
+		// left alone (approvals/restocks since then must not be undone); if they changed it, it is only
+		// applied while stock still matches what they saw.
+		const originalRaw = formData.get("originalQuantity");
+		const originalQuantity = originalRaw === null || originalRaw === "" ? null : Number(originalRaw);
+		const hasOriginal = originalQuantity !== null && Number.isFinite(originalQuantity);
+		const changeQuantity = !hasOriginal || Math.abs(validatedData.quantity - originalQuantity) > QTY_EPSILON;
+		const baseQuantity = hasOriginal ? originalQuantity : currentItem.quantity;
+		const quantityDiff = changeQuantity ? validatedData.quantity - baseQuantity : 0;
 
-		// Update inventory item in database
-		await prismaClient.inventory.update({
-			where: { id: itemId },
-			data: {
-				itemName: validatedData.itemName,
-				itemCode: validatedData.itemCode,
-				category: validatedData.category,
-				description: validatedData.description,
-				quantity: validatedData.quantity,
-				unit: validatedData.unit,
-				unitPrice: validatedData.unitPrice,
-				supplier: validatedData.supplier,
-				location: validatedData.location,
-				imageUrl,
-				division: validatedData.division,
-			},
-		});
+		const details = {
+			itemName: validatedData.itemName,
+			itemCode: validatedData.itemCode,
+			category: validatedData.category,
+			description: validatedData.description,
+			unit: validatedData.unit,
+			unitPrice: validatedData.unitPrice,
+			supplier: validatedData.supplier,
+			location: validatedData.location,
+			imageUrl,
+			division: validatedData.division,
+		};
 
-		// Create transaction record if quantity changed
-		if (quantityDiff !== 0) {
-			await prismaClient.inventoryTransaction.create({
-				data: {
-					inventoryId: itemId,
-					quantity: Math.abs(quantityDiff),
-					transactionType: quantityDiff > 0 ? "ADD" : "REMOVE",
-					notes: "Manual adjustment via edit",
-				},
+		const saved = await prismaClient.$transaction(async (tx) => {
+			if (!changeQuantity) {
+				await tx.inventory.update({ where: { id: itemId }, data: details });
+				return true;
+			}
+			const updated = await tx.inventory.updateMany({
+				where: { id: itemId, ...(hasOriginal ? { quantity: { gte: baseQuantity - QTY_EPSILON, lte: baseQuantity + QTY_EPSILON } } : {}) },
+				data: { ...details, quantity: validatedData.quantity },
 			});
+			if (updated.count !== 1) return false;
+			if (Math.abs(quantityDiff) > QTY_EPSILON) {
+				await tx.inventoryTransaction.create({
+					data: {
+						inventoryId: itemId,
+						quantity: Math.abs(quantityDiff),
+						transactionType: quantityDiff > 0 ? "ADD" : "REMOVE",
+						notes: "Manual adjustment via edit",
+					},
+				});
+			}
+			return true;
+		});
+		if (!saved) {
+			return { success: false, message: "The stock changed since you opened this item. Reload the page and try again." };
 		}
 
 		const actor = await currentActor();
@@ -290,6 +306,7 @@ export async function restockInventoryItem(formData: FormData) {
 		// Get current item
 		const item = await prismaClient.inventory.findUnique({
 			where: { id: itemId },
+			select: { itemName: true, unit: true },
 		});
 
 		if (!item) {
@@ -307,22 +324,22 @@ export async function restockInventoryItem(formData: FormData) {
 		}
 
 		// Update quantity
-		const newQuantity = item.quantity + validatedData.quantityToAdd;
-
-		await prismaClient.inventory.update({
-			where: { id: itemId },
-			data: { quantity: newQuantity },
-		});
-
-		// Create ADD transaction
-		await prismaClient.inventoryTransaction.create({
-			data: {
-				inventoryId: itemId,
-				quantity: validatedData.quantityToAdd,
-				transactionType: "ADD",
-				notes: validatedData.notes || "Restocked via restock form",
-			},
-		});
+		const [updated] = await prismaClient.$transaction([
+			prismaClient.inventory.update({
+				where: { id: itemId },
+				data: { quantity: { increment: validatedData.quantityToAdd } },
+				select: { quantity: true },
+			}),
+			prismaClient.inventoryTransaction.create({
+				data: {
+					inventoryId: itemId,
+					quantity: validatedData.quantityToAdd,
+					transactionType: "ADD",
+					notes: validatedData.notes || "Restocked via restock form",
+				},
+			}),
+		]);
+		const newQuantity = Number(updated.quantity.toFixed(3));
 
 		const actor = await currentActor();
 		await logActivity({

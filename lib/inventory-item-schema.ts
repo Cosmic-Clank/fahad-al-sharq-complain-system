@@ -17,7 +17,10 @@ export const inventoryItemFields = {
 	itemCode: requiredText("Item code is required"),
 	category: requiredText("Category is required"),
 	description: requiredText("Description is required", 1000),
-	quantity: z.coerce.number({ required_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" }),
+	quantity: z.preprocess(
+		(v) => (v === "" || v === null || v === undefined ? undefined : v),
+		z.coerce.number({ required_error: "Quantity is required", invalid_type_error: "Quantity is required" }).min(0, { message: "Quantity must be at least 0" })
+	),
 	unit: z.enum(["PIECES", "METERS"], { required_error: "Unit is required" }),
 	// "" from an empty input must not coerce to 0 — treat it as missing
 	unitPrice: z.preprocess(

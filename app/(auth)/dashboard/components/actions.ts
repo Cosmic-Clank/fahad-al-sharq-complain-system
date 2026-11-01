@@ -10,7 +10,7 @@ import fs from "fs/promises";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { isValidQtyForUnit } from "@/lib/inventory-units";
+import { isValidQtyForUnit, QTY_EPSILON } from "@/lib/inventory-units";
 import { logActivity } from "@/lib/activity-log";
 import { requireRole } from "@/lib/authz";
 import { isValidSignature } from "@/lib/signature-server";
@@ -484,7 +484,7 @@ export async function getEmployeeInventoryForComplaint(_employeeId?: number) {
 	const employeeId = actor.id;
 	try {
 		const stock = await prismaClient.employeeInventory.findMany({
-			where: { employeeId, quantity: { gt: 0 } },
+			where: { employeeId, quantity: { gt: QTY_EPSILON } },
 			include: {
 				inventory: {
 					select: {
@@ -529,19 +529,27 @@ export async function addComplaintInventoryUsage(complaintId: number, _employeeI
 			return { success: false, message: "Quantity must be a whole number for items counted in pieces." };
 		}
 
-		if (stock.quantity < quantityUsed) {
-			return { success: false, message: `Insufficient stock. You only have ${stock.quantity} unit(s) available.` };
-		}
+		const available = Number(stock.quantity.toFixed(3));
+		const insufficient = { success: false, message: `Insufficient stock. You only have ${available} unit(s) available.` };
+		if (stock.quantity < quantityUsed - QTY_EPSILON) return insufficient;
 
-		await prismaClient.$transaction([
-			prismaClient.complaintInventoryUsage.create({
-				data: { complaintId, employeeId, inventoryId, quantityUsed, notes: notes || null },
-			}),
-			prismaClient.employeeInventory.update({
-				where: { employeeId_inventoryId: { employeeId, inventoryId } },
+		const complaint = await prismaClient.complaint.findUnique({ where: { id: complaintId }, select: { id: true } });
+		if (!complaint) return { success: false, message: "Complaint not found." };
+
+		// Decrement only while enough remains, in the same transaction as the usage row
+		// (a separate check + write lets two quick submits drive stock negative)
+		const logged = await prismaClient.$transaction(async (tx) => {
+			const taken = await tx.employeeInventory.updateMany({
+				where: { employeeId, inventoryId, quantity: { gte: quantityUsed - QTY_EPSILON } },
 				data: { quantity: { decrement: quantityUsed } },
-			}),
-		]);
+			});
+			if (taken.count !== 1) return false;
+			await tx.complaintInventoryUsage.create({
+				data: { complaintId, employeeId, inventoryId, quantityUsed, notes: notes || null },
+			});
+			return true;
+		});
+		if (!logged) return insufficient;
 
 		await logActivity({
 			actorId: employeeId,

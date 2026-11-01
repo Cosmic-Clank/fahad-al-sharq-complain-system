@@ -213,7 +213,7 @@ function AddInventoryForm({ role = "inventory_manager" }: { role?: string }) {
 						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
 							<FormLabel>Quantity <span className='text-red-500'>*</span></FormLabel>
 							<FormControl>
-								<Input type='number' step={qtyStep(form.watch("unit"))} placeholder='Enter quantity' {...field} disabled={isSubmitting} />
+								<Input type='number' step={qtyStep(form.watch("unit"))} placeholder='Enter quantity' {...field} value={(field.value as string | number | undefined) ?? ""} disabled={isSubmitting} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

@@ -114,6 +114,10 @@ export default function LeaveSection({ rows, employeesBase, recordFor, today, em
 
 	const submitRecord = async () => {
 		if (!recordFor || recordMissing) return;
+		if (recordFor.signatureRequired && (empPadRef.current?.isEmpty() !== false || recAdminPadRef.current?.isEmpty() !== false)) {
+			toast.error("Both signatures are required.");
+			return;
+		}
 		setIsBusy(true);
 		try {
 			const fd = new FormData();
@@ -155,7 +159,13 @@ export default function LeaveSection({ rows, employeesBase, recordFor, today, em
 							{recordFor.signatureRequired ? "Signatures required: 2+ years of service or no joining date set." : "No signature required (under 2 years of service)."}
 						</p>
 					</div>
-					<Button size='sm' onClick={() => setRecordOpen(true)}>
+					<Button
+						size='sm'
+						onClick={() => {
+							setEmpSigned(false);
+							setRecAdminSigned(false);
+							setRecordOpen(true);
+						}}>
 						<Plus className='w-4 h-4 mr-1' /> Record Leave
 					</Button>
 				</div>

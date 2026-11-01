@@ -12,6 +12,7 @@ import LeaveDetailsFields, { type LeaveDetailsValue } from "@/app/(auth)/dashboa
 import { toast } from "@/lib/notify";
 import { validateLeaveRange } from "@/lib/hr-leave";
 import { translateMessage } from "@/lib/messages-ar";
+import { useLanguage } from "@/hooks/use-language";
 import { requestLeave } from "../actions";
 
 interface LeaveRequestFormProps {
@@ -30,6 +31,7 @@ export default function LeaveRequestForm({ today, signatureRequired, signatureRe
 	const [signed, setSigned] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const padRef = useRef<SignaturePadHandle>(null);
+	const language = useLanguage();
 
 	const rangeError = details.type && details.startDate && details.endDate ? validateLeaveRange(details.type, details.startDate, details.endDate, today) : null;
 
@@ -93,7 +95,7 @@ export default function LeaveRequestForm({ today, signatureRequired, signatureRe
 
 			{rangeError && (
 				<p translate='no' className='notranslate text-sm text-red-600'>
-					{translateMessage(rangeError)}
+					{translateMessage(rangeError, language)}
 				</p>
 			)}
 
@@ -104,7 +106,7 @@ export default function LeaveRequestForm({ today, signatureRequired, signatureRe
 						<Loading /> Sending...
 					</>
 				) : missing ? (
-					translateMessage(missing)
+					translateMessage(missing, language)
 				) : (
 					<>
 						<Send className='w-4 h-4 mr-2' /> Send Leave Request

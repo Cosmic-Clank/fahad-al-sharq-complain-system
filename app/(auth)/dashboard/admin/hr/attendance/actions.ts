@@ -49,7 +49,9 @@ async function syncOtherDeductions(userId: number, month: string, employeeName: 
 		const autoKey = `OTHER3-${userId}-${month}-${n}`;
 		const existing = await prismaClient.penalty.findUnique({ where: { autoKey } });
 		if (!existing) {
-			await prismaClient.penalty.create({
+			// createMany + skipDuplicates: a concurrent save may have created this autoKey a moment ago
+			const created = await prismaClient.penalty.createMany({
+				skipDuplicates: true,
 				data: {
 					userId,
 					type: "SALARY_DEDUCTION",
@@ -61,7 +63,7 @@ async function syncOtherDeductions(userId: number, month: string, employeeName: 
 					autoKey,
 				},
 			});
-			await logActivity({
+			if (created.count > 0) await logActivity({
 				actorId: adminId,
 				targetUserId: userId,
 				action: "PENALTY_AUTO_CREATED",

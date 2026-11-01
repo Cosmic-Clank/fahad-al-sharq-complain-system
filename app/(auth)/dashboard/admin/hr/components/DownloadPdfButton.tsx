@@ -32,7 +32,7 @@ export default function DownloadPdfButton({ getPdf, label = "Download PDF", size
 			a.href = url;
 			a.download = result.fileName;
 			a.click();
-			URL.revokeObjectURL(url);
+			setTimeout(() => URL.revokeObjectURL(url), 1000); // revoking immediately can cancel the download
 		} catch (error) {
 			console.error("PDF download failed:", error);
 			toast.error("Failed to generate the PDF. Please try again.");

@@ -13,6 +13,7 @@ import bcrypt from "bcryptjs";
 import { isValidQtyForUnit, QTY_EPSILON } from "@/lib/inventory-units";
 import { logActivity } from "@/lib/activity-log";
 import { requireRole } from "@/lib/authz";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { isValidSignature } from "@/lib/signature-server";
 
 // Define the type for the form data you expect
@@ -438,7 +439,7 @@ export async function updateEmployeeDetails(employeeId: number, fullName: string
 	try {
 		// Verify the employee exists
 		const employee = await prismaClient.user.findUnique({
-			where: { id: employeeId, role: "EMPLOYEE" },
+			where: { id: employeeId, role: { in: HR_STAFF_ROLES } },
 		});
 
 		if (!employee) {

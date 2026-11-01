@@ -2,12 +2,11 @@ export type Language = "en" | "ar";
 
 export const LANGUAGE_STORAGE_KEY = "preferred-language";
 
+/** The googtrans cookie value. There can be two (host-only + domain), so take the first match. */
 export function getGoogtransCookie(): string | null {
 	if (typeof document === "undefined") return null;
-	const value = `; ${document.cookie}`;
-	const parts = value.split("; googtrans=");
-	if (parts.length === 2) return parts.pop()?.split(";").shift() ?? null;
-	return null;
+	const match = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
+	return match ? match[1] : null;
 }
 
 function getStoredLanguage(): Language | null {

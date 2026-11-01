@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import SignatureCanvas from "react-signature-canvas";
+import SignaturePad, { type SignaturePadHandle } from "@/components/SignaturePad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,8 +52,8 @@ export default function HandoversSection({ userId, employeeName, handovers }: { 
 	const [signTarget, setSignTarget] = useState<{ id: number; stage: "HANDOVER" | "RETURN" } | null>(null);
 	const [isBusy, setIsBusy] = useState(false);
 
-	const employeePadRef = useRef<SignatureCanvas>(null);
-	const adminPadRef = useRef<SignatureCanvas>(null);
+	const employeePadRef = useRef<SignaturePadHandle>(null);
+	const adminPadRef = useRef<SignaturePadHandle>(null);
 
 	const hasOpen = handovers.some((h) => ["REQUESTED", "APPROVED", "HANDED_OVER"].includes(h.status));
 
@@ -226,28 +226,8 @@ export default function HandoversSection({ userId, employeeName, handovers }: { 
 					</DialogHeader>
 
 					<div className='space-y-4 py-2'>
-						<div className='space-y-1'>
-							<div className='flex items-center justify-between'>
-								<Label>Employee signature ({employeeName})</Label>
-								<Button type='button' variant='ghost' size='sm' onClick={() => employeePadRef.current?.clear()}>
-									Clear
-								</Button>
-							</div>
-							<div className='border rounded-md bg-white'>
-								<SignatureCanvas ref={employeePadRef} canvasProps={{ width: 500, height: 130, className: "block w-full" }} />
-							</div>
-						</div>
-						<div className='space-y-1'>
-							<div className='flex items-center justify-between'>
-								<Label>Admin signature</Label>
-								<Button type='button' variant='ghost' size='sm' onClick={() => adminPadRef.current?.clear()}>
-									Clear
-								</Button>
-							</div>
-							<div className='border rounded-md bg-white'>
-								<SignatureCanvas ref={adminPadRef} canvasProps={{ width: 500, height: 130, className: "block w-full" }} />
-							</div>
-						</div>
+						<SignaturePad ref={employeePadRef} label={`Employee signature (${employeeName})`} disabled={isBusy} />
+						<SignaturePad ref={adminPadRef} label='Admin signature' disabled={isBusy} />
 					</div>
 
 					<DialogFooter>

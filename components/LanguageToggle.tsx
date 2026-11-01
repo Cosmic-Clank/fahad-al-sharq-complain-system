@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Languages } from "lucide-react";
-import { getCurrentLanguage, LANGUAGE_STORAGE_KEY, type Language } from "@/lib/language";
+import { getCurrentLanguage, getGoogtransCookie, LANGUAGE_STORAGE_KEY, type Language } from "@/lib/language";
+
+const ONE_YEAR = 60 * 60 * 24 * 365;
 
 function setArabicCookies() {
 	const hostname = window.location.hostname;
-	document.cookie = "googtrans=/en/ar; path=/; SameSite=Lax";
-	document.cookie = `googtrans=/en/ar; path=/; domain=${hostname}; SameSite=Lax`;
+	// Persistent, like the stored preference — session cookies vanished on browser restart
+	document.cookie = `googtrans=/en/ar; path=/; max-age=${ONE_YEAR}; SameSite=Lax`;
+	document.cookie = `googtrans=/en/ar; path=/; domain=${hostname}; max-age=${ONE_YEAR}; SameSite=Lax`;
 }
 
 function getCookieDomainCandidates(hostname: string) {
@@ -50,7 +53,16 @@ export default function LanguageToggle() {
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		setLanguage(getCurrentLanguage());
+		const current = getCurrentLanguage();
+		// Arabic is remembered but Google Translate's cookie is gone (older session cookie expired):
+		// restore it once so the page and the app's own Arabic messages agree again
+		if (current === "ar" && !getGoogtransCookie()?.endsWith("/ar") && !sessionStorage.getItem("googtrans-resynced")) {
+			sessionStorage.setItem("googtrans-resynced", "1");
+			setArabicCookies();
+			window.location.reload();
+			return;
+		}
+		setLanguage(current);
 	}, []);
 
 	useEffect(() => {

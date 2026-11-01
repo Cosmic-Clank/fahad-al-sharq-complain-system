@@ -290,7 +290,12 @@ export default function LettersSection({ userId, employeeName, letters, penaltie
 						</div>
 
 						<label className='flex items-center gap-2 text-sm cursor-pointer'>
-							<input type='checkbox' checked={signNow} onChange={(e) => setSignNow(e.target.checked)} disabled={isBusy} className='h-4 w-4' />
+							<input type='checkbox' checked={signNow} onChange={(e) => {
+								// re-showing the pads mounts them blank, so the signed flags must reset too
+								setSignNow(e.target.checked);
+								setEmpSigned(false);
+								setAdminSigned(false);
+							}} disabled={isBusy} className='h-4 w-4' />
 							Sign now (the employee is here) — otherwise save and sign later
 						</label>
 						{signNow && (

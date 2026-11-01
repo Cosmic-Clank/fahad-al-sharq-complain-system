@@ -41,6 +41,7 @@ export function ItemsCombobox({ options, value, onChange, placeholder, className
 								<CommandItem
 									key={opt.value}
 									value={opt.value}
+									keywords={[opt.label]} // value is the item id; search by name
 									onSelect={(currentValue) => {
 										onChange(currentValue === value ? "" : currentValue);
 										setOpen(false);

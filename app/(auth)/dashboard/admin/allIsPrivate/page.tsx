@@ -3,7 +3,7 @@ import ComplaintsTable from "../../components/ComplaintsTable";
 import { withRole } from "@/lib/page-guard";
 
 async function page() {
-	return <ComplaintsTable privateOnly role='admin' />;
+	return <ComplaintsTable role='admin' />;
 }
 
 export default withRole(["ADMIN"], page);

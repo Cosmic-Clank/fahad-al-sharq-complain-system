@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatQty } from "@/lib/inventory-units";
+import { requestBuildingLabel, splitRejection } from "@/lib/inventory-requests";
 
 async function page() {
 	const session = await auth();
@@ -93,9 +94,15 @@ async function page() {
 									</div>
 									<div className='space-y-1 text-sm ml-7'>
 										<p><span className='font-medium'>Quantity Requested:</span> {formatQty(request.quantity, request.inventory.unit)}</p>
-										<p><span className='font-medium'>Reason:</span> {request.reason}</p>
-										{request.notes && (
-											<p><span className='font-medium'>Notes:</span> {request.notes}</p>
+										{requestBuildingLabel(request) && (
+											<p><span className='font-medium'>Building:</span> {requestBuildingLabel(request)}</p>
+										)}
+										{request.reason && <p><span className='font-medium'>Reason:</span> {request.reason}</p>}
+										{splitRejection(request.notes).notes && (
+											<p><span className='font-medium'>Notes:</span> {splitRejection(request.notes).notes}</p>
+										)}
+										{splitRejection(request.notes).rejection && (
+											<p className='text-red-700'><span className='font-medium'>Rejection reason:</span> {splitRejection(request.notes).rejection}</p>
 										)}
 									</div>
 								</div>
@@ -114,7 +121,7 @@ async function page() {
 									</div>
 									{request.approvedAt && (
 										<div>
-											<p className='text-sm font-medium text-gray-600'>Approved By</p>
+											<p className='text-sm font-medium text-gray-600'>{request.status === "REJECTED" ? "Rejected By" : "Approved By"}</p>
 											<p className='text-sm'>{request.approver?.fullName}</p>
 										</div>
 									)}

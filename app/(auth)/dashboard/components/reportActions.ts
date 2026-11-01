@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Buffer } from "node:buffer";
 import { formatQty } from "@/lib/inventory-units";
+import { requireRole } from "@/lib/authz";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -180,18 +181,15 @@ function buildWhere(
 // Server Actions
 // ─────────────────────────────────────────────────────────────
 
-export async function getUniqueOptions(column: ComplaintColumn, filters?: Record<string, any>): Promise<UniqueOption[]> {
+export async function getUniqueOptions(column: ComplaintColumn, filters?: { buildingName?: string; apartmentNumbers?: string[] }): Promise<UniqueOption[]> {
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) return [];
 	if (!ALLOWED.has(column)) throw new Error("Invalid column");
 
+	// Only these filters are accepted — client values never become arbitrary Prisma conditions
 	const where: any = {};
-	if (filters) {
-		for (const [k, v] of Object.entries(filters)) {
-			if (k === "apartmentNumbers" && Array.isArray(v) && v.length > 0) {
-				where.apartmentNumber = { in: v.map((x) => String(x)) };
-			} else {
-				where[k] = v;
-			}
-		}
+	if (typeof filters?.buildingName === "string" && filters.buildingName) where.buildingName = filters.buildingName;
+	if (Array.isArray(filters?.apartmentNumbers) && filters.apartmentNumbers.length > 0) {
+		where.apartmentNumber = { in: filters.apartmentNumbers.map((x) => String(x)) };
 	}
 
 	where.OR = [{ isPrivate: false }, { isPrivate: null }];
@@ -212,6 +210,7 @@ export async function getUniqueOptions(column: ComplaintColumn, filters?: Record
 }
 
 export async function previewComplaints(params: { criterion: PreviewCriterion; value?: string; startDate?: string; endDate?: string; buildingName?: string; apartmentNumbers?: string[]; limit?: number }): Promise<ComplaintPreviewRow[]> {
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) return [];
 	const limit = Math.min(Math.max(Number(params.limit ?? 50), 1), 500);
 	const where = buildWhere(params);
 
@@ -291,6 +290,7 @@ type ComplaintsPdfResult = { fileName: string; base64: string };
 
 // ===== MULTI-PAGE =====
 export async function generateComplaintsPdfByFilter(column: string, value: unknown, extra?: ExtraFilters & { startDate?: string; endDate?: string }): Promise<ComplaintsPdfResult> {
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) throw new Error("Unauthorized. Please log in.");
 	const where = buildWhere({
 		criterion: column as any,
 		value: typeof value === "string" ? value : String(value),
@@ -964,6 +964,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 // ===== SINGLE PAGE BY ID =====
 export async function generateComplaintPdfById(complaintId: string): Promise<{ fileName: string; base64: string }> {
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) throw new Error("Unauthorized. Please log in.");
 	const id = Number(complaintId);
 
 	const complaint = await prisma.complaint.findFirst({
@@ -1604,6 +1605,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 
 // Date-range PDF (reuses the filter generator)
 export async function generateComplaintsPdfByDateRange(startDate: string | Date, endDate: string | Date, limit = 1000, extra?: ExtraFilters): Promise<{ fileName: string; base64: string }> {
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) throw new Error("Unauthorized. Please log in.");
 	const s = startDate instanceof Date ? startDate : new Date(startDate);
 	const e = endDate instanceof Date ? endDate : new Date(endDate);
 	if (isNaN(+s) || isNaN(+e)) throw new Error("Invalid start or end date");

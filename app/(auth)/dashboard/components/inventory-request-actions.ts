@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
 import { logActivity } from "@/lib/activity-log";
 import { STOCK_VALUE } from "@/lib/inventory-request-building";
+import { getActor, requireRole } from "@/lib/authz";
 
 const createInventoryRequestSchema = z.object({
 	inventoryId: z.string().min(1, "Please select an item"),
@@ -14,10 +15,12 @@ const createInventoryRequestSchema = z.object({
 	location: z.string().max(100).optional().or(z.literal("")),
 	technicianName: z.string().max(100).optional().or(z.literal("")),
 	reason: z.string().max(500).optional().or(z.literal("")),
-	notes: z.string().optional().or(z.literal("")),
+	notes: z.string().max(1000).optional().or(z.literal("")),
 });
 
-export async function createInventoryRequest(formData: FormData, employeeId: number) {
+export async function createInventoryRequest(formData: FormData, _employeeId?: number) {
+	const actor = await requireRole(["EMPLOYEE"]);
+	if (!actor) return { success: false, message: "Unauthorized. Please log in." };
 	try {
 		const rawData = {
 			inventoryId: formData.get("inventoryId"),
@@ -31,7 +34,7 @@ export async function createInventoryRequest(formData: FormData, employeeId: num
 
 		const validatedData = createInventoryRequestSchema.parse(rawData);
 		const itemId = Number(validatedData.inventoryId);
-		const empId = Number(employeeId); // Ensure employeeId is a number
+		const empId = actor.id;
 
 		// Building must be an official one, or the stock option ("" is stored for stock)
 		const isStock = validatedData.buildingName === STOCK_VALUE;
@@ -125,10 +128,12 @@ export async function createInventoryRequest(formData: FormData, employeeId: num
 	}
 }
 
-// Get all pending inventory requests for an employee
-export async function getEmployeeInventoryRequests(employeeId: number) {
+/** The logged-in employee's own requests (all statuses). The parameter is ignored. */
+export async function getEmployeeInventoryRequests(_employeeId?: number) {
+	const actor = await getActor();
+	if (!actor) return [];
 	try {
-		const empId = Number(employeeId); // Ensure employeeId is a number
+		const empId = actor.id;
 		const requests = await prismaClient.inventoryRequest.findMany({
 			where: {
 				employeeId: empId,
@@ -156,6 +161,7 @@ export async function getEmployeeInventoryRequests(employeeId: number) {
 
 // Get all inventory items for dropdown (only items with quantity > 0)
 export async function getAvailableInventoryItems() {
+	if (!(await getActor())) return [];
 	try {
 		const items = await prismaClient.inventory.findMany({
 			where: {

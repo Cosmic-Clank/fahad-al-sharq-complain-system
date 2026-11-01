@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
 import { formatQty } from "@/lib/inventory-units";
 import { STOCK_LABEL } from "@/lib/inventory-request-building";
+import { splitRejection } from "@/lib/inventory-requests";
 
 interface RequestApprovalCardProps {
 	request: any;
@@ -25,14 +26,20 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 	const [rejectionReason, setRejectionReason] = useState("");
 	const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
 
+	const { notes: ownNotes, rejection } = splitRejection(request.notes);
+
 	const handleApprove = async () => {
 		try {
 			setIsApproving(true);
-			await approveInventoryRequest(request.id, approverId);
+			const result = await approveInventoryRequest(request.id, approverId);
+			if (!result.success) {
+				showAlert(result.message);
+				return;
+			}
 			onApprovalChange?.();
 		} catch (error) {
 			console.error("Error approving request:", error);
-			showAlert(`Error: ${(error as Error).message}`);
+			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsApproving(false);
 		}
@@ -41,13 +48,17 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 	const handleReject = async () => {
 		try {
 			setIsRejecting(true);
-			await rejectInventoryRequest(request.id, approverId, rejectionReason);
+			const result = await rejectInventoryRequest(request.id, approverId, rejectionReason);
+			if (!result.success) {
+				showAlert(result.message);
+				return;
+			}
 			setIsRejectionDialogOpen(false);
 			setRejectionReason("");
 			onApprovalChange?.();
 		} catch (error) {
 			console.error("Error rejecting request:", error);
-			showAlert(`Error: ${(error as Error).message}`);
+			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsRejecting(false);
 		}
@@ -129,10 +140,10 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 							<p className='mt-1 text-sm whitespace-pre-line'>{request.reason}</p>
 						</div>
 					)}
-					{request.notes && !request.notes.startsWith("REJECTION:") && (
+					{ownNotes && (
 						<div>
 							<p className='text-sm font-medium text-gray-600'>Notes</p>
-							<p className='mt-1 text-sm'>{request.notes}</p>
+							<p className='mt-1 text-sm whitespace-pre-line'>{ownNotes}</p>
 						</div>
 					)}
 				</div>
@@ -157,10 +168,10 @@ export function RequestApprovalCard({ request, approverId, onApprovalChange }: R
 						</div>
 					)}
 
-					{request.notes?.startsWith("REJECTION:") && (
+					{rejection && (
 						<div className='bg-red-50 border border-red-200 rounded p-3'>
 							<p className='text-sm font-medium text-red-800'>Rejection Reason</p>
-							<p className='text-sm text-red-700 mt-1'>{request.notes.replace("REJECTION: ", "")}</p>
+							<p className='text-sm text-red-700 mt-1'>{rejection}</p>
 						</div>
 					)}
 

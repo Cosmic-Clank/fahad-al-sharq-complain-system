@@ -27,6 +27,9 @@ export function allowsDecimals(unit?: string | null): boolean {
 	return unit === "METERS";
 }
 
+/** Tolerance for comparing Float quantities (e.g. 0.3 - 0.1 leaves 0.19999999999999998 in the DB). */
+export const QTY_EPSILON = 1e-6;
+
 export function isValidQtyForUnit(quantity: number, unit?: string | null): boolean {
 	return allowsDecimals(unit) || Number.isInteger(quantity);
 }

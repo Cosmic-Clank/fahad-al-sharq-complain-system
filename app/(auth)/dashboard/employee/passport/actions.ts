@@ -5,11 +5,14 @@ import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
+import { requireRole } from "@/lib/authz";
 
 export async function requestMyPassport(formData: FormData) {
 	const session = await auth();
 	if (!session?.user?.id) return { success: false, message: "Please log in." };
 	const userId = Number(session.user.id);
+	if (!(await requireRole(HR_STAFF_ROLES))) return { success: false, message: "Unauthorized. Please log in." };
 
 	const parsed = z
 		.object({ reason: z.string().min(3, "Please give a short reason").max(500) })

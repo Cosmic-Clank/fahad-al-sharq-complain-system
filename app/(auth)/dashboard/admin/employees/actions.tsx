@@ -14,7 +14,14 @@ export async function deleteEmployees(employeeIds: string[]): Promise<{ success:
 			return { success: false, message: "No employee IDs provided for deletion." };
 		}
 
-		const ids = employeeIds.map((item) => Number(item));
+		// Only staff accounts can be deleted here — resolve them first so nothing else (e.g. an
+		// admin's complaint responses) is touched when a non-staff id is passed in
+		const requested = employeeIds.map((item) => Number(item)).filter((id) => Number.isInteger(id));
+		const staff = await prismaClient.user.findMany({ where: { id: { in: requested }, role: { in: HR_STAFF_ROLES } }, select: { id: true } });
+		const ids = staff.map((u) => u.id);
+		if (ids.length === 0) {
+			return { success: false, message: "No employees found or deleted." };
+		}
 
 		// ComplaintResponse.responderId has no onDelete cascade, so delete those first
 		const [, deleteResult] = await prismaClient.$transaction([

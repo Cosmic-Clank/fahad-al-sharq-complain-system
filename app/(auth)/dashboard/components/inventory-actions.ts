@@ -10,6 +10,7 @@ import { auth } from "@/auth";
 import { isValidQtyForUnit, unitLabel } from "@/lib/inventory-units";
 import { inventoryItemFields, inventoryItemSchema, pieceQuantityCheck, INVENTORY_IMAGE_TYPES, INVENTORY_ITEM_MESSAGES, MAX_INVENTORY_IMAGE_BYTES } from "@/lib/inventory-item-schema";
 import { logActivity } from "@/lib/activity-log";
+import { getActor, requireRole } from "@/lib/authz";
 
 async function currentActor() {
 	const session = await auth();
@@ -45,6 +46,9 @@ function uploadedImage(formData: FormData): File | null {
 }
 
 export async function createInventoryItem(formData: FormData) {
+	if (!(await requireRole(["ADMIN", "INVENTORY_MANAGER"]))) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
 	try {
 		// Extract form data
 		const rawData = {
@@ -143,6 +147,9 @@ const serverInventoryUpdateSchema = z
 	.superRefine(pieceQuantityCheck);
 
 export async function updateInventoryItem(formData: FormData) {
+	if (!(await requireRole(["ADMIN", "INVENTORY_MANAGER"]))) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
 	try {
 		// Extract form data
 		const rawData = {
@@ -267,6 +274,9 @@ const restockSchema = z.object({
 });
 
 export async function restockInventoryItem(formData: FormData) {
+	if (!(await requireRole(["ADMIN", "INVENTORY_MANAGER"]))) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
 	try {
 		const rawData = {
 			itemId: formData.get("itemId"),
@@ -387,6 +397,7 @@ export async function deleteInventoryItem(itemId: number) {
 
 // Get all inventory items for dropdown
 export async function getAllInventoryItems() {
+	if (!(await getActor())) return [];
 	try {
 		const items = await prismaClient.inventory.findMany({
 			select: {

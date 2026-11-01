@@ -5,12 +5,13 @@ import { z } from "zod";
 import prismaClient from "@/lib/prisma"; // Your Prisma client instance
 import bcrypt from "bcryptjs"; // For password hashing
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/authz";
 
 // Server-side Zod schema for validation
 const serverEmployeeFormSchema = z.object({
 	fullName: z.string({ required_error: "Full name is required" }).min(2, { message: "Full name must be at least 2 characters long." }).max(100, { message: "Full name must be at most 100 characters long." }),
-	username: z.string({ required_error: "username is required" }),
-	password: z.string({ required_error: "Password is required" }),
+	username: z.string({ required_error: "Username is required" }).trim().min(1, { message: "Username is required" }),
+	password: z.string({ required_error: "Password is required" }).min(1, { message: "Password is required" }),
 	role: z.enum(["EMPLOYEE", "INVENTORY_MANAGER", "HR_MANAGER"], { required_error: "Role is required" }),
 	// .min(8, { message: "Password must be at least 8 characters long." })
 	// .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter." })
@@ -20,6 +21,10 @@ const serverEmployeeFormSchema = z.object({
 });
 
 export async function createEmployee(formData: FormData) {
+	if (!(await requireRole(["ADMIN"], { fresh: true }))) {
+		return { success: false, message: "Only admins can create employees." };
+	}
+
 	const data = {
 		fullName: formData.get("fullName"),
 		username: formData.get("username"),

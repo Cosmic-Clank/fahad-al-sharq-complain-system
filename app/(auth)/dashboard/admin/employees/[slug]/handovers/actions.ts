@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { isValidSignature } from "@/lib/signature-server";
 
 async function requireHrAccess() {
 	const session = await auth();
@@ -111,8 +112,8 @@ export async function setHandoverStatus(handoverId: number, status: "APPROVED" |
 const signSchema = z.object({
 	handoverId: z.coerce.number().int().positive(),
 	stage: z.enum(["HANDOVER", "RETURN"]),
-	employeeSignature: z.string().startsWith("data:image/", "Employee signature is required"),
-	adminSignature: z.string().startsWith("data:image/", "Admin signature is required"),
+	employeeSignature: z.string().refine(isValidSignature, "Employee signature is required"),
+	adminSignature: z.string().refine(isValidSignature, "Admin signature is required"),
 });
 
 /** Record signatures: HANDOVER stage gives the passport out, RETURN stage takes it back. */

@@ -12,6 +12,8 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { isValidQtyForUnit } from "@/lib/inventory-units";
 import { logActivity } from "@/lib/activity-log";
+import { requireRole } from "@/lib/authz";
+import { isValidSignature } from "@/lib/signature-server";
 
 // Define the type for the form data you expect
 interface ResponseFormData {
@@ -22,6 +24,9 @@ interface ResponseFormData {
 export async function addComplaintResponse(formData: FormData) {
 	const session = await auth();
 	if (!session || !session.user || !session.user.id) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
 
@@ -111,6 +116,9 @@ export async function addStartWorkTime(formData: FormData) {
 	if (!session || !session.user || !session.user.id) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
 
 	const complaintId = formData.get("complaintId") as string;
 
@@ -140,6 +148,9 @@ export async function addEndWorkTime(formData: FormData) {
 	if (!session || !session.user || !session.user.id) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
+	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) {
+		return { success: false, message: "Unauthorized. Please log in." };
+	}
 
 	const complaintId = formData.get("complaintId") as string | null;
 	const workerSignatureBase64 = formData.get("workerSignatureBase64") as string | null;
@@ -151,7 +162,8 @@ export async function addEndWorkTime(formData: FormData) {
 
 	// Check if signatures are provided (new system)
 	if (workerSignatureBase64 && customerSignatureBase64) {
-		if (!workerSignatureBase64.trim() || !customerSignatureBase64.trim()) {
+		// Must be real PNG drawings: pdf-lib hangs on corrupt PNGs when the complaint PDF is exported
+		if (!isValidSignature(workerSignatureBase64) || !isValidSignature(customerSignatureBase64)) {
 			return { success: false, message: "Invalid signatures provided." };
 		}
 
@@ -231,13 +243,14 @@ export async function addEndWorkTime(formData: FormData) {
 	}
 }
 
+/** Users for the admin "assign complaint" picker — never return password hashes. */
 export async function fetchUsers() {
-	return prismaClient.user.findMany();
+	if (!(await requireRole(["ADMIN"]))) return [];
+	return prismaClient.user.findMany({ select: { id: true, username: true, fullName: true }, orderBy: { fullName: "asc" } });
 }
 
 export async function assignComplaintToUser(complaintId: number, userId: number) {
-	const session = await auth();
-	if (!session || !session.user || !session.user.id) {
+	if (!(await requireRole(["ADMIN"]))) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
 
@@ -247,7 +260,8 @@ export async function assignComplaintToUser(complaintId: number, userId: number)
 			data: { assignedToId: userId },
 		});
 
-		revalidatePath("/dashboard/complaints"); // Revalidate the complaints page to reflect the changes
+		revalidatePath(`/dashboard/admin/complaint/${complaintId}`);
+		revalidatePath(`/dashboard/employee/complaint/${complaintId}`);
 		return { success: true, message: "Complaint assigned successfully!", complaint: updatedComplaint };
 	} catch (error) {
 		console.error("Error assigning complaint:", error);
@@ -463,7 +477,11 @@ export async function updateEmployeeDetails(employeeId: number, fullName: string
 	}
 }
 
-export async function getEmployeeInventoryForComplaint(employeeId: number) {
+/** The logged-in employee's own stock. The parameter is ignored (kept for the existing caller). */
+export async function getEmployeeInventoryForComplaint(_employeeId?: number) {
+	const actor = await requireRole(["EMPLOYEE"]);
+	if (!actor) return [];
+	const employeeId = actor.id;
 	try {
 		const stock = await prismaClient.employeeInventory.findMany({
 			where: { employeeId, quantity: { gt: 0 } },
@@ -488,9 +506,13 @@ export async function getEmployeeInventoryForComplaint(employeeId: number) {
 	}
 }
 
-export async function addComplaintInventoryUsage(complaintId: number, employeeId: number, inventoryId: number, quantityUsed: number, notes?: string) {
+/** Logs items the logged-in employee used on a complaint. `_employeeId` is ignored — the session decides who. */
+export async function addComplaintInventoryUsage(complaintId: number, _employeeId: number, inventoryId: number, quantityUsed: number, notes?: string) {
+	const actor = await requireRole(["EMPLOYEE"]);
+	if (!actor) return { success: false, message: "Unauthorized. Please log in." };
+	const employeeId = actor.id;
 	try {
-		if (quantityUsed <= 0) {
+		if (!Number.isFinite(quantityUsed) || quantityUsed <= 0) {
 			return { success: false, message: "Quantity must be greater than zero." };
 		}
 

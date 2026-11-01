@@ -4,8 +4,10 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
+import { requireRole } from "@/lib/authz";
 
 export async function createBuilding(formData: FormData) {
+	if (!(await requireRole(["ADMIN"]))) throw new Error("Only admins can manage buildings.");
 	const buildingName = String(formData.get("buildingName") || "").trim();
 	const emirate = String(formData.get("emirate") || "").trim();
 
@@ -20,6 +22,7 @@ export async function createBuilding(formData: FormData) {
 }
 
 export async function deleteBuilding(formData: FormData) {
+	if (!(await requireRole(["ADMIN"]))) throw new Error("Only admins can manage buildings.");
 	const id = String(formData.get("id") || "").trim();
 	if (!id) throw new Error("Missing building id.");
 

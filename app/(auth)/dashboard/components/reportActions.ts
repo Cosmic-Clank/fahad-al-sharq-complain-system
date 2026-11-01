@@ -6,6 +6,8 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Buffer } from "node:buffer";
 import { formatQty } from "@/lib/inventory-units";
 import { requireRole } from "@/lib/authz";
+import { isValidSignature } from "@/lib/signature-server";
+import { toWinAnsi } from "@/lib/pdf-text";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -373,7 +375,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 
 	const totalPages = complaints.length;
 
-	const sanitize = (t: string) => (t || "").replace(/[^\x20-\x7E\xA0-\xFF]/g, "?");
+	const sanitize = (t: string) => toWinAnsi(t);
 
 	const wrap = (t: string, maxW: number, size = 10, f = font) => {
 		const words = sanitize(t).split(/\s+/);
@@ -608,6 +610,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					if (base64Data.startsWith("data:")) {
 						base64Data = base64Data.split(",")[1];
 					}
+					if (!isValidSignature(`data:image/png;base64,${base64Data}`)) throw new Error("Invalid signature image");
 					const sigBytes = Buffer.from(base64Data, "base64");
 					const workerSigImage = await doc.embedPng(sigBytes);
 					const scale = Math.min(sigBoxW / workerSigImage.width, sigBoxH / workerSigImage.height);
@@ -637,6 +640,7 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					if (base64Data.startsWith("data:")) {
 						base64Data = base64Data.split(",")[1];
 					}
+					if (!isValidSignature(`data:image/png;base64,${base64Data}`)) throw new Error("Invalid signature image");
 					const sigBytes = Buffer.from(base64Data, "base64");
 					const customerSigImage = await doc.embedPng(sigBytes);
 					const scale = Math.min(sigBoxW / customerSigImage.width, sigBoxH / customerSigImage.height);
@@ -1064,7 +1068,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	const panelBorder = rgb(0.9, 0.92, 0.94);
 	const band = rgb(0.14, 0.44, 0.78);
 
-	const sanitize = (t: string) => (t || "").replace(/[^\x20-\x7E\xA0-\xFF]/g, "?");
+	const sanitize = (t: string) => toWinAnsi(t);
 
 	const page = doc.addPage([W, H]);
 	const text = (t: string, x: number, y: number, size = 10, bold = false, color = ink) => {
@@ -1265,6 +1269,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				if (base64Data.startsWith("data:")) {
 					base64Data = base64Data.split(",")[1];
 				}
+				if (!isValidSignature(`data:image/png;base64,${base64Data}`)) throw new Error("Invalid signature image");
 				const sigBytes = Buffer.from(base64Data, "base64");
 				const workerSigImage = await doc.embedPng(sigBytes);
 				const scale = Math.min(sigBoxW / workerSigImage.width, sigBoxH / workerSigImage.height);
@@ -1294,6 +1299,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				if (base64Data.startsWith("data:")) {
 					base64Data = base64Data.split(",")[1];
 				}
+				if (!isValidSignature(`data:image/png;base64,${base64Data}`)) throw new Error("Invalid signature image");
 				const sigBytes = Buffer.from(base64Data, "base64");
 				const customerSigImage = await doc.embedPng(sigBytes);
 				const scale = Math.min(sigBoxW / customerSigImage.width, sigBoxH / customerSigImage.height);

@@ -12,6 +12,8 @@ import { buildAttendanceWorkbook, buildSalarySummaryWorkbook, workbookToBase64, 
 import { getSalarySummary } from "@/lib/hr-salary-summary";
 import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
 import { describePenalty, JOINT_LETTER_TYPE_LABELS } from "@/lib/joint-letters";
+import { isValidSignature } from "@/lib/signature-server";
+import { toWinAnsi } from "@/lib/pdf-text";
 
 export type PdfResult = { success: true; fileName: string; base64: string; mime?: string } | { success: false; message: string };
 
@@ -26,11 +28,6 @@ const green = rgb(0.13, 0.55, 0.28);
 const amber = rgb(0.75, 0.52, 0.05);
 const red = rgb(0.78, 0.16, 0.16);
 
-/** Helvetica is WinAnsi-only — replace unsupported (e.g. Arabic) characters. */
-function toWinAnsi(s: string): string {
-	// Keep the en/em dash and middle dot used in titles — WinAnsi has them
-	return s.replace(/[^\x20-\x7E–—·]/g, "?");
-}
 
 async function requireHrAccess() {
 	const session = await auth();
@@ -432,6 +429,8 @@ export async function exportHandoverPdf(handoverId: number): Promise<PdfResult> 
 			try {
 				let b64 = dataUrl;
 				if (b64.startsWith("data:")) b64 = b64.split(",")[1];
+				// pdf-lib hangs on corrupt PNGs, so stored data is checked before embedding
+				if (!isValidSignature(`data:image/png;base64,${b64}`)) throw new Error("Invalid signature image");
 				const img = await doc.embedPng(Buffer.from(b64, "base64"));
 				const scale = Math.min((boxW - 20) / img.width, (boxH - 30) / img.height);
 				page.drawImage(img, { x: x + 10, y: yTop - boxH + 8, width: img.width * scale, height: img.height * scale });
@@ -520,6 +519,7 @@ export async function exportLeavePdf(leaveId: number): Promise<PdfResult> {
 			return;
 		}
 		try {
+			if (!isValidSignature(dataUrl)) throw new Error("Invalid signature image");
 			const img = await doc.embedPng(Buffer.from(dataUrl.split(",")[1] ?? "", "base64"));
 			const scale = Math.min((boxW - 20) / img.width, (boxH - 30) / img.height);
 			page.drawImage(img, { x: x + 10, y: y - boxH + 8, width: img.width * scale, height: img.height * scale });
@@ -592,15 +592,19 @@ export async function exportJointLetterPdf(letterId: number): Promise<PdfResult>
 			y = A4H - M;
 		}
 	};
+	// Long values (subject up to 150 chars, penalty details) wrap under the label instead of running off the page
 	const field = (label: string, value: string) => {
 		page.drawText(label, { x: M, y, size: 10, font, color: subt });
-		page.drawText(toWinAnsi(value), { x: M + 70, y, size: 10, font: fontBold, color: ink });
-		y -= 16;
+		for (const text of wrapLine(toWinAnsi(value), fontBold, 10, contentW - 70)) {
+			page.drawText(text, { x: M + 70, y, size: 10, font: fontBold, color: ink });
+			y -= 14;
+		}
+		y -= 2;
 	};
 
 	field("To:", `${letter.user.fullName} (@${letter.user.username})`);
-	field("Subject:", letter.subject.slice(0, 90));
-	if (letter.penalty) field("Penalty:", describePenalty(letter.penalty).slice(0, 90));
+	field("Subject:", letter.subject);
+	if (letter.penalty) field("Penalty:", describePenalty(letter.penalty));
 	y -= 14;
 
 	// Body — paragraphs kept, long lines wrapped, continues onto new pages
@@ -633,6 +637,7 @@ export async function exportJointLetterPdf(letterId: number): Promise<PdfResult>
 		page.drawText(signedOn, { x: x + boxW - 8 - w, y: y - 16, size: 8.5, font, color: ink });
 		if (!dataUrl) return; // unsigned: blank box to sign on paper
 		try {
+			if (!isValidSignature(dataUrl)) throw new Error("Invalid signature image");
 			const img = await doc.embedPng(Buffer.from(dataUrl.split(",")[1] ?? "", "base64"));
 			const scale = Math.min((boxW - 20) / img.width, (boxH - 30) / img.height);
 			page.drawImage(img, { x: x + 10, y: y - boxH + 8, width: img.width * scale, height: img.height * scale });

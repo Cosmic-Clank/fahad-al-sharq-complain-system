@@ -10,6 +10,7 @@ import { round2 } from "@/lib/hr-payroll";
 import { todayYmdDubai } from "@/lib/hr-dates";
 import type { PdfResult } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 import { makeBuildingResolver, STOCK_LABEL } from "@/lib/inventory-request-building";
+import { toWinAnsi } from "@/lib/pdf-text";
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -195,11 +196,6 @@ const subt = rgb(0.45, 0.48, 0.53);
 const line = rgb(0.85, 0.87, 0.9);
 const green = rgb(0.13, 0.55, 0.28);
 
-/** Helvetica is WinAnsi-only — replace unsupported (e.g. Arabic) characters. */
-function toWinAnsi(s: string): string {
-	// Keep the dashes, middle dot and bullet used in this report — WinAnsi has them
-	return s.replace(/[^\x20-\x7E–—·•]/g, "?");
-}
 
 /**
  * Detailed PDF: per building, an item summary table plus the full usage log —

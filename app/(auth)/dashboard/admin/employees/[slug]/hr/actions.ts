@@ -1,12 +1,12 @@
 "use server";
 
 import { z } from "zod";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
-import { auth } from "@/auth";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { round2 } from "@/lib/hr-payroll";
+import { requireHrAccess } from "@/lib/authz";
 
 const profileSchema = z.object({
 	userId: z.coerce.number().int().positive(),
@@ -23,12 +23,6 @@ const profileSchema = z.object({
 	leaveSalaryOverride: z.preprocess((v) => (v === "" || v === null ? undefined : v), z.coerce.number().min(0).optional()),
 	passportHeldByCompany: z.enum(["true", "false"]),
 });
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
 
 export async function upsertEmployeeProfile(formData: FormData) {
 	const admin = await requireHrAccess();

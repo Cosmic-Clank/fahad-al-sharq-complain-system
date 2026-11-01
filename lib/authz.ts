@@ -7,6 +7,7 @@
 import { auth } from "@/auth";
 import prismaClient from "./prisma";
 import type { Role } from "@/app/generated/prisma";
+import { HR_ACCESS_ROLES } from "./hr-roles";
 
 export interface Actor {
 	id: number;
@@ -37,4 +38,9 @@ export async function requireRole(roles: Role[], opts: { fresh?: boolean } = {})
 		return { id: actor.id, role: user.role, name: user.fullName };
 	}
 	return roles.includes(actor.role) ? actor : null;
+}
+
+/** Caller allowed to operate the HR module (ADMIN or HR_MANAGER), or null. */
+export function requireHrAccess(): Promise<Actor | null> {
+	return requireRole(HR_ACCESS_ROLES);
 }

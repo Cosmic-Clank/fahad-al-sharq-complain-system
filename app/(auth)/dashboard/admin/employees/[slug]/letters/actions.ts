@@ -1,19 +1,13 @@
 "use server";
 
 import { z } from "zod";
-import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { isValidSignature } from "@/lib/signature-server";
 import { JOINT_LETTER_TYPE_LABELS, MAX_BODY, MAX_SUBJECT } from "@/lib/joint-letters";
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
+import { requireHrAccess } from "@/lib/authz";
 
 function revalidateLetters(userId: number) {
 	for (const base of ["/dashboard/admin/employees", "/dashboard/hr_manager/employees"]) {

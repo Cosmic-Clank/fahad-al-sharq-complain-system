@@ -1,12 +1,12 @@
 "use server";
 
 import { z } from "zod";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
-import { auth } from "@/auth";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { round2 } from "@/lib/hr-payroll";
+import { requireHrAccess } from "@/lib/authz";
 
 const ticketSchema = z.object({
 	id: z.coerce.number().int().positive().optional().or(z.literal("")),
@@ -17,12 +17,6 @@ const ticketSchema = z.object({
 	value: z.preprocess((v) => (v === "" || v === null ? undefined : v), z.coerce.number().min(0).optional()),
 	notes: z.string().max(500).optional().or(z.literal("")),
 });
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
 
 export async function saveAirlineTicket(formData: FormData) {
 	const admin = await requireHrAccess();

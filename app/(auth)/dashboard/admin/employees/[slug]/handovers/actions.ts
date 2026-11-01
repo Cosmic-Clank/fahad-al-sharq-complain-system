@@ -1,18 +1,12 @@
 "use server";
 
 import { z } from "zod";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
-import { auth } from "@/auth";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { isValidSignature } from "@/lib/signature-server";
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
+import { requireHrAccess } from "@/lib/authz";
 
 function revalidateHandovers(userId: number) {
 	revalidatePath(`/dashboard/admin/employees/${userId}/handovers`);

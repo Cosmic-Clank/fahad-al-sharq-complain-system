@@ -1,18 +1,12 @@
 "use server";
 
 import { z } from "zod";
-import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { countLeaveDays, leaveSignatureRequired, LEAVE_TYPE_LABELS, MAX_LEAVE_DAYS } from "@/lib/hr-leave";
 import { findOverlappingLeave, revalidateLeave, isValidSignature } from "@/lib/hr-leave-server";
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
+import { requireHrAccess } from "@/lib/authz";
 
 const signatureOrEmpty = z.string().optional().or(z.literal(""));
 const validSignature = (s: string | undefined) => (isValidSignature(s) ? s : null);

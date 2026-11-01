@@ -1,14 +1,14 @@
 "use server";
 
 import { z } from "zod";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import path from "path";
 import { nanoid } from "nanoid";
-import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
+import { requireHrAccess } from "@/lib/authz";
 
 const SUPABASE_BASE_URL = "https://koxptzqfmeasndsaecyo.supabase.co";
 const BUCKET = "employee-documents";
@@ -26,12 +26,6 @@ const documentSchema = z.object({
 		.or(z.literal("")),
 	notes: z.string().max(500).optional().or(z.literal("")),
 });
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
 
 export async function saveEmployeeDocument(formData: FormData) {
 	const admin = await requireHrAccess();

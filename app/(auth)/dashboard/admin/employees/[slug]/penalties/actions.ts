@@ -1,15 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import path from "path";
 import { nanoid } from "nanoid";
-import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { round2 } from "@/lib/hr-payroll";
+import { requireHrAccess } from "@/lib/authz";
 
 const SUPABASE_BASE_URL = "https://koxptzqfmeasndsaecyo.supabase.co";
 const BUCKET = "employee-documents";
@@ -31,12 +31,6 @@ const bonusSchema = z.object({
 	note: z.string().max(500).optional().or(z.literal("")),
 	month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be YYYY-MM"),
 });
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
 
 export async function createPenalty(formData: FormData) {
 	const admin = await requireHrAccess();

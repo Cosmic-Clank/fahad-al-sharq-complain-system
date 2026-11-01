@@ -1,9 +1,8 @@
 "use server";
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { Buffer } from "node:buffer";
-import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
 import { daysInMonth, monthLabel, todayYmdDubai } from "@/lib/hr-dates";
 import { computeLeaveSalary, computePayslip } from "@/lib/hr-payroll";
@@ -14,6 +13,7 @@ import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
 import { describePenalty, JOINT_LETTER_TYPE_LABELS } from "@/lib/joint-letters";
 import { isValidSignature } from "@/lib/signature-server";
 import { toWinAnsi } from "@/lib/pdf-text";
+import { requireHrAccess } from "@/lib/authz";
 
 export type PdfResult = { success: true; fileName: string; base64: string; mime?: string } | { success: false; message: string };
 
@@ -28,12 +28,6 @@ const green = rgb(0.13, 0.55, 0.28);
 const amber = rgb(0.75, 0.52, 0.05);
 const red = rgb(0.78, 0.16, 0.16);
 
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
 
 function drawHeader(page: PDFPage, fontBold: PDFFont, font: PDFFont, title: string, subtitle: string, pageW: number) {
 	page.drawText("Fahad Al Sharq AC Systems LLC", { x: M, y: page.getHeight() - M - 10, size: 14, font: fontBold, color: ink });

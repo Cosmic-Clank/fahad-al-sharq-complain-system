@@ -1,13 +1,13 @@
 "use server";
 
 import { z } from "zod";
-import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
-import { auth } from "@/auth";
+import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import prismaClient from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity-log";
 import { compareHHmm } from "@/lib/hr-dates";
 import { otherLateDeductionAmount } from "@/lib/hr-payroll";
+import { requireHrAccess } from "@/lib/authz";
 
 const HHMM = /^\d{2}:\d{2}$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,12 +23,6 @@ const attendanceSchema = z.object({
 	earlyLeaveReason: z.enum(["NONE", "SICK", "ADDITIONAL_WORK", "OTHER"]),
 	earlyLeaveNote: z.string().max(300).optional().or(z.literal("")),
 });
-
-async function requireHrAccess() {
-	const session = await auth();
-	if (!session?.user?.id || !canAccessHr((session.user as any).role)) return null;
-	return { id: Number(session.user.id), name: session.user.name ?? "Admin" };
-}
 
 /**
  * Keep automatic "3× Other early leave" deductions in sync for a user+month.

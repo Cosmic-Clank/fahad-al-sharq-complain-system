@@ -3,6 +3,7 @@ import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { format } from "date-fns";
 import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import React from "react";
+import { formatDubaiTime, dubaiDateString } from "@/lib/dubai-time";
 
 export default async function EmployeeDetails({ slug }: { slug: string }) {
 	const employeeId = Number(slug);
@@ -67,7 +68,7 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 							<div className='bg-white/60 backdrop-blur-sm rounded-lg shadow-sm p-4 border border-gray-200'>
 								<div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 mb-2 text-sm'>
 									<span className='font-semibold text-primary'>
-										{format(new Date(wt.date), "PPP")} • {wt.startTime.toLocaleTimeString()} – {wt.endTime?.toLocaleTimeString() || "N/A"}
+										{format(new Date(wt.date), "PPP")} • {formatDubaiTime(wt.startTime)} – {wt.endTime ? formatDubaiTime(wt.endTime) : "N/A"}
 									</span>
 									<span className='text-xs text-gray-500'>Logged: {format(new Date(wt.createdAt), "PPP p")}</span>
 								</div>

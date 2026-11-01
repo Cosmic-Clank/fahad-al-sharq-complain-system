@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Package } from "lucide-react";
 import { formatQty } from "@/lib/inventory-units";
 import { withRole } from "@/lib/page-guard";
+import { formatDubaiDateTime } from "@/lib/dubai-time";
 
 async function page() {
 	const transactions = await prismaClient.inventoryTransaction.findMany({
@@ -84,7 +85,7 @@ async function page() {
 						<TableBody>
 							{transactions.map((txn) => (
 								<TableRow key={txn.id}>
-									<TableCell>{txn.createdAt.toLocaleString()}</TableCell>
+									<TableCell>{formatDubaiDateTime(txn.createdAt)}</TableCell>
 									<TableCell>
 										<div className='font-medium'>{txn.inventory?.itemName || "Unknown item"}</div>
 										{txn.inventory?.itemCode ? (

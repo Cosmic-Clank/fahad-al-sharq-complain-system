@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { BookUser } from "lucide-react";
 import PassportRequestForm from "./components/PassportRequestForm";
 import { withRole } from "@/lib/page-guard";
+import { formatDubaiDateTime } from "@/lib/dubai-time";
 
 const STATUS_STYLES: Record<string, string> = {
 	REQUESTED: "bg-blue-100 text-blue-800",
@@ -58,12 +59,12 @@ async function page() {
 						<Card key={h.id} className='p-4 text-sm space-y-1'>
 							<div className='flex items-center gap-2'>
 								<span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[h.status] ?? ""}`}>{STATUS_LABELS[h.status] ?? h.status}</span>
-								<span className='text-xs text-gray-400'>{h.requestedAt.toLocaleString()}</span>
+								<span className='text-xs text-gray-400'>{formatDubaiDateTime(h.requestedAt)}</span>
 							</div>
 							{h.requestReason && <p className='text-gray-600'>{h.requestReason}</p>}
 							<div className='text-xs text-gray-500 space-x-3'>
-								{h.handedOverAt && <span>Handed over: {h.handedOverAt.toLocaleString()}</span>}
-								{h.returnedAt && <span>Returned: {h.returnedAt.toLocaleString()}</span>}
+								{h.handedOverAt && <span>Handed over: {formatDubaiDateTime(h.handedOverAt)}</span>}
+								{h.returnedAt && <span>Returned: {formatDubaiDateTime(h.returnedAt)}</span>}
 							</div>
 						</Card>
 					))

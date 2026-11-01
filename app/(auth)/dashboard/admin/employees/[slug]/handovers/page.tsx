@@ -2,6 +2,7 @@ import React from "react";
 import prismaClient from "@/lib/prisma";
 import HandoversSection from "./components/HandoversSection";
 import { withRole } from "@/lib/page-guard";
+import { formatDubaiDateTime } from "@/lib/dubai-time";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
@@ -25,10 +26,10 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 				id: h.id,
 				status: h.status,
 				requestReason: h.requestReason,
-				requestedAt: h.requestedAt.toLocaleString(),
-				approvedAt: h.approvedAt?.toLocaleString() ?? null,
-				handedOverAt: h.handedOverAt?.toLocaleString() ?? null,
-				returnedAt: h.returnedAt?.toLocaleString() ?? null,
+				requestedAt: formatDubaiDateTime(h.requestedAt),
+				approvedAt: h.approvedAt ? formatDubaiDateTime(h.approvedAt) : null,
+				handedOverAt: h.handedOverAt ? formatDubaiDateTime(h.handedOverAt) : null,
+				returnedAt: h.returnedAt ? formatDubaiDateTime(h.returnedAt) : null,
 				handledByAdminName: h.handledByAdminName,
 				hasHandoverSignatures: !!(h.employeeSignatureHandoverBase64 && h.adminSignatureHandoverBase64),
 				hasReturnSignatures: !!(h.employeeSignatureReturnBase64 && h.adminSignatureReturnBase64),

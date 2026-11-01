@@ -6,6 +6,8 @@ import { notFound } from "next/navigation"; // For handling 404
 import prismaClient from "@/lib/prisma"; // Your Prisma client instance
 import ComplaintCard from "./ComplaintCard"; // The Client Component to display the complaint
 import { auth } from "@/auth";
+import { formatDubaiDateTime } from "@/lib/dubai-time";
+import { todayYmdDubai } from "@/lib/hr-dates";
 
 // Define the props that this page component will receive
 interface ComplaintDetailPageProps {
@@ -73,7 +75,8 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 					workerSignatureBase64: true,
 					customerSignatureBase64: true,
 				},
-				orderBy: { date: "asc" },
+				// newest first: the card shows the current (latest) work session
+				orderBy: [{ date: "desc" }, { id: "desc" }],
 			},
 			inventoryUsages: {
 				select: {
@@ -124,7 +127,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		},
 		id: String(complaint.id), // Ensure ID is string if it's a number/BigInt
 		isPrivate: complaint.isPrivate ?? false,
-		createdAt: complaint.createdAt.toLocaleString(), // Convert Date to local string
+		createdAt: formatDubaiDateTime(complaint.createdAt),
 		assignedTo: complaint.assignedTo, // Ensure assignedTo is a string or null
 		apartmentNumber: complaint.apartmentNumber, // Ensure apartmentNumber is a string
 		convenientTime: timeLabels[complaint.convenientTime], // Ensure convenientTime is a string
@@ -135,7 +138,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		responses: complaint.responses.map((resp) => ({
 			id: String(resp.id),
 			response: resp.response,
-			createdAt: resp.createdAt instanceof Date ? resp.createdAt.toLocaleString() : String(resp.createdAt),
+			createdAt: resp.createdAt instanceof Date ? formatDubaiDateTime(resp.createdAt) : String(resp.createdAt),
 			responder: {
 				fullName: resp.responder.fullName,
 				role: String(resp.responder.role),
@@ -144,7 +147,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		})),
 		workTimes: complaint.workTimes.map((wt) => ({
 			id: String(wt.id),
-			date: wt.date instanceof Date ? wt.date.toISOString().split("T")[0] : String(wt.date), // Format date as YYYY-MM-DD
+			date: wt.date instanceof Date ? todayYmdDubai(wt.date) : String(wt.date), // YYYY-MM-DD, Dubai calendar day
 			startTime:
 				wt.startTime instanceof Date
 					? wt.startTime.toLocaleTimeString("en-US", {
@@ -178,7 +181,7 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			id: String(u.id),
 			quantityUsed: u.quantityUsed,
 			notes: u.notes,
-			createdAt: u.createdAt instanceof Date ? u.createdAt.toLocaleString() : String(u.createdAt),
+			createdAt: u.createdAt instanceof Date ? formatDubaiDateTime(u.createdAt) : String(u.createdAt),
 			inventory: {
 				itemName: u.inventory.itemName,
 				itemCode: u.inventory.itemCode,

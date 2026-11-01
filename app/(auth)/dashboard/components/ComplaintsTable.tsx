@@ -2,6 +2,7 @@ import React from "react";
 import CustomDataTable from "./data-table";
 import prismaClient from "@/lib/prisma";
 import { auth } from "@/auth";
+import { dubaiDateString } from "@/lib/dubai-time";
 
 type StatusFilter = "Completed" | "Incomplete" | "In Progress";
 
@@ -75,13 +76,13 @@ async function ComplaintsTable({ role, status }: { role: "admin" | "employee"; s
 			...item,
 			id: String(item.id),
 			customerEmail: item.customerEmail || "-",
-			createdAt: item.createdAt.toDateString(),
+			createdAt: dubaiDateString(item.createdAt),
 			createdAtISO: item.createdAt.toISOString(),
 			assignedTo: item.assignedTo ? item.assignedTo.username : null,
 			convenientTime: timeLabels[String(item.convenientTime)] ?? String(item.convenientTime),
 			status: statusComputed as StatusFilter,
 			completedBy: item.workTimes.length > 0 ? latestWT.user.fullName : null,
-			completedOn: item.workTimes.length > 0 ? latestWT.date.toDateString() : null,
+			completedOn: item.workTimes.length > 0 ? dubaiDateString(latestWT.date) : null,
 			isPrivate: item.isPrivate ?? false,
 		};
 	});

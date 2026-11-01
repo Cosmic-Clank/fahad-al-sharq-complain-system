@@ -3,6 +3,7 @@ import prismaClient from "@/lib/prisma";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import CustomDataTable from "@/app/(auth)/dashboard/admin/employees/components/data-table";
 import { withRole } from "@/lib/page-guard";
+import { dubaiDateString } from "@/lib/dubai-time";
 
 async function page() {
 	const data = await prismaClient.user.findMany({
@@ -21,7 +22,7 @@ async function page() {
 	const formattedData = data.map((item) => ({
 		...item,
 		id: String(item.id),
-		createdAt: item.createdAt.toDateString(),
+		createdAt: dubaiDateString(item.createdAt),
 	}));
 	return <CustomDataTable data={formattedData} basePath='/dashboard/hr_manager/employees' canManage={false} />;
 }

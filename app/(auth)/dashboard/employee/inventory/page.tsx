@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { formatQty } from "@/lib/inventory-units";
 import { requestBuildingLabel, splitRejection } from "@/lib/inventory-requests";
 import { withRole } from "@/lib/page-guard";
+import { dubaiDateString } from "@/lib/dubai-time";
 
 async function page() {
 	const session = await auth();
@@ -118,7 +119,7 @@ async function page() {
 									</div>
 									<div>
 										<p className='text-sm font-medium text-gray-600'>Created</p>
-										<p className='text-sm'>{new Date(request.createdAt).toLocaleDateString()}</p>
+										<p className='text-sm'>{dubaiDateString(new Date(request.createdAt))}</p>
 									</div>
 									{request.approvedAt && (
 										<div>

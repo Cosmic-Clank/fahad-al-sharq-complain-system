@@ -11,6 +11,7 @@ import { todayYmdDubai } from "@/lib/hr-dates";
 import type { PdfResult } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 import { makeBuildingResolver, STOCK_LABEL } from "@/lib/inventory-request-building";
 import { toWinAnsi } from "@/lib/pdf-text";
+import { dubaiDayEnd, dubaiDayStart } from "@/lib/dubai-time";
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -55,8 +56,9 @@ function compareBuildings(a: string, b: string): number {
  * Callers must check access.
  */
 async function loadUsageEntries(filters: UsageReportFilters): Promise<UsageEntry[]> {
-	const from = filters.from && YMD.test(filters.from) ? new Date(`${filters.from}T00:00:00`) : null;
-	const to = filters.to && YMD.test(filters.to) ? new Date(`${filters.to}T23:59:59.999`) : null;
+	// Dubai calendar days (the server runs in UTC)
+	const from = filters.from && YMD.test(filters.from) ? dubaiDayStart(filters.from) : null;
+	const to = filters.to && YMD.test(filters.to) ? dubaiDayEnd(filters.to) : null;
 	const inRange = (d: Date) => (!from || d >= from) && (!to || d <= to);
 
 	const [usages, requests, buildings] = await Promise.all([

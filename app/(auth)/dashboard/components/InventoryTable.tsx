@@ -1,6 +1,7 @@
 import React from "react";
 import CustomInventoryDataTable from "./inventory-data-table";
 import prismaClient from "@/lib/prisma";
+import { dubaiDateString } from "@/lib/dubai-time";
 
 async function InventoryTable({ role = "inventory_manager" }: { role?: string }) {
 	const data = await prismaClient.inventory.findMany({
@@ -22,8 +23,8 @@ async function InventoryTable({ role = "inventory_manager" }: { role?: string })
 		location: item.location || "-",
 		division: item.division === "DUBAI" ? "Dubai" : "Sharjah",
 		imageUrl: item.imageUrl || "-",
-		createdAt: item.createdAt.toDateString(),
-		updatedAt: item.updatedAt.toDateString(),
+		createdAt: dubaiDateString(item.createdAt),
+		updatedAt: dubaiDateString(item.updatedAt),
 	}));
 
 	return <CustomInventoryDataTable data={formattedData} role={role} />;

@@ -53,9 +53,10 @@ function fmtDubai(d: Date) {
 	}).format(d);
 }
 
+/** [start, end) instants covering whole Dubai (UTC+4) calendar days. */
 function toUtcDayRange(startDate: string, endDate: string) {
-	const start = new Date(`${startDate}T00:00:00.000Z`);
-	const endExclusive = new Date(`${endDate}T00:00:00.000Z`);
+	const start = new Date(`${startDate}T00:00:00.000+04:00`);
+	const endExclusive = new Date(`${endDate}T00:00:00.000+04:00`);
 	endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
 	return { start, endExclusive };
 }

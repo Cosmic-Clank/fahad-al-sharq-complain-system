@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { History } from "lucide-react";
 import { withRole } from "@/lib/page-guard";
+import { formatDubaiDateTime } from "@/lib/dubai-time";
 
 const PAGE_SIZE = 50;
 
@@ -54,7 +55,7 @@ async function page({ params, searchParams }: { params: Promise<{ slug: string }
 								</div>
 								<p className='text-sm text-gray-700'>{log.details ?? "—"}</p>
 							</div>
-							<span className='text-xs text-gray-500 whitespace-nowrap shrink-0'>{log.createdAt.toLocaleString()}</span>
+							<span className='text-xs text-gray-500 whitespace-nowrap shrink-0'>{formatDubaiDateTime(log.createdAt)}</span>
 						</Card>
 					))}
 				</div>

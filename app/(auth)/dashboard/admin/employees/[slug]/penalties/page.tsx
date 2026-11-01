@@ -2,6 +2,7 @@ import React from "react";
 import prismaClient from "@/lib/prisma";
 import PenaltiesSection from "./components/PenaltiesSection";
 import { withRole } from "@/lib/page-guard";
+import { dubaiDateString } from "@/lib/dubai-time";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
@@ -33,14 +34,14 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 				isAutomatic: p.isAutomatic,
 				letterFileUrl: p.letterFileUrl,
 				jointLetters: p.jointLetters.map((l) => ({ id: l.id, signed: !!l.signedAt })),
-				createdAt: p.createdAt.toDateString(),
+				createdAt: dubaiDateString(p.createdAt),
 			}))}
 			bonuses={bonuses.map((b) => ({
 				id: b.id,
 				amount: b.amount,
 				note: b.note,
 				month: b.month,
-				createdAt: b.createdAt.toDateString(),
+				createdAt: dubaiDateString(b.createdAt),
 			}))}
 		/>
 	);

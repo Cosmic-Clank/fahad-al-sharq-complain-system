@@ -2,6 +2,7 @@ import React from "react";
 import { notFound } from "next/navigation";
 import prismaClient from "@/lib/prisma";
 import InventoryItemCard from "./InventoryItemCard";
+import { formatDubaiDateTime } from "@/lib/dubai-time";
 
 interface InventoryDetailPageProps {
 	id: string;
@@ -44,14 +45,14 @@ async function InventoryDetailPage({ id, role = "inventory_manager" }: Inventory
 		location: item.location || "",
 		division: item.division,
 		imageUrl: item.imageUrl || null,
-		createdAt: item.createdAt.toLocaleString(),
-		updatedAt: item.updatedAt.toLocaleString(),
+		createdAt: formatDubaiDateTime(item.createdAt),
+		updatedAt: formatDubaiDateTime(item.updatedAt),
 		transactions: item.transactions.map((txn) => ({
 			id: String(txn.id),
 			quantity: txn.quantity,
 			transactionType: txn.transactionType,
 			notes: txn.notes || "",
-			createdAt: txn.createdAt.toLocaleString(),
+			createdAt: formatDubaiDateTime(txn.createdAt),
 		})),
 	};
 

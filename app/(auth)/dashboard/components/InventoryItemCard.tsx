@@ -89,7 +89,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 			} else {
 				toast.error(result.message);
 			}
-		} catch (err) {
+		} catch {
 			toast.error("Something went wrong. Please try again.");
 		} finally {
 			setIsLoading(false);
@@ -148,7 +148,7 @@ const InventoryItemCard: React.FC<InventoryItemCardProps> = ({ item, role = "inv
 			} else {
 				setError(translateMessage(result.message));
 			}
-		} catch (err) {
+		} catch {
 			setError("An unexpected error occurred. Please try again.");
 		} finally {
 			setIsLoading(false);

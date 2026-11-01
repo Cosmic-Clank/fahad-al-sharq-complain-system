@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFPage } from "pdf-lib";
 import { Buffer } from "node:buffer";
 import { buildUsageWorkbook, workbookToBase64, XLSX_MIME, type UsageXlsxRow } from "@/lib/xlsx-reports";
 import { formatQty } from "@/lib/inventory-units";

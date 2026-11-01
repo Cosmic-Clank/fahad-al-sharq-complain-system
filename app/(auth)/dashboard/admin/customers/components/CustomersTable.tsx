@@ -1,10 +1,7 @@
 "use client";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SortDescIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import DataTable from "react-data-table-component";
 import React from "react";
-import { Label } from "@/components/ui/label";
 
 type RowData = {
 	buildingName: string;
@@ -18,7 +15,7 @@ type RowData = {
 	customerAddress: string;
 };
 
-function CustomDataTable({ data, role, currentUser }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
+function CustomDataTable({ data }: { data: RowData[]; role: "admin" | "employee"; currentUser: { fullName: string; role: string; username: string } }) {
 	const columns = [
 		{
 			name: "Building Name",

@@ -68,7 +68,7 @@ export default function EmployeeEditDialog({ employee }: EmployeeEditDialogProps
 			} else {
 				setError(translateMessage(result.message || "Failed to update employee details."));
 			}
-		} catch (err) {
+		} catch {
 			setError("Something went wrong. Please try again.");
 		} finally {
 			setIsLoading(false);
@@ -85,7 +85,7 @@ export default function EmployeeEditDialog({ employee }: EmployeeEditDialogProps
 			<DialogContent className='max-w-md'>
 				<DialogHeader>
 					<DialogTitle>Edit Employee Details</DialogTitle>
-					<DialogDescription>Update the employee's name and password.</DialogDescription>
+					<DialogDescription>Update the employee&apos;s name and password.</DialogDescription>
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit} className='space-y-4'>

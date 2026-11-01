@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import prismaClient from "@/lib/prisma";
 import { assignComplaintToUser, fetchUsers } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
@@ -41,8 +40,11 @@ function AssignmentForm({ complaintId }: { complaintId: number }) {
 				className='ml-2'
 				onClick={async () => {
 					setIsLoading(true);
-					assignedTo ? await assignComplaintToUser(complaintId, assignedTo) : null;
-					setIsLoading(false);
+					try {
+						if (assignedTo) await assignComplaintToUser(complaintId, assignedTo);
+					} finally {
+						setIsLoading(false);
+					}
 				}}>
 				Assign
 				{isLoading && <Loading className='ml-2' />}

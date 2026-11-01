@@ -180,7 +180,7 @@ export default function AttendanceDayDialog({ open, onOpenChange, employee, date
 								))}
 							</SelectContent>
 						</Select>
-						{form.earlyLeaveReason === "OTHER" && <p className='text-xs text-amber-600'>Every 3rd "Other" early leave in a month automatically deducts 2 days of basic salary.</p>}
+						{form.earlyLeaveReason === "OTHER" && <p className='text-xs text-amber-600'>Every 3rd &quot;Other&quot; early leave in a month automatically deducts 2 days of basic salary.</p>}
 					</div>
 
 					{form.earlyLeaveReason !== "NONE" && (

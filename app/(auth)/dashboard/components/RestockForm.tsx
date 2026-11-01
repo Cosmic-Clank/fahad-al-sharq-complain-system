@@ -9,7 +9,6 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { restockInventoryItem, getAllInventoryItems } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";

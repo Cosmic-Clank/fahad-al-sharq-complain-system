@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import React, { ReactNode } from "react";
 import NotAuthorized from "../components/NotAuthorized";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./components/app-sidebar";
 import { AppHeader } from "./components/app-header";
 

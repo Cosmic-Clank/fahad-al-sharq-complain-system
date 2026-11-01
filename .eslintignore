@@ -1,9 +1,0 @@
-# Ignore compiled output and external code
-
-.next
-node_modules
-dist
-build
-_.wasm.js
-_.min.js
-app/generated/\*\*

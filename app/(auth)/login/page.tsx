@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import React from "react";
 import LoginForm from "./components/LoginForm";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 
 async function page() {
 	const session = await auth();

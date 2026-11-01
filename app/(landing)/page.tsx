@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Clock, Droplets, Facebook, Fan, FileText, Gauge, HeartHandshake, Home, Instagram, Lock, MessageSquare, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
+import { AirVent, ArrowRight, Award, BadgeCheck, Bell, Calendar, CheckCircle2, Facebook, Fan, FileText, Gauge, HeartHandshake, Instagram, Lock, MessageSquare, Settings, ShieldCheck, Star, Thermometer, Users, Wrench, Zap } from "lucide-react";
 import ContactDropdown from "@/components/ContactDropdown";
 
 const stats = [
@@ -270,7 +270,7 @@ export default function LandingPage() {
 					</div>
 					<div className='mt-4 text-center'>
 						<h2 className='text-3xl font-bold text-slate-900 sm:text-4xl'>Having an issue with our service?</h2>
-						<p className='mx-auto mt-4 max-w-2xl text-lg text-slate-700 font-medium'>We want to hear from you! Click the button below to report your complaint and we'll resolve it quickly.</p>
+						<p className='mx-auto mt-4 max-w-2xl text-lg text-slate-700 font-medium'>We want to hear from you! Click the button below to report your complaint and we&apos;ll resolve it quickly.</p>
 						<Link href='/complain' className='mt-8 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#1ca5e4] to-blue-600 px-10 py-6 text-xl font-bold text-white shadow-xl shadow-[#1ca5e4]/40 transition hover:scale-105 hover:shadow-2xl'>
 							<MessageSquare className='h-6 w-6' />
 							Submit Complaint
@@ -287,7 +287,7 @@ export default function LandingPage() {
 								<MessageSquare className='h-4 w-4' />
 								<span>Customer support portal</span>
 							</div>
-							<h2 className='text-3xl font-bold text-slate-900 sm:text-4xl'>Have a concern? We're here to help.</h2>
+							<h2 className='text-3xl font-bold text-slate-900 sm:text-4xl'>Have a concern? We&apos;re here to help.</h2>
 							<p className='text-lg text-slate-600'>Our dedicated complaint management system ensures your feedback is heard and resolved promptly with full transparency.</p>
 							<div className='space-y-3'>
 								<div className='flex items-center gap-3'>

@@ -3,7 +3,7 @@ import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { format } from "date-fns";
 import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import React from "react";
-import { formatDubaiTime, dubaiDateString } from "@/lib/dubai-time";
+import { formatDubaiTime } from "@/lib/dubai-time";
 
 export default async function EmployeeDetails({ slug }: { slug: string }) {
 	const employeeId = Number(slug);

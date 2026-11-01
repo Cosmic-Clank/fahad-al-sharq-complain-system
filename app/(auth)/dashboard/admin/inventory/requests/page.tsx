@@ -1,7 +1,6 @@
 import React from "react";
 import { auth } from "@/auth";
 import { getAllInventoryRequests } from "../../../components/inventory-request-approval-actions";
-import { Card } from "@/components/ui/card";
 import { RequestFilterClient } from "../../../components/RequestFilterClient";
 import { Package } from "lucide-react";
 import { withRole } from "@/lib/page-guard";

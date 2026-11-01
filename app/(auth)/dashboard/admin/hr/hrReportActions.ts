@@ -5,7 +5,7 @@ import { HR_STAFF_ROLES, canAccessHr } from "@/lib/hr-roles";
 import { Buffer } from "node:buffer";
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
-import { daysInMonth, monthLabel, currentMonthDubai, todayYmdDubai } from "@/lib/hr-dates";
+import { daysInMonth, monthLabel, todayYmdDubai } from "@/lib/hr-dates";
 import { computeLeaveSalary, computePayslip } from "@/lib/hr-payroll";
 import { formatLeaveDate, LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS } from "@/lib/hr-leave";
 import { buildAttendanceWorkbook, buildSalarySummaryWorkbook, workbookToBase64, XLSX_MIME } from "@/lib/xlsx-reports";

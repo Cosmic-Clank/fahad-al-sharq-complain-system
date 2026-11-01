@@ -81,7 +81,8 @@ export default function HandoversSection({ userId, employeeName, handovers }: { 
 		setIsBusy(true);
 		try {
 			const result = await setHandoverStatus(id, status);
-			result.success ? toast.success(result.message) : toast.error(result.message);
+			if (result.success) toast.success(result.message);
+			else toast.error(result.message);
 			if (result.success) router.refresh();
 		} finally {
 			setIsBusy(false);

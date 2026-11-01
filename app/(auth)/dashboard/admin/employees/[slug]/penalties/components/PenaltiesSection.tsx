@@ -118,13 +118,15 @@ export default function PenaltiesSection({ userId, penalties, bonuses }: { userI
 
 	const removePenalty = async (id: number) => {
 		const result = await deletePenalty(id);
-		result.success ? toast.success(result.message) : toast.error(result.message);
+		if (result.success) toast.success(result.message);
+		else toast.error(result.message);
 		if (result.success) router.refresh();
 	};
 
 	const removeBonus = async (id: number) => {
 		const result = await deleteBonus(id);
-		result.success ? toast.success(result.message) : toast.error(result.message);
+		if (result.success) toast.success(result.message);
+		else toast.error(result.message);
 		if (result.success) router.refresh();
 	};
 

@@ -1,12 +1,7 @@
 import React from "react";
 import { auth } from "@/auth";
 import { getAllInventoryRequests } from "../../../components/inventory-request-approval-actions";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { RequestApprovalCard } from "../../../components/RequestApprovalCard";
-import { Package, CheckCircle, XCircle, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Package } from "lucide-react";
 import { RequestFilterClient } from "../../../components/RequestFilterClient";
 import { withRole } from "@/lib/page-guard";
 

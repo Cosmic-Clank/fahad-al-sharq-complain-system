@@ -6,7 +6,6 @@ import prismaClient from "@/lib/prisma"; // Your Prisma client instance
 import { nanoid } from "nanoid"; // For unique file names
 
 import path from "path";
-import fs from "fs/promises";
 import supabaseAdminClient from "@/lib/supabaseAdmin";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
@@ -15,12 +14,6 @@ import { logActivity } from "@/lib/activity-log";
 import { requireRole } from "@/lib/authz";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { isValidSignature } from "@/lib/signature-server";
-
-// Define the type for the form data you expect
-interface ResponseFormData {
-	complaintId: string;
-	responseText: string;
-}
 
 export async function addComplaintResponse(formData: FormData) {
 	const session = await auth();
@@ -81,9 +74,7 @@ export async function addComplaintResponse(formData: FormData) {
 	}
 
 	try {
-		// 🚨 USER: Implement your database logic here 🚨
-		// Example: Assuming you have a 'ComplaintResponse' model linked to 'Complaint'
-		const response = await prismaClient.complaintResponse.create({
+		await prismaClient.complaintResponse.create({
 			data: {
 				complaintId: Number(complaintId),
 				response: responseText.trim(),

@@ -104,10 +104,6 @@ async function maybeDownscaleJpeg(bytes: Uint8Array, maxW = 900, maxH = 900): Pr
 	}
 }
 
-function hoursBetween(a: Date, b: Date) {
-	const ms = b.getTime() - a.getTime();
-	return Math.max(0, ms / (1000 * 60 * 60));
-}
 
 function humanizeHoursMinutes(totalMs: number) {
 	const totalMinutes = Math.max(0, Math.floor(totalMs / 60000));
@@ -249,41 +245,6 @@ export async function previewComplaints(params: { criterion: PreviewCriterion; v
 	}));
 }
 
-async function fetchComplaints(params: { criterion?: PreviewCriterion; value?: string; startDate?: string; endDate?: string; buildingName?: string; apartmentNumbers?: string[]; limit?: number }): Promise<ComplaintPreviewRow[]> {
-	const limit = Math.min(Math.max(Number(params.limit ?? 300), 1), 1000);
-	const where = buildWhere(params);
-
-	const rows = await prisma.complaint.findMany({
-		where,
-		orderBy: { createdAt: "desc" },
-		take: limit,
-		select: {
-			id: true,
-			customerName: true,
-			customerEmail: true,
-			customerPhone: true,
-			customerAddress: true,
-			buildingName: true,
-			apartmentNumber: true,
-			description: true,
-			createdAt: true,
-			imagePaths: true,
-		},
-	});
-
-	return rows.map((r) => ({
-		id: String(r.id),
-		customerName: r.customerName,
-		customerEmail: r.customerEmail,
-		customerPhone: r.customerPhone,
-		customerAddress: r.customerAddress,
-		buildingName: r.buildingName,
-		apartmentNumber: r.apartmentNumber,
-		description: r.description ?? null,
-		createdAt: r.createdAt.toISOString(),
-		images: normalizeImagePaths((r as any).imagePaths),
-	}));
-}
 
 // ─────────────────────────────────────────────────────────────
 // PDF generator (shared renderer used by both)
@@ -426,10 +387,6 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 		}, 0);
 		const timeWorkedFor = humanizeHoursMinutes(totalMs);
 
-		const responsesCount = c.responses.length;
-		const firstResponseAt = responsesCount ? c.responses[0].createdAt : null;
-		const lastResponseAt = responsesCount ? c.responses[responsesCount - 1].createdAt : null;
-		const uniqueResponders = Array.from(new Set(c.responses.map((r) => r.responder.fullName))).join(", ");
 		const images = normalizeImagePaths(c.imagePaths);
 
 		// header with full-width image
@@ -880,8 +837,8 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 						const pad = 10,
 							thumbW = (W - 2 * M - 24 - pad * 2) / 3,
 							thumbH = 100;
-						let ix = M + 12,
-							iy = ry - 20;
+						let ix = M + 12;
+						const iy = ry - 20;
 						for (let j = 0; j < Math.min(respImages.length, 3); j++) {
 							const raw = await fetchImageBytes(respImages[j]);
 							if (!raw) continue;
@@ -928,8 +885,8 @@ export async function generateComplaintsPdfByFilter(column: string, value: unkno
 					const pad = 10,
 						thumbW = (W - 2 * M - 24 - pad * 2) / 3,
 						thumbH = 100;
-					let ix = M + 12,
-						iy = ry - 20;
+					let ix = M + 12;
+					const iy = ry - 20;
 					for (let j = 0; j < Math.min(respImages.length, 3); j++) {
 						const raw = await fetchImageBytes(respImages[j]);
 						if (!raw) continue;
@@ -1045,10 +1002,6 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 	}, 0);
 	const timeWorkedFor = humanizeHoursMinutes(totalMs);
 
-	const responsesCount = complaint.responses.length;
-	const firstResponseAt = responsesCount ? complaint.responses[0].createdAt : null;
-	const lastResponseAt = responsesCount ? complaint.responses[responsesCount - 1].createdAt : null;
-	const uniqueResponders = Array.from(new Set(complaint.responses.map((r) => r.responder.fullName))).join(", ");
 	const images = normalizeImagePaths(complaint.imagePaths);
 
 	const doc = await PDFDocument.create();
@@ -1530,8 +1483,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 					const pad = 10,
 						thumbW = (W - 2 * M - 24 - pad * 2) / 3,
 						thumbH = 100;
-					let ix = M + 12,
-						iy = ry - 20;
+					let ix = M + 12;
+					const iy = ry - 20;
 					for (let j = 0; j < Math.min(respImages.length, 3); j++) {
 						const raw = await fetchImageBytes(respImages[j]);
 						if (!raw) continue;
@@ -1578,8 +1531,8 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 				const pad = 10,
 					thumbW = (W - 2 * M - 24 - pad * 2) / 3,
 					thumbH = 100;
-				let ix = M + 12,
-					iy = ry - 20;
+				let ix = M + 12;
+				const iy = ry - 20;
 				for (let j = 0; j < Math.min(respImages.length, 3); j++) {
 					const raw = await fetchImageBytes(respImages[j]);
 					if (!raw) continue;
@@ -1608,7 +1561,7 @@ export async function generateComplaintPdfById(complaintId: string): Promise<{ f
 }
 
 // Date-range PDF (reuses the filter generator)
-export async function generateComplaintsPdfByDateRange(startDate: string | Date, endDate: string | Date, limit = 1000, extra?: ExtraFilters): Promise<{ fileName: string; base64: string }> {
+export async function generateComplaintsPdfByDateRange(startDate: string | Date, endDate: string | Date, _limit = 1000, extra?: ExtraFilters): Promise<{ fileName: string; base64: string }> {
 	if (!(await requireRole(["ADMIN", "EMPLOYEE"]))) throw new Error("Unauthorized. Please log in.");
 	const s = startDate instanceof Date ? startDate : new Date(startDate);
 	const e = endDate instanceof Date ? endDate : new Date(endDate);

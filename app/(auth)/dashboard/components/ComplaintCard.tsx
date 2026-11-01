@@ -18,7 +18,6 @@ import { generateComplaintPdfById } from "./reportActions";
 
 // NEW: shadcn dialog + inputs
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -41,11 +40,11 @@ interface ComplaintData {
 	description: string;
 	imagePaths: string[];
 	videoPaths: string[];
-	createdAt: String;
+	createdAt: string;
 	responses: {
 		id: string;
 		response: string;
-		createdAt: String;
+		createdAt: string;
 		responder: { fullName: string; role: string };
 		imagePaths: string[];
 	}[];
@@ -124,7 +123,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			} else {
 				setEndError(translateMessage(result.message || "Could not end work. Please try again."));
 			}
-		} catch (e) {
+		} catch {
 			setEndError("Something went wrong. Please try again.");
 		} finally {
 			setIsWorkTimesLoading(false);
@@ -141,7 +140,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			} else {
 				showAlert(result.message || "Could not delete complaint. Please try again.");
 			}
-		} catch (e) {
+		} catch {
 			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsWorkTimesLoading(false);
@@ -160,7 +159,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			} else {
 				showAlert(result.message || "Could not delete response. Please try again.");
 			}
-		} catch (e) {
+		} catch {
 			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsEditingLoading(false);
@@ -177,7 +176,7 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 			} else {
 				showAlert(result.message || "Could not update response. Please try again.");
 			}
-		} catch (e) {
+		} catch {
 			showAlert("Something went wrong. Please try again.");
 		} finally {
 			setIsEditingLoading(false);

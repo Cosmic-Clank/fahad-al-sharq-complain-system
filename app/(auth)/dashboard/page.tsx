@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import React from "react";
 import NotAuthorized from "./components/NotAuthorized";
-import prismaClient from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
 export default async function page() {

@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Home, LogOut, LucideOctagon, PersonStanding, User, Building, Paperclip, Book, Cross, Check, AlertCircle, Package, Plus, ArrowUpCircle, Users, List, CalendarCheck, BellRing, Wallet, CalendarHeart } from "lucide-react";
+import { Home, PersonStanding, User, Building, Book, Cross, Check, AlertCircle, Package, Plus, ArrowUpCircle, Users, List, CalendarCheck, BellRing, Wallet, CalendarHeart } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -132,10 +133,10 @@ export function AppSidebar() {
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild className='data-[slot=sidebar-menu-button]:!p-1.5'>
-							<a href='/'>
+							<Link href='/'>
 								<Image width={5} height={5} alt='logo' src={"/favicon.png"} className='!size-5' />
 								<span className='text-xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-teal-500'>Fahad Al Sharq</span>
-							</a>
+							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>

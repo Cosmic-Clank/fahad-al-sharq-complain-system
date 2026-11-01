@@ -7,7 +7,7 @@ import { logActivity } from "@/lib/activity-log";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { todayYmdDubai } from "@/lib/hr-dates";
 import { countLeaveDays, leaveSignatureRequired, LEAVE_TYPE_LABELS, validateLeaveRange } from "@/lib/hr-leave";
-import { revalidateLeave, isValidSignature, findOverlappingLeave } from "@/lib/hr-leave-server";
+import { revalidateLeave, isValidSignature, findOverlappingLeave, withLeaveLock } from "@/lib/hr-leave-server";
 
 const requestSchema = z.object({
 	type: z.enum(["ANNUAL", "SICK", "EMERGENCY", "UNPAID"], { required_error: "Please choose the type of leave." }),
@@ -46,23 +46,25 @@ export async function requestLeave(formData: FormData) {
 	const signature = isValidSignature(d.employeeSignature) ? d.employeeSignature : null;
 	if (signatureRequired && !signature) return { success: false, message: "Please sign in the box before sending your request." };
 
-	const overlap = await findOverlappingLeave(userId, d.startDate, d.endDate);
-	if (overlap) return { success: false, message: "You already have leave on some of these days. Check your requests below." };
-
 	try {
 		const days = countLeaveDays(d.startDate, d.endDate);
-		const leave = await prismaClient.leaveRequest.create({
-			data: {
-				userId,
-				type: d.type,
-				startDate: d.startDate,
-				endDate: d.endDate,
-				days,
-				reason: d.reason?.trim() || null,
-				signatureRequired,
-				employeeSignatureBase64: signature,
-			},
+		// overlap check + create under one lock: a double submit can't create two requests
+		const leave = await withLeaveLock(userId, async (tx) => {
+			if (await findOverlappingLeave(userId, d.startDate, d.endDate, undefined, tx)) return null;
+			return tx.leaveRequest.create({
+				data: {
+					userId,
+					type: d.type,
+					startDate: d.startDate,
+					endDate: d.endDate,
+					days,
+					reason: d.reason?.trim() || null,
+					signatureRequired,
+					employeeSignatureBase64: signature,
+				},
+			});
 		});
+		if (!leave) return { success: false, message: "You already have leave on some of these days. Check your requests below." };
 		await logActivity({
 			actorId: userId,
 			targetUserId: userId,
@@ -84,12 +86,16 @@ export async function cancelMyLeave(leaveId: number) {
 	const session = await auth();
 	if (!session?.user?.id) return { success: false, message: "Please log in." };
 	const userId = Number(session.user.id);
+	if (!Number.isInteger(leaveId)) return { success: false, message: "Leave request not found." };
 
 	const leave = await prismaClient.leaveRequest.findUnique({ where: { id: leaveId } });
 	if (!leave || leave.userId !== userId) return { success: false, message: "Leave request not found." };
 	if (leave.status !== "PENDING") return { success: false, message: "Only requests that are still waiting can be cancelled." };
 
-	await prismaClient.leaveRequest.update({ where: { id: leaveId }, data: { status: "CANCELLED", decidedAt: new Date() } });
+	const cancelled = await withLeaveLock(userId, (tx) =>
+		tx.leaveRequest.updateMany({ where: { id: leaveId, userId, status: "PENDING" }, data: { status: "CANCELLED", decidedAt: new Date() } })
+	);
+	if (cancelled.count !== 1) return { success: false, message: "Only requests that are still waiting can be cancelled." };
 	await logActivity({
 		actorId: userId,
 		targetUserId: userId,

@@ -5,7 +5,7 @@ import prismaClient from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { countLeaveDays, leaveSignatureRequired, LEAVE_TYPE_LABELS, MAX_LEAVE_DAYS } from "@/lib/hr-leave";
-import { findOverlappingLeave, revalidateLeave, isValidSignature } from "@/lib/hr-leave-server";
+import { findOverlappingLeave, withLeaveLock, revalidateLeave, isValidSignature } from "@/lib/hr-leave-server";
 import { requireHrAccess } from "@/lib/authz";
 
 const signatureOrEmpty = z.string().optional().or(z.literal(""));
@@ -39,22 +39,26 @@ export async function decideLeave(formData: FormData) {
 	const adminSignature = validSignature(d.adminSignature);
 	if (d.decision === "APPROVED") {
 		if (leave.signatureRequired && !adminSignature) return { success: false, message: "Your signature is required to approve this leave." };
-		if (await findOverlappingLeave(leave.userId, leave.startDate, leave.endDate, leave.id)) {
-			return { success: false, message: "This employee already has leave on some of these days." };
-		}
 	}
 
 	try {
-		await prismaClient.leaveRequest.update({
-			where: { id: d.leaveId },
-			data: {
-				status: d.decision,
-				decidedAt: new Date(),
-				decidedByName: admin.name,
-				decisionNote: d.note?.trim() || null,
-				adminSignatureBase64: d.decision === "APPROVED" ? adminSignature : null,
-			},
+		const outcome = await withLeaveLock(leave.userId, async (tx) => {
+			if (d.decision === "APPROVED" && (await findOverlappingLeave(leave.userId, leave.startDate, leave.endDate, leave.id, tx))) return "overlap";
+			// Conditional on PENDING: a request cancelled or decided a moment ago is left alone
+			const updated = await tx.leaveRequest.updateMany({
+				where: { id: d.leaveId, status: "PENDING" },
+				data: {
+					status: d.decision,
+					decidedAt: new Date(),
+					decidedByName: admin.name,
+					decisionNote: d.note?.trim() || null,
+					adminSignatureBase64: d.decision === "APPROVED" ? adminSignature : null,
+				},
+			});
+			return updated.count === 1 ? "ok" : "stale";
 		});
+		if (outcome === "overlap") return { success: false, message: "This employee already has leave on some of these days." };
+		if (outcome === "stale") return { success: false, message: "Only requests that are still waiting can be approved or rejected." };
 		await logActivity({
 			actorId: admin.id,
 			targetUserId: leave.userId,
@@ -118,28 +122,28 @@ export async function recordLeave(formData: FormData) {
 		return { success: false, message: "Both signatures are required (2+ years of service or no joining date set)." };
 	}
 
-	if (await findOverlappingLeave(d.userId, d.startDate, d.endDate)) {
-		return { success: false, message: "This employee already has leave on some of these days." };
-	}
-
 	try {
-		const leave = await prismaClient.leaveRequest.create({
-			data: {
-				userId: d.userId,
-				type: d.type,
-				startDate: d.startDate,
-				endDate: d.endDate,
-				days,
-				reason: d.reason?.trim() || null,
-				status: "APPROVED",
-				signatureRequired,
-				employeeSignatureBase64: employeeSignature,
-				adminSignatureBase64: adminSignature,
-				createdByAdminName: admin.name,
-				decidedAt: new Date(),
-				decidedByName: admin.name,
-			},
+		const leave = await withLeaveLock(d.userId, async (tx) => {
+			if (await findOverlappingLeave(d.userId, d.startDate, d.endDate, undefined, tx)) return null;
+			return tx.leaveRequest.create({
+				data: {
+					userId: d.userId,
+					type: d.type,
+					startDate: d.startDate,
+					endDate: d.endDate,
+					days,
+					reason: d.reason?.trim() || null,
+					status: "APPROVED",
+					signatureRequired,
+					employeeSignatureBase64: employeeSignature,
+					adminSignatureBase64: adminSignature,
+					createdByAdminName: admin.name,
+					decidedAt: new Date(),
+					decidedByName: admin.name,
+				},
+			});
 		});
+		if (!leave) return { success: false, message: "This employee already has leave on some of these days." };
 		await logActivity({
 			actorId: admin.id,
 			targetUserId: d.userId,

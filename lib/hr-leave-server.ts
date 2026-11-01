@@ -1,14 +1,29 @@
 // Server-only leave helpers shared by the employee and admin leave actions.
 import { revalidatePath } from "next/cache";
 import prismaClient from "./prisma";
+import type { Prisma } from "@/app/generated/prisma";
 import { leaveDates } from "./hr-leave";
 import { isValidSignature } from "./signature-server";
 
 export { isValidSignature };
 
+type Db = Prisma.TransactionClient | typeof prismaClient;
+
+/**
+ * Runs `fn` in a transaction holding a per-employee lock, so an overlap check and the
+ * write after it can't interleave with another leave write for the same employee
+ * (double submit, cancel vs approve, two admins deciding at once).
+ */
+export function withLeaveLock<T>(userId: number, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+	return prismaClient.$transaction(async (tx) => {
+		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('leave-request'), ${userId}::int)`;
+		return fn(tx);
+	});
+}
+
 /** Pending or approved leave of this employee that shares a day with the range (optionally ignoring one request). */
-export function findOverlappingLeave(userId: number, startDate: string, endDate: string, ignoreId?: number) {
-	return prismaClient.leaveRequest.findFirst({
+export function findOverlappingLeave(userId: number, startDate: string, endDate: string, ignoreId?: number, db: Db = prismaClient) {
+	return db.leaveRequest.findFirst({
 		where: {
 			userId,
 			status: { in: ["PENDING", "APPROVED"] },

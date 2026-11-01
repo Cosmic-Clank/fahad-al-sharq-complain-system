@@ -16,7 +16,8 @@ const FILL = {
 export interface AttendanceXlsxEmployee {
 	fullName: string;
 	/** date ("YYYY-MM-DD") -> { status, earlyLeave } */
-	records: Record<string, { status: string; earlyLeave: boolean }>;
+	/** earlyLeave = any early leave (marked *); otherLeave = reason OTHER (counts toward the 3× deduction) */
+	records: Record<string, { status: string; earlyLeave: boolean; otherLeave: boolean }>;
 	/** Approved leave: date → leave type. Shown as "V" when there is no attendance entry. */
 	leave?: Record<string, string>;
 }
@@ -87,7 +88,7 @@ export function buildAttendanceWorkbook(month: string, employees: AttendanceXlsx
 			if (rec.status === "PRESENT") present++;
 			else if (rec.status === "LATE") late++;
 			else absent++;
-			if (rec.earlyLeave) otherLeaves++;
+			if (rec.otherLeave) otherLeaves++;
 		});
 		row.getCell(totalsStart).value = present;
 		row.getCell(totalsStart + 1).value = late;

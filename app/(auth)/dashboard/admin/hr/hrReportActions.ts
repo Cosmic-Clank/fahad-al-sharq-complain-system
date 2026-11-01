@@ -29,6 +29,11 @@ const amber = rgb(0.75, 0.52, 0.05);
 const red = rgb(0.78, 0.16, 0.16);
 
 
+/** "YYYY-MM-DD HH:mm" in Dubai time (the server runs in UTC). */
+function dubaiStamp(d: Date): string {
+	return new Date(d.getTime() + 4 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 16);
+}
+
 function drawHeader(page: PDFPage, fontBold: PDFFont, font: PDFFont, title: string, subtitle: string, pageW: number) {
 	page.drawText("Fahad Al Sharq AC Systems LLC", { x: M, y: page.getHeight() - M - 10, size: 14, font: fontBold, color: ink });
 	page.drawText(toWinAnsi(title), { x: M, y: page.getHeight() - M - 32, size: 11, font: fontBold, color: subt });
@@ -60,10 +65,10 @@ export async function exportAttendanceSheetXlsx(month: string): Promise<PdfResul
 		}),
 	]);
 
-	const byUser = new Map<number, Record<string, { status: string; earlyLeave: boolean }>>();
+	const byUser = new Map<number, Record<string, { status: string; earlyLeave: boolean; otherLeave: boolean }>>();
 	for (const r of records) {
 		if (!byUser.has(r.userId)) byUser.set(r.userId, {});
-		byUser.get(r.userId)![r.date] = { status: r.status, earlyLeave: r.earlyLeaveReason !== null };
+		byUser.get(r.userId)![r.date] = { status: r.status, earlyLeave: r.earlyLeaveReason !== null, otherLeave: r.earlyLeaveReason === "OTHER" };
 	}
 
 	const leaveByKey = await getApprovedLeaveDays(month);
@@ -401,11 +406,11 @@ export async function exportHandoverPdf(handoverId: number): Promise<PdfResult> 
 		page.drawText(toWinAnsi(value), { x: M + 170, y, size: 9.5, font: fontBold, color: ink });
 	};
 
-	row("Requested at", handover.requestedAt.toISOString().replace("T", " ").slice(0, 16));
+	row("Requested at", dubaiStamp(handover.requestedAt));
 	if (handover.requestReason) row("Reason", handover.requestReason.slice(0, 70));
-	if (handover.approvedAt) row("Approved at", handover.approvedAt.toISOString().replace("T", " ").slice(0, 16));
-	if (handover.handedOverAt) row("Handed over at", handover.handedOverAt.toISOString().replace("T", " ").slice(0, 16));
-	if (handover.returnedAt) row("Returned at", handover.returnedAt.toISOString().replace("T", " ").slice(0, 16));
+	if (handover.approvedAt) row("Approved at", dubaiStamp(handover.approvedAt));
+	if (handover.handedOverAt) row("Handed over at", dubaiStamp(handover.handedOverAt));
+	if (handover.returnedAt) row("Returned at", dubaiStamp(handover.returnedAt));
 	if (handover.handledByAdminName) row("Handled by", handover.handledByAdminName);
 	if (handover.notes) row("Notes", handover.notes.slice(0, 70));
 

@@ -52,6 +52,7 @@ export async function createJointLetter(formData: FormData) {
 	// A linked penalty must belong to the same employee
 	let penaltyId: number | null = null;
 	if (d.penaltyId) {
+		if (!Number.isInteger(Number(d.penaltyId))) return { success: false, message: "Penalty not found." };
 		const penalty = await prismaClient.penalty.findFirst({ where: { id: Number(d.penaltyId), userId: d.userId }, select: { id: true } });
 		if (!penalty) return { success: false, message: "Penalty not found." };
 		penaltyId = penalty.id;

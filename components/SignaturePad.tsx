@@ -1,6 +1,6 @@
 "use client";
 
-import React, { forwardRef, useImperativeHandle, useRef } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import { Eraser } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,17 @@ const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(function 
 		padRef.current?.clear();
 		onEmptyChange?.(true);
 	};
+
+	// react-signature-canvas wipes the drawing on window resize (rotation, phone keyboard)
+	// without calling onEnd — report the now-empty pad so "signed" flags don't go stale
+	useEffect(() => {
+		if (!onEmptyChange) return;
+		const onResize = () => setTimeout(() => {
+			if (padRef.current?.isEmpty()) onEmptyChange(true);
+		}, 0);
+		window.addEventListener("resize", onResize);
+		return () => window.removeEventListener("resize", onResize);
+	}, [onEmptyChange]);
 
 	useImperativeHandle(ref, () => ({
 		isEmpty: () => padRef.current?.isEmpty() ?? true,

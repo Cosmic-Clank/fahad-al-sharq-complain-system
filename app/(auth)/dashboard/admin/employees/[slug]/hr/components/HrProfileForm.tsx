@@ -51,6 +51,8 @@ export default function HrProfileForm({ userId, initial }: HrProfileFormProps) {
 			fd.append("workStartTime", form.workStartTime || "09:00");
 			fd.append("leaveSalaryOverride", form.leaveSalaryOverride);
 			fd.append("passportHeldByCompany", form.passportHeldByCompany);
+			// what the form was opened with: the server only writes custody if the user changed it
+			fd.append("passportHeldByCompanyInitial", initial.passportHeldByCompany ? "true" : "false");
 
 			const result = await upsertEmployeeProfile(fd);
 			if (result.success) {

@@ -61,12 +61,17 @@ export async function upsertEmployeeProfile(formData: FormData) {
 		leaveSalaryOverride: d.leaveSalaryOverride === undefined ? null : round2(d.leaveSalaryOverride),
 		passportHeldByCompany: d.passportHeldByCompany === "true",
 	};
+	// Passport custody is also changed by the handover flow. Only write it when the user
+	// changed it in this form, so a stale page doesn't undo a handover signed meanwhile.
+	const custodyInitial = formData.get("passportHeldByCompanyInitial");
+	const custodyUnchanged = custodyInitial === d.passportHeldByCompany;
+	const updateData = custodyUnchanged ? { ...data, passportHeldByCompany: undefined } : data;
 
 	try {
 		await prismaClient.employeeProfile.upsert({
 			where: { userId: d.userId },
 			create: { userId: d.userId, ...data },
-			update: data,
+			update: updateData,
 		});
 
 		await logActivity({

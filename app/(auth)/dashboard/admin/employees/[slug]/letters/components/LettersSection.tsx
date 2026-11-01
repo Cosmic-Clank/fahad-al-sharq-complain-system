@@ -108,6 +108,10 @@ export default function LettersSection({ userId, employeeName, letters, penaltie
 			fd.append("letterDate", letterDate);
 			fd.append("penaltyId", penaltyId === NO_PENALTY ? "" : penaltyId);
 			if (signNow) {
+				if (empPadRef.current?.isEmpty() !== false || adminPadRef.current?.isEmpty() !== false) {
+					toast.error("Both signatures are required.");
+					return;
+				}
 				fd.append("employeeSignature", empPadRef.current?.toDataURL() ?? "");
 				fd.append("adminSignature", adminPadRef.current?.toDataURL() ?? "");
 			}
@@ -126,6 +130,10 @@ export default function LettersSection({ userId, employeeName, letters, penaltie
 
 	const submitSign = async () => {
 		if (!signTarget || !laterEmpSigned || !laterAdminSigned) return;
+		if (laterEmpRef.current?.isEmpty() !== false || laterAdminRef.current?.isEmpty() !== false) {
+			toast.error("Both signatures are required.");
+			return;
+		}
 		setIsBusy(true);
 		try {
 			const fd = new FormData();

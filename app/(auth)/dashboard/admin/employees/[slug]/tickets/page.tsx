@@ -1,6 +1,7 @@
 import React from "react";
 import prismaClient from "@/lib/prisma";
 import TicketsSection from "./components/TicketsSection";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
@@ -18,4 +19,4 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	return <TicketsSection userId={userId} nationality={profile?.nationality ?? null} tickets={tickets} />;
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

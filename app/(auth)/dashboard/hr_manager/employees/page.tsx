@@ -2,6 +2,7 @@ import React from "react";
 import prismaClient from "@/lib/prisma";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import CustomDataTable from "@/app/(auth)/dashboard/admin/employees/components/data-table";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const data = await prismaClient.user.findMany({
@@ -25,4 +26,4 @@ async function page() {
 	return <CustomDataTable data={formattedData} basePath='/dashboard/hr_manager/employees' canManage={false} />;
 }
 
-export default page;
+export default withRole(["HR_MANAGER"], page);

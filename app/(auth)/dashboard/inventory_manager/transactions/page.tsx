@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package } from "lucide-react";
 import { formatQty } from "@/lib/inventory-units";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const transactions = await prismaClient.inventoryTransaction.findMany({
@@ -119,4 +120,4 @@ async function page() {
 	);
 }
 
-export default page;
+export default withRole(["INVENTORY_MANAGER"], page);

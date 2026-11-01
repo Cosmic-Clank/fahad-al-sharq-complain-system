@@ -4,6 +4,7 @@ import { getAllInventoryRequests } from "../../../components/inventory-request-a
 import { Card } from "@/components/ui/card";
 import { RequestFilterClient } from "../../../components/RequestFilterClient";
 import { Package } from "lucide-react";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const session = await auth();
@@ -39,4 +40,4 @@ async function page() {
 	);
 }
 
-export default page;
+export default withRole(["ADMIN"], page);

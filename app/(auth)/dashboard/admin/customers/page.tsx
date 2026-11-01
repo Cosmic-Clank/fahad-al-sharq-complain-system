@@ -1,6 +1,7 @@
 import React from "react";
 import prismaClient from "@/lib/prisma";
 import CustomersTable from "./components/CustomersTable";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	type RawDataRow = {
@@ -50,4 +51,4 @@ async function page() {
 	return <CustomersTable data={data} role='admin' currentUser={{ fullName: "Admin User", role: "admin", username: "admin" }} />;
 }
 
-export default page;
+export default withRole(["ADMIN"], page);

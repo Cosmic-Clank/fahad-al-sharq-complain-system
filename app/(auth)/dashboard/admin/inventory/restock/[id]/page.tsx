@@ -1,5 +1,6 @@
 import React from "react";
 import RestockForm from "../../../../components/RestockForm";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ id: string }> }) {
 	const id = (await params).id;
@@ -8,4 +9,4 @@ async function page({ params }: { params: Promise<{ id: string }> }) {
 	return <RestockForm initialItemId={initialItemId} role='admin' />;
 }
 
-export default page;
+export default withRole(["ADMIN"], page);

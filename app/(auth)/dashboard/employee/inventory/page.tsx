@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatQty } from "@/lib/inventory-units";
 import { requestBuildingLabel, splitRejection } from "@/lib/inventory-requests";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const session = await auth();
@@ -135,4 +136,4 @@ async function page() {
 	);
 }
 
-export default page;
+export default withRole(["EMPLOYEE"], page);

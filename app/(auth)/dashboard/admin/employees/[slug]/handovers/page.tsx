@@ -1,6 +1,7 @@
 import React from "react";
 import prismaClient from "@/lib/prisma";
 import HandoversSection from "./components/HandoversSection";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
@@ -36,4 +37,4 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

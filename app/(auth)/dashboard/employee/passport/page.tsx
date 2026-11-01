@@ -4,6 +4,7 @@ import prismaClient from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { BookUser } from "lucide-react";
 import PassportRequestForm from "./components/PassportRequestForm";
+import { withRole } from "@/lib/page-guard";
 
 const STATUS_STYLES: Record<string, string> = {
 	REQUESTED: "bg-blue-100 text-blue-800",
@@ -72,4 +73,4 @@ async function page() {
 	);
 }
 
-export default page;
+export default withRole(["EMPLOYEE"], page);

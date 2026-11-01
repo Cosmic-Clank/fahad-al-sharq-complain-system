@@ -5,6 +5,7 @@ import LeaveSalaryCard from "./components/LeaveSalaryCard";
 import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
 import { exportClearancePdf } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
 import { computeLeaveSalary } from "@/lib/hr-payroll";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
@@ -48,4 +49,4 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

@@ -8,6 +8,7 @@ import { Package, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { RequestFilterClient } from "../../../components/RequestFilterClient";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const session = await auth();
@@ -49,5 +50,4 @@ async function page() {
 	);
 }
 
-export default page;
-
+export default withRole(["INVENTORY_MANAGER"], page);

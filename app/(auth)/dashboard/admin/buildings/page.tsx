@@ -2,8 +2,9 @@
 import prisma from "@/lib/prisma";
 import { unstable_noStore as noStore } from "next/cache";
 import BuildingsClient from "./BuildingsClient";
+import { withRole } from "@/lib/page-guard";
 
-export default async function BuildingsPage() {
+async function BuildingsPage() {
 	noStore(); // always fresh
 	const buildings = await prisma.buildings.findMany({
 		orderBy: { buildingName: "asc" },
@@ -20,3 +21,5 @@ export default async function BuildingsPage() {
 		/>
 	);
 }
+
+export default withRole(["ADMIN"], BuildingsPage);

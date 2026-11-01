@@ -7,6 +7,7 @@ import DownloadPdfButton from "../components/DownloadPdfButton";
 import { exportAttendanceSheetPdf, exportAttendanceSheetXlsx } from "../hrReportActions";
 import { currentMonthDubai } from "@/lib/hr-dates";
 import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
 	const params = await searchParams;
@@ -79,4 +80,4 @@ async function page({ searchParams }: { searchParams: Promise<{ month?: string }
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

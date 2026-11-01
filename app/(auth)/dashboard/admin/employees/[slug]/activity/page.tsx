@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { History } from "lucide-react";
+import { withRole } from "@/lib/page-guard";
 
 const PAGE_SIZE = 50;
 
@@ -80,4 +81,4 @@ async function page({ params, searchParams }: { params: Promise<{ slug: string }
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

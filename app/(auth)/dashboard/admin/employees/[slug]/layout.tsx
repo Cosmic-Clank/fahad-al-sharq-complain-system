@@ -1,7 +1,8 @@
 import React, { ReactNode } from "react";
 import ProfileShell from "./components/ProfileShell";
+import { withRole } from "@/lib/page-guard";
 
-export default async function EmployeeProfileLayout({ children, params }: { children: ReactNode; params: Promise<{ slug: string }> }) {
+async function EmployeeProfileLayout({ children, params }: { children: ReactNode; params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
 	return (
 		<ProfileShell slug={slug} basePath='/dashboard/admin/employees' canEditAccount>
@@ -9,3 +10,5 @@ export default async function EmployeeProfileLayout({ children, params }: { chil
 		</ProfileShell>
 	);
 }
+
+export default withRole(["ADMIN", "HR_MANAGER"], EmployeeProfileLayout);

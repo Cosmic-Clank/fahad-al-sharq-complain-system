@@ -8,6 +8,7 @@ import { yearsOfServiceCompleted } from "@/lib/hr-payroll";
 import { formatLeaveDate, leaveSignatureRequired, LEAVE_SIGNATURE_MIN_YEARS, LEAVE_STATUS_LABELS, LEAVE_STATUS_STYLES, LEAVE_TYPE_LABELS } from "@/lib/hr-leave";
 import LeaveRequestForm from "./components/LeaveRequestForm";
 import CancelLeaveButton from "./components/CancelLeaveButton";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const session = await auth();
@@ -71,4 +72,4 @@ async function page() {
 	);
 }
 
-export default page;
+export default withRole(["EMPLOYEE"], page);

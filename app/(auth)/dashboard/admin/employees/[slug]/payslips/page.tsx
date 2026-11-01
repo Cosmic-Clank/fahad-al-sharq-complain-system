@@ -9,6 +9,7 @@ import { computePayslip } from "@/lib/hr-payroll";
 import { currentMonthDubai, shiftMonth, monthLabel } from "@/lib/hr-dates";
 import DownloadPdfButton from "@/app/(auth)/dashboard/admin/hr/components/DownloadPdfButton";
 import { exportPayslipPdf } from "@/app/(auth)/dashboard/admin/hr/hrReportActions";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ month?: string }> }) {
 	const slug = (await params).slug;
@@ -113,4 +114,4 @@ async function page({ params, searchParams }: { params: Promise<{ slug: string }
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

@@ -4,6 +4,7 @@ import { todayYmdDubai } from "@/lib/hr-dates";
 import { leaveSignatureRequired } from "@/lib/hr-leave";
 import { getLeaveRows } from "@/lib/hr-leave-server";
 import LeaveSection from "@/app/(auth)/dashboard/admin/hr/leave/LeaveSection";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const userId = Number((await params).slug);
@@ -24,4 +25,4 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

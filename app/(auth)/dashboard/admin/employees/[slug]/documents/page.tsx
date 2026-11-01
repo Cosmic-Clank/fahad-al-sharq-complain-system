@@ -1,6 +1,7 @@
 import React from "react";
 import prismaClient from "@/lib/prisma";
 import DocumentsSection from "./components/DocumentsSection";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const slug = (await params).slug;
@@ -23,4 +24,4 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	return <DocumentsSection userId={userId} documents={documents} />;
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

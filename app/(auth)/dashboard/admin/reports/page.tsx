@@ -1,8 +1,9 @@
 import React from "react";
 import ReportGenerator from "../../components/ReportGenerator";
+import { withRole } from "@/lib/page-guard";
 
 function page() {
 	return <ReportGenerator />;
 }
 
-export default page;
+export default withRole(["ADMIN"], page);

@@ -2,6 +2,7 @@ import React from "react";
 import RequestInventoryForm from "../../../components/RequestInventoryForm";
 import { auth } from "@/auth";
 import prismaClient from "@/lib/prisma";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const session = await auth();
@@ -16,4 +17,4 @@ async function page() {
 	return <RequestInventoryForm employeeId={employeeId} buildings={buildings.map((b) => b.buildingName)} />;
 }
 
-export default page;
+export default withRole(["EMPLOYEE"], page);

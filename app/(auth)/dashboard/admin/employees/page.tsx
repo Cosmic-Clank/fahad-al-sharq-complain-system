@@ -2,6 +2,7 @@ import React from "react";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import CustomDataTable from "./components/data-table";
 import prismaClient from "@/lib/prisma";
+import { withRole } from "@/lib/page-guard";
 
 async function page() {
 	const data = await prismaClient.user.findMany({
@@ -29,4 +30,4 @@ async function page() {
 	);
 }
 
-export default page;
+export default withRole(["ADMIN"], page);

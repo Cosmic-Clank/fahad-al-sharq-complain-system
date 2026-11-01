@@ -3,6 +3,7 @@ import prismaClient from "@/lib/prisma";
 import { todayYmdDubai } from "@/lib/hr-dates";
 import { describePenalty } from "@/lib/joint-letters";
 import LettersSection from "./components/LettersSection";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params }: { params: Promise<{ slug: string }> }) {
 	const userId = Number((await params).slug);
@@ -54,4 +55,4 @@ async function page({ params }: { params: Promise<{ slug: string }> }) {
 	);
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

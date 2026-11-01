@@ -4,6 +4,7 @@ import EmployeeAttendance from "./components/EmployeeAttendance";
 import { currentMonthDubai } from "@/lib/hr-dates";
 import { getApprovedLeaveDays } from "@/lib/hr-leave-server";
 import type { AttendanceCellRecord } from "@/app/(auth)/dashboard/admin/hr/attendance/components/AttendanceDayDialog";
+import { withRole } from "@/lib/page-guard";
 
 async function page({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ month?: string }> }) {
 	const slug = (await params).slug;
@@ -43,4 +44,4 @@ async function page({ params, searchParams }: { params: Promise<{ slug: string }
 	return <EmployeeAttendance month={month} employee={{ id: user.id, fullName: user.fullName, workStartTime: user.employeeProfile?.workStartTime ?? "09:00" }} records={records} leaveDays={leaveDays} />;
 }
 
-export default page;
+export default withRole(["ADMIN", "HR_MANAGER"], page);

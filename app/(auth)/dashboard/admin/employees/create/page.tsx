@@ -1,5 +1,6 @@
 // app/employees/new/page.tsx
 import React from "react";
+import { withRole } from "@/lib/page-guard";
 import EmployeeForm from "./components/EmployeeForm"; // Import the new form component
 
 function NewEmployeePage() {
@@ -10,4 +11,4 @@ function NewEmployeePage() {
 	);
 }
 
-export default NewEmployeePage;
+export default withRole(["ADMIN"], NewEmployeePage);

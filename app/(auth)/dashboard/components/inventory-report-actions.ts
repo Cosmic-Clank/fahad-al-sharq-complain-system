@@ -71,6 +71,7 @@ async function loadUsageEntries(filters: UsageReportFilters): Promise<UsageEntry
 		}),
 		prismaClient.inventoryRequest.findMany({
 			where: { status: "APPROVED" },
+			orderBy: { id: "asc" }, // stable order → merged spellings always get the same label
 			select: {
 				quantity: true,
 				reason: true,

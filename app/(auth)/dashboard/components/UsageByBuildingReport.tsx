@@ -32,7 +32,7 @@ export default async function UsageByBuildingReport({ filters }: { filters: Usag
 					<Building2 className='h-6 w-6 text-primary' />
 					<h1 className='text-3xl font-bold'>Usage by Building</h1>
 				</div>
-				<p className='text-gray-600 mt-1'>Materials used on complaints, grouped by building. Quantities come from the inventory usage employees log on each job.</p>
+				<p className='text-gray-600 mt-1'>Materials issued to each building, from approved store requests and from items logged on complaint jobs. Technician stock that isn&apos;t tied to a building is grouped under &quot;Stock&quot;.</p>
 			</div>
 
 			{/* Filters (plain GET form — no client JS needed) */}

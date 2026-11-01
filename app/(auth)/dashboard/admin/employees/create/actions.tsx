@@ -21,7 +21,7 @@ const serverEmployeeFormSchema = z.object({
 });
 
 export async function createEmployee(formData: FormData) {
-	if (!(await requireRole(["ADMIN"], { fresh: true }))) {
+	if (!(await requireRole(["ADMIN"]))) {
 		return { success: false, message: "Only admins can create employees." };
 	}
 

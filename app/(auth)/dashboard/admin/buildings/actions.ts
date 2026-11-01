@@ -18,7 +18,7 @@ export async function createBuilding(formData: FormData) {
 		data: { id: Number(randomUUID().replace(/\D/g, "").slice(0, 8)), buildingName, emirate },
 	});
 
-	revalidatePath("/buildings");
+	revalidatePath("/dashboard/admin/buildings");
 }
 
 export async function deleteBuilding(formData: FormData) {
@@ -30,5 +30,5 @@ export async function deleteBuilding(formData: FormData) {
 		where: { id: Number(id) },
 	});
 
-	revalidatePath("/buildings");
+	revalidatePath("/dashboard/admin/buildings");
 }

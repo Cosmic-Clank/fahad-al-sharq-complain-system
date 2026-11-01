@@ -2,12 +2,11 @@
 import prismaClient from "@/lib/prisma";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 
 export async function deleteEmployees(employeeIds: string[]): Promise<{ success: boolean; message: string }> {
 	try {
-		const session = await auth();
-		if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+		if (!(await requireRole(["ADMIN"]))) {
 			return { success: false, message: "Only admins can delete employees." };
 		}
 		if (!employeeIds || employeeIds.length === 0) {

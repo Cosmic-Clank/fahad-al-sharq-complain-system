@@ -4,6 +4,7 @@
 // each action must check the caller itself — the role layouts only protect
 // page rendering. Always take "who is acting" from these helpers, never from a
 // client-supplied id parameter.
+import { cache } from "react";
 import { auth } from "@/auth";
 import prismaClient from "./prisma";
 import type { Role } from "@/app/generated/prisma";
@@ -24,20 +25,20 @@ export async function getActor(): Promise<Actor | null> {
 	return { id, role, name: session?.user?.name ?? "Unknown" };
 }
 
+/** The user's current role and name from the database, looked up once per request. */
+const currentUserRecord = cache((id: number) => prismaClient.user.findUnique({ where: { id }, select: { role: true, fullName: true } }));
+
 /**
  * The logged-in user if their role is one of `roles`, otherwise null.
- * With `fresh: true` the role is re-read from the database, so a deleted user
- * or a changed role is caught immediately (use for account/permission changes).
+ * The role is read from the database, not the session token (which lives 30 days),
+ * so a deleted user or a changed role takes effect immediately.
  */
-export async function requireRole(roles: Role[], opts: { fresh?: boolean } = {}): Promise<Actor | null> {
+export async function requireRole(roles: Role[]): Promise<Actor | null> {
 	const actor = await getActor();
 	if (!actor) return null;
-	if (opts.fresh) {
-		const user = await prismaClient.user.findUnique({ where: { id: actor.id }, select: { role: true, fullName: true } });
-		if (!user || !roles.includes(user.role)) return null;
-		return { id: actor.id, role: user.role, name: user.fullName };
-	}
-	return roles.includes(actor.role) ? actor : null;
+	const user = await currentUserRecord(actor.id);
+	if (!user || !roles.includes(user.role)) return null;
+	return { id: actor.id, role: user.role, name: user.fullName };
 }
 
 /** Caller allowed to operate the HR module (ADMIN or HR_MANAGER), or null. */

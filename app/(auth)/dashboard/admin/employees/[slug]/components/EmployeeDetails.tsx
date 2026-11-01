@@ -1,12 +1,14 @@
 import prismaClient from "@/lib/prisma";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
-import { format } from "date-fns";
 import { Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import React from "react";
-import { formatDubaiTime } from "@/lib/dubai-time";
+import { formatDubaiLong, formatDubaiTime } from "@/lib/dubai-time";
 
 export default async function EmployeeDetails({ slug }: { slug: string }) {
 	const employeeId = Number(slug);
+	if (!Number.isInteger(employeeId)) {
+		return <div className='text-red-500 p-6'>Employee not found.</div>;
+	}
 
 	const employee = await prismaClient.user.findUnique({
 		where: {
@@ -68,12 +70,12 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 							<div className='bg-white/60 backdrop-blur-sm rounded-lg shadow-sm p-4 border border-gray-200'>
 								<div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2 mb-2 text-sm'>
 									<span className='font-semibold text-primary'>
-										{format(new Date(wt.date), "PPP")} • {formatDubaiTime(wt.startTime)} – {wt.endTime ? formatDubaiTime(wt.endTime) : "N/A"}
+										{formatDubaiLong(new Date(wt.date))} • {formatDubaiTime(wt.startTime)} – {wt.endTime ? formatDubaiTime(wt.endTime) : "N/A"}
 									</span>
-									<span className='text-xs text-gray-500'>Logged: {format(new Date(wt.createdAt), "PPP p")}</span>
+									<span className='text-xs text-gray-500'>Logged: {formatDubaiLong(new Date(wt.createdAt), true)}</span>
 								</div>
 
-								<div className='text-xs text-gray-600 mb-3'>Last Updated: {format(new Date(wt.updatedAt), "PPP p")}</div>
+								<div className='text-xs text-gray-600 mb-3'>Last Updated: {formatDubaiLong(new Date(wt.updatedAt), true)}</div>
 
 								{wt.complaint ? (
 									<div className='bg-red-50 border border-red-200 text-red-800 text-sm p-3 rounded-md flex flex-col sm:flex-row gap-2 items-start'>
@@ -82,7 +84,7 @@ export default async function EmployeeDetails({ slug }: { slug: string }) {
 											<div>
 												<p className='font-medium'>Complaint:</p>
 												<p>{wt.complaint.description}</p>
-												<p className='text-xs text-red-500 mt-1'>Created: {format(new Date(wt.complaint.createdAt), "PPP p")}</p>
+												<p className='text-xs text-red-500 mt-1'>Created: {formatDubaiLong(new Date(wt.complaint.createdAt), true)}</p>
 											</div>
 										</div>
 									</div>

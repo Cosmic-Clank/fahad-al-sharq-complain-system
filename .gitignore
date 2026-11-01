@@ -41,6 +41,11 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# storage-download.mjs output (all buckets, incl. HR documents) and local logs
+/storage-backup/
+/storage-backup.zip
+/dev-server.log
 /public/uploads
 
 nul

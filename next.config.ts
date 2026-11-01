@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
 	eslint: {
 		ignoreDuringBuilds: true, // Ignore ESLint errors during build
 	},
-	allowedDevOrigins: ["http://fahadalsharq.com"],
+	allowedDevOrigins: ["fahadalsharq.com"],
 	images: {
 		remotePatterns: [
 			{

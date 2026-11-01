@@ -27,8 +27,8 @@ async function page() {
       ARRAY_AGG("customerPhone" ORDER BY "createdAt" DESC) AS "customerPhones",
       ARRAY_AGG("customerAddress" ORDER BY "createdAt" DESC) AS "customerAddresses",
       COUNT(*) FILTER (
-        WHERE "createdAt" >= date_trunc('month', now())
-          AND "createdAt" <  (date_trunc('month', now()) + INTERVAL '1 month')
+        WHERE "createdAt" + INTERVAL '4 hours' >= date_trunc('month', now() AT TIME ZONE 'Asia/Dubai')
+          AND "createdAt" + INTERVAL '4 hours' <  (date_trunc('month', now() AT TIME ZONE 'Asia/Dubai') + INTERVAL '1 month')
       ) AS "thisMonthCount"  -- NEW
     FROM "Complaint"
     GROUP BY "buildingName", "apartmentNumber"

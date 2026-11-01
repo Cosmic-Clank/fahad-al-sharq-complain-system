@@ -107,7 +107,8 @@ components/ui/              # shadcn/ui components
 - Session includes `id`, `role`, `username`
 - Every exported function in a `"use server"` file is a public endpoint: start each action with
   `requireRole([...])` / `requireHrAccess()` from `lib/authz.ts`, and take "who is acting" from it —
-  never from a client-supplied id
+  never from a client-supplied id. `requireRole` reads the role from the database (cached per
+  request), so a deleted or demoted user loses access at once even though the JWT lives 30 days
 - Layouts check the role, but layouts alone are bypassable — every dashboard page also exports
   `withRole([...], Page)` from `lib/page-guard.tsx`
 - `NotAuthorized` component is returned (not redirect) when role check fails

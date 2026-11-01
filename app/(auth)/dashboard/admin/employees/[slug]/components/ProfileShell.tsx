@@ -1,6 +1,6 @@
 import prismaClient from "@/lib/prisma";
 import { HR_STAFF_ROLES } from "@/lib/hr-roles";
-import { format } from "date-fns";
+import { formatDubaiLong } from "@/lib/dubai-time";
 import { User, CalendarDays, History, Badge as IdBadge } from "lucide-react";
 import React, { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -64,11 +64,11 @@ export default async function ProfileShell({ children, slug, basePath = "/dashbo
 					</div>
 					<div className='flex items-center gap-2 min-w-0'>
 						<CalendarDays className='w-4 h-4 text-primary shrink-0' />
-						<span className='font-medium'>Joined:</span> {format(new Date(employee.createdAt), "PPP")}
+						<span className='font-medium'>Joined:</span> {formatDubaiLong(new Date(employee.createdAt))}
 					</div>
 					<div className='flex items-center gap-2 min-w-0'>
 						<History className='w-4 h-4 text-primary shrink-0' />
-						<span className='font-medium'>Updated:</span> {format(new Date(employee.updatedAt), "PPP")}
+						<span className='font-medium'>Updated:</span> {formatDubaiLong(new Date(employee.updatedAt))}
 					</div>
 				</div>
 			</div>

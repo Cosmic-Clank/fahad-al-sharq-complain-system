@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import prismaClient from "@/lib/prisma";
 import { PDFDocument, StandardFonts, rgb, type PDFPage } from "pdf-lib";
 import { Buffer } from "node:buffer";
@@ -21,11 +21,8 @@ export interface UsageReportFilters {
 	building?: string;
 }
 
-async function requireInventoryAccess() {
-	const session = await auth();
-	const role = (session?.user as any)?.role;
-	if (!session?.user?.id || (role !== "ADMIN" && role !== "INVENTORY_MANAGER")) return null;
-	return { id: Number(session.user.id), role };
+function requireInventoryAccess() {
+	return requireRole(["ADMIN", "INVENTORY_MANAGER"]);
 }
 
 interface UsageEntry {

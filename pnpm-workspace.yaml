@@ -1,0 +1,21 @@
+# Single-package repo. `packages` is listed only because pnpm 9 rejects a
+# workspace file without it.
+packages:
+  - .
+
+# Dependencies allowed to run install scripts (pnpm 10+ blocks them otherwise).
+# allowBuilds is read by pnpm 11+, onlyBuiltDependencies by pnpm 10.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - esbuild
+  - prisma
+  - sharp
+  - unrs-resolver

@@ -12,14 +12,16 @@
 
 ## Commands
 
+Package manager is **pnpm** (`pnpm install`, `pnpm add <pkg>`). Dependency install scripts must be allowed in `pnpm-workspace.yaml`.
+
 ```bash
-npm run dev        # Start dev server
-npm run build      # Production build (ESLint ignored during build)
-npm run lint       # Run ESLint
-npx tsc --noEmit -p .    # Type-check
-npx prisma generate      # Regenerate Prisma client (also runs on postinstall)
-npx prisma migrate status
-npx prisma migrate deploy   # Apply committed migrations
+pnpm dev           # Start dev server
+pnpm build         # Production build (ESLint ignored during build)
+pnpm lint          # Run ESLint
+pnpm exec tsc --noEmit -p .   # Type-check
+pnpm exec prisma generate      # Regenerate Prisma client (also runs on postinstall)
+pnpm exec prisma migrate status
+pnpm exec prisma migrate deploy   # Apply committed migrations
 ```
 
 > **The only database is production.** There is no dev/staging DB.
@@ -28,7 +30,6 @@ npx prisma migrate deploy   # Apply committed migrations
 >   (a shadow-database diff against `DIRECT_URL` wiped it once).
 > - Write migration SQL by hand under `prisma/migrations/<timestamp>_<name>/migration.sql`
 >   (additive changes only), then `prisma migrate deploy`.
-> - `storage-delete-old.mjs` deletes every storage file older than a month — don't run it casually.
 
 ## Environment Variables
 
@@ -120,7 +121,7 @@ components/ui/              # shadcn/ui components
 - The server runs in UTC — format server-rendered dates with `lib/dubai-time.ts`, not `toLocaleString()`
 - pdf-lib uses Helvetica (WinAnsi): pass text through `toWinAnsi` (`lib/pdf-text.ts`) and check signatures with `isValidSignature` before `embedPng` (a corrupt PNG hangs pdf-lib)
 - Stock changes must be atomic: conditional `updateMany` / transactions, compare with `QTY_EPSILON`
-- ESLint errors are ignored during `next build` — fix them separately with `npm run lint`
+- ESLint errors are ignored during `next build` — fix them separately with `pnpm lint`
 - The `(auth)` route group is a layout group only — it does not add `/auth` to the URL
 
 ## Code Style

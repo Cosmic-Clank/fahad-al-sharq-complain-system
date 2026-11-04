@@ -126,6 +126,8 @@ model Buildings {
 	id			Int		@id @default(autoincrement())
 	buildingName	String
   emirate		String @default("dubai")
+  /// Deactivated buildings are hidden from new complaints/requests but kept for history
+  isActive	Boolean @default(true)
 }
 
 enum Unit {

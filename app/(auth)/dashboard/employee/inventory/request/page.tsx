@@ -12,7 +12,7 @@ async function page() {
 		return <div>Error: Could not get user information</div>;
 	}
 
-	const buildings = await prismaClient.buildings.findMany({ select: { buildingName: true }, orderBy: { buildingName: "asc" } });
+	const buildings = await prismaClient.buildings.findMany({ where: { isActive: true }, select: { buildingName: true }, orderBy: { buildingName: "asc" } });
 
 	return <RequestInventoryForm employeeId={employeeId} buildings={buildings.map((b) => b.buildingName)} />;
 }

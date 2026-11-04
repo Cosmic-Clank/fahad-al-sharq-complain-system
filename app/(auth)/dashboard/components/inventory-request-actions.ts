@@ -39,7 +39,7 @@ export async function createInventoryRequest(formData: FormData, _employeeId?: n
 		// Building must be an official one, or the stock option ("" is stored for stock)
 		const isStock = validatedData.buildingName === STOCK_VALUE;
 		if (!isStock) {
-			const building = await prismaClient.buildings.findFirst({ where: { buildingName: validatedData.buildingName }, select: { id: true } });
+			const building = await prismaClient.buildings.findFirst({ where: { buildingName: validatedData.buildingName, isActive: true }, select: { id: true } });
 			if (!building) {
 				return { success: false, message: "Please select a building (or Stock)" };
 			}

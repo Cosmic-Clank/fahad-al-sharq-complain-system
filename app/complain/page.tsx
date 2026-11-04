@@ -6,6 +6,7 @@ import { unstable_noStore as noStore } from "next/cache";
 export default async function Home() {
 	noStore();
 	const buildingRecords = await prisma.buildings.findMany({
+		where: { isActive: true }, // deactivated buildings are kept for history only
 		orderBy: { buildingName: "asc" },
 		select: { buildingName: true },
 	});

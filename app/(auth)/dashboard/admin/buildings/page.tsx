@@ -7,8 +7,9 @@ import { withRole } from "@/lib/page-guard";
 async function BuildingsPage() {
 	noStore(); // always fresh
 	const buildings = await prisma.buildings.findMany({
-		orderBy: { buildingName: "asc" },
-		select: { id: true, buildingName: true, emirate: true },
+		// active first, then by name
+		orderBy: [{ isActive: "desc" }, { buildingName: "asc" }],
+		select: { id: true, buildingName: true, emirate: true, isActive: true },
 	});
 
 	return (
@@ -17,6 +18,7 @@ async function BuildingsPage() {
 				id: String(b.id),
 				buildingName: b.buildingName,
 				emirate: b.emirate,
+				isActive: b.isActive,
 			}))}
 		/>
 	);

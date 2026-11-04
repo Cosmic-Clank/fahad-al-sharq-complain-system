@@ -75,6 +75,12 @@ export async function POST(req: NextRequest) {
 
 	const { fullname, email, phoneNumber, address, buildingName, apartmentNumber, convenientTime, description } = validatedFields.data;
 
+	// A building deactivated after the form was opened
+	if (await prismaClient.buildings.findFirst({ where: { buildingName, isActive: false }, select: { id: true } })) {
+		await discardVideo();
+		return NextResponse.json({ message: "This building is no longer available. Please reload the page and choose again." }, { status: 400 });
+	}
+
 	// 3. Check for duplicate complaint from same building + apartment within 24 hours
 	const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 	const existing = await prismaClient.complaint.findFirst({

@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { createBuilding, deleteBuilding } from "./actions";
+import { Plus, Power, PowerOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createBuilding, setBuildingActive } from "./actions";
+import { toast } from "@/lib/notify";
+import { Badge } from "@/components/ui/badge";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Building = { id: string; buildingName: string; emirate: string };
+type Building = { id: string; buildingName: string; emirate: string; isActive: boolean };
 
 // Emirates list
 const EMIRATE_OPTIONS = ["Ajman", "Sharjah", "Dubai"];
@@ -121,24 +124,32 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 									<TableHead className='w-[60px] text-center'>#</TableHead>
 									<TableHead>Building Name</TableHead>
 									<TableHead>Emirate</TableHead>
-									<TableHead className='w-[120px] text-right'>Actions</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className='w-[140px] text-right'>Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{buildings.length === 0 ? (
 									<TableRow>
-										<TableCell colSpan={4} className='text-center text-muted-foreground'>
+										<TableCell colSpan={5} className='text-center text-muted-foreground'>
 											No buildings yet. Click “Add Building”.
 										</TableCell>
 									</TableRow>
 								) : (
 									buildings.map((b, idx) => (
-										<TableRow key={b.id}>
+										<TableRow key={b.id} className={b.isActive ? undefined : "text-muted-foreground"}>
 											<TableCell className='text-center align-middle'>{idx + 1}</TableCell>
 											<TableCell className='font-medium'>{b.buildingName}</TableCell>
 											<TableCell>{b.emirate || "—"}</TableCell>
+											<TableCell>
+												{b.isActive ? (
+													<Badge className='bg-green-100 text-green-800 hover:bg-green-100'>Active</Badge>
+												) : (
+													<Badge variant='secondary'>Inactive</Badge>
+												)}
+											</TableCell>
 											<TableCell className='text-right'>
-												<DeleteButton id={b.id} name={b.buildingName} />
+												<ActiveToggleButton building={b} />
 											</TableCell>
 										</TableRow>
 									))
@@ -152,34 +163,52 @@ export default function BuildingsClient({ buildings }: { buildings: Building[] }
 	);
 }
 
-function DeleteButton({ id, name }: { id: string; name: string }) {
+function ActiveToggleButton({ building }: { building: Building }) {
+	const router = useRouter();
+	const [busy, setBusy] = React.useState(false);
+	const deactivating = building.isActive;
+
+	const confirm = async () => {
+		setBusy(true);
+		try {
+			const result = await setBuildingActive(Number(building.id), !deactivating);
+			if (result.success) {
+				toast.success(result.message);
+				router.refresh();
+			} else {
+				toast.error(result.message);
+			}
+		} finally {
+			setBusy(false);
+		}
+	};
+
 	return (
 		<AlertDialog>
 			<AlertDialogTrigger asChild>
-				<Button variant='destructive' size='sm' className='gap-2'>
-					<Trash2 className='h-4 w-4' />
-					Delete
+				<Button variant={deactivating ? "outline" : "default"} size='sm' className='gap-2' disabled={busy}>
+					{deactivating ? <PowerOff className='h-4 w-4' /> : <Power className='h-4 w-4' />}
+					{deactivating ? "Deactivate" : "Reactivate"}
 				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Delete building</AlertDialogTitle>
+					<AlertDialogTitle>{deactivating ? "Deactivate building" : "Reactivate building"}</AlertDialogTitle>
 					<AlertDialogDescription>
-						Are you sure you want to remove <span className='font-semibold'>{name}</span>? This action cannot be undone.
+						{deactivating ? (
+							<>
+								<span className='font-semibold'>{building.buildingName}</span> will no longer appear on the complaint forms or the inventory request form. Its past complaints, requests and reports are kept, and you can reactivate it any time.
+							</>
+						) : (
+							<>
+								<span className='font-semibold'>{building.buildingName}</span> will appear on the complaint forms and the inventory request form again.
+							</>
+						)}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter className='gap-2'>
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
-
-					{/* Submit directly to server action */}
-					<form action={deleteBuilding}>
-						<input type='hidden' name='id' value={id} />
-						<AlertDialogAction asChild>
-							<Button type='submit' variant='destructive'>
-								Confirm Delete
-							</Button>
-						</AlertDialogAction>
-					</form>
+					<AlertDialogAction onClick={confirm}>{deactivating ? "Deactivate" : "Reactivate"}</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>

@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 
 export async function GET() {
 	try {
-		const buildings = await prisma.buildings.findMany();
+		const buildings = await prisma.buildings.findMany({ where: { isActive: true } });
 		return NextResponse.json(buildings, { status: 200 });
 	} catch (error) {
 		console.error("Failed to fetch buildings:", error);

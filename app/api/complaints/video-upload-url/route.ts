@@ -28,6 +28,11 @@ export async function POST(req: NextRequest) {
 		return NextResponse.json({ message: EVIDENCE_MESSAGES.invalidVideo }, { status: 400 });
 	}
 
+	// A building deactivated after the form was opened
+	if (await prismaClient.buildings.findFirst({ where: { buildingName, isActive: false }, select: { id: true } })) {
+		return NextResponse.json({ message: "This building is no longer available. Please reload the page and choose again." }, { status: 400 });
+	}
+
 	// Same 24h duplicate rule as /api/complaints — checked up front so nobody uploads a large video for nothing
 	const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 	const existing = await prismaClient.complaint.findFirst({

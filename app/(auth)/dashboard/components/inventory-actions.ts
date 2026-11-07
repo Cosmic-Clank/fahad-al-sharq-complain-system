@@ -10,6 +10,9 @@ import { isValidQtyForUnit, QTY_EPSILON, unitLabel } from "@/lib/inventory-units
 import { inventoryItemFields, inventoryItemSchema, pieceQuantityCheck, INVENTORY_IMAGE_TYPES, INVENTORY_ITEM_MESSAGES, MAX_INVENTORY_IMAGE_BYTES } from "@/lib/inventory-item-schema";
 import { logActivity } from "@/lib/activity-log";
 import { getActor, requireRole } from "@/lib/authz";
+import { BILL_MESSAGES, MAX_RESTOCK_COST } from "@/lib/inventory-bill-rules";
+import { removeBill, uploadBill } from "@/lib/inventory-bills";
+import { round2 } from "@/lib/hr-payroll";
 
 /** Uploads the item photo to the inventory-images bucket and returns its public URL. */
 async function uploadInventoryImage(file: File): Promise<{ url: string } | { error: string }> {
@@ -288,17 +291,29 @@ export async function updateInventoryItem(formData: FormData) {
 const restockSchema = z.object({
 	itemId: z.string().min(1, "Item selection is required"),
 	quantityToAdd: z.coerce.number().finite().positive("Quantity must be greater than 0"),
-	notes: z.string().optional().or(z.literal("")),
+	// Total purchase cost of this restock (AED) — required, with the bill, for the restock cost report
+	cost: z.preprocess(
+		(v) => (v === "" || v === null || v === undefined ? undefined : v),
+		z.coerce
+			.number({ required_error: BILL_MESSAGES.costRequired, invalid_type_error: BILL_MESSAGES.costRequired })
+			.finite()
+			.positive(BILL_MESSAGES.costInvalid)
+			.max(MAX_RESTOCK_COST, BILL_MESSAGES.costTooHigh)
+	),
+	notes: z.string().max(1000).optional().or(z.literal("")),
 });
 
 export async function restockInventoryItem(formData: FormData) {
-	if (!(await requireRole(["ADMIN", "INVENTORY_MANAGER"]))) {
+	const actor = await requireRole(["ADMIN", "INVENTORY_MANAGER"]);
+	if (!actor) {
 		return { success: false, message: "Unauthorized. Please log in." };
 	}
+	let billPath: string | null = null;
 	try {
 		const rawData = {
 			itemId: formData.get("itemId"),
 			quantityToAdd: formData.get("quantityToAdd"),
+			cost: formData.get("cost"),
 			notes: formData.get("notes"),
 		};
 
@@ -325,6 +340,18 @@ export async function restockInventoryItem(formData: FormData) {
 			};
 		}
 
+		// The bill is mandatory: upload it before touching stock
+		const bill = formData.get("bill");
+		if (!(bill instanceof File) || bill.size === 0) {
+			return { success: false, message: BILL_MESSAGES.billRequired };
+		}
+		const uploaded = await uploadBill(bill);
+		if ("error" in uploaded) {
+			return { success: false, message: uploaded.error === "invalid" ? BILL_MESSAGES.invalidBill : BILL_MESSAGES.billUploadFailed };
+		}
+		billPath = uploaded.path;
+		const cost = round2(validatedData.cost);
+
 		// Update quantity
 		const [updated] = await prismaClient.$transaction([
 			prismaClient.inventory.update({
@@ -338,29 +365,35 @@ export async function restockInventoryItem(formData: FormData) {
 					quantity: validatedData.quantityToAdd,
 					transactionType: "ADD",
 					notes: validatedData.notes || "Restocked via restock form",
+					cost,
+					billPath,
+					recordedByName: actor.name,
 				},
 			}),
 		]);
+		billPath = null; // saved — keep the file
 		const newQuantity = Number(updated.quantity.toFixed(3));
 
-		const actor = await getActor();
 		await logActivity({
-			actorId: actor?.id,
+			actorId: actor.id,
 			action: "INVENTORY_RESTOCK",
 			entityType: "Inventory",
 			entityId: itemId,
-			details: `${actor?.name ?? "Someone"} restocked "${item.itemName}" by ${validatedData.quantityToAdd} ${unitLabel(item.unit)} (new total ${newQuantity})`,
+			details: `${actor.name} restocked "${item.itemName}" by ${validatedData.quantityToAdd} ${unitLabel(item.unit)} for ${cost} AED (new total ${newQuantity})`,
 		});
 
 		// Revalidate paths
 		revalidatePath("/dashboard/inventory_manager");
 		revalidatePath("/dashboard/admin/inventory");
+		revalidatePath("/dashboard/inventory_manager/restock-costs");
+		revalidatePath("/dashboard/admin/inventory/restock-costs");
 
 		return {
 			success: true,
 			message: `Successfully added ${validatedData.quantityToAdd} ${unitLabel(item.unit)}. New quantity: ${newQuantity} ${unitLabel(item.unit)}`,
 		};
 	} catch (error) {
+		if (billPath) await removeBill(billPath);
 		if (error instanceof z.ZodError) {
 			const fieldErrors = error.flatten().fieldErrors;
 			const errorMessages = Object.entries(fieldErrors)

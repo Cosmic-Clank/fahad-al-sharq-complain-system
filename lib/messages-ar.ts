@@ -248,6 +248,13 @@ const MESSAGES_AR: Record<string, string> = {
 	"Cancel this leave request?": "هل تريد إلغاء طلب الإجازة هذا؟",
 	"Leave request not found.": "طلب الإجازة غير موجود.",
 	"Building reactivated.": "تمت إعادة تفعيل المبنى.",
+	// ── Restock bills ──
+	"Please attach the bill for this restock.": "يرجى إرفاق فاتورة إعادة التخزين هذه.",
+	"Invalid bill. Use a photo (JPEG/PNG) or a PDF, max 4.5MB.": "فاتورة غير صالحة. استخدم صورة (JPEG/PNG) أو ملف PDF، بحد أقصى 4.5 ميجابايت.",
+	"Please enter the total cost of this restock.": "يرجى إدخال التكلفة الإجمالية لإعادة التخزين هذه.",
+	"The cost must be more than 0 AED.": "يجب أن تكون التكلفة أكثر من 0 درهم.",
+	"That cost looks too high. Please check the amount.": "تبدو هذه التكلفة مرتفعة جداً. يرجى التحقق من المبلغ.",
+	"Failed to upload the bill. Please try again.": "فشل رفع الفاتورة. يرجى المحاولة مرة أخرى.",
 	"Building deactivated.": "تم إلغاء تفعيل المبنى.",
 	"Building not found.": "المبنى غير موجود.",
 	"This building is no longer available. Please reload the page and choose again.": "هذا المبنى لم يعد متاحاً. يرجى إعادة تحميل الصفحة والاختيار مرة أخرى.",

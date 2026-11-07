@@ -85,6 +85,11 @@ model Complaint {
 
   convenientTime ConvenientTime // Default value for convenient time
 
+  /// Private jobs: amount charged to the customer (AED), entered by an admin
+  chargedAmount  Float?
+  chargedAt      DateTime?
+  chargedByName  String?
+
   responses       ComplaintResponse[]
   workTimes       WorkTimes[]
   assignedTo      User? @relation("AssignedComplaints", fields: [assignedToId], references: [id], onDelete: SetNull)
@@ -181,6 +186,10 @@ model InventoryTransaction {
   transactionType   TransactionType
   notes             String?
   employeeId        Int?
+  /// Restocks: purchase cost (AED) and bill file path in the private inventory-bills bucket
+  cost              Float?
+  billPath          String?
+  recordedByName    String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   

@@ -229,6 +229,136 @@ export function buildSalarySummaryWorkbook(summary: SalarySummary): ExcelJS.Work
 	return wb;
 }
 
+// ─────────────────────── Restock costs ───────────────────────
+
+export interface RestockCostXlsxRow {
+	/** "YYYY-MM-DD HH:mm", Dubai time */
+	date: string;
+	itemName: string;
+	itemCode: string | null;
+	quantity: number;
+	unit: string;
+	cost: number | null; // null for restocks recorded before costs were required
+	recordedBy: string | null;
+	notes: string | null;
+	hasBill: boolean;
+}
+
+export function buildRestockCostWorkbook(rows: RestockCostXlsxRow[], rangeLabel: string): ExcelJS.Workbook {
+	const wb = new ExcelJS.Workbook();
+	wb.creator = "Fahad Al Sharq AC Systems LLC";
+	const ws = wb.addWorksheet("Restock Costs", { views: [{ state: "frozen", ySplit: 4 }] });
+
+	ws.mergeCells("A1:H1");
+	ws.getCell("A1").value = "Fahad Al Sharq AC Systems LLC — Restock Costs (material purchases)";
+	ws.getCell("A1").font = { bold: true, size: 13 };
+	ws.mergeCells("A2:H2");
+	ws.getCell("A2").value = rangeLabel;
+	ws.getCell("A2").font = { size: 9, color: { argb: "FF6B7280" } };
+
+	const header = ws.getRow(4);
+	["Date", "Item", "Code", "Quantity", "Unit", "Cost (AED)", "Recorded By", "Bill", "Notes"].forEach((label, i) => {
+		const cell = header.getCell(1 + i);
+		cell.value = label;
+		cell.font = { bold: true, size: 10 };
+		cell.fill = FILL.header;
+	});
+
+	let r = 5;
+	let total = 0;
+	for (const row of rows) {
+		const wsRow = ws.getRow(r++);
+		wsRow.getCell(1).value = row.date;
+		wsRow.getCell(2).value = row.itemName;
+		wsRow.getCell(3).value = row.itemCode ?? "";
+		wsRow.getCell(4).value = Number(row.quantity.toFixed(3));
+		wsRow.getCell(5).value = unitLabel(row.unit);
+		if (row.cost !== null) {
+			wsRow.getCell(6).value = row.cost;
+			wsRow.getCell(6).numFmt = "#,##0.00";
+			total += row.cost;
+		} else {
+			wsRow.getCell(6).value = "not recorded";
+		}
+		wsRow.getCell(7).value = row.recordedBy ?? "";
+		wsRow.getCell(8).value = row.hasBill ? "Yes" : "No";
+		wsRow.getCell(9).value = row.notes ?? "";
+	}
+
+	const totalRow = ws.getRow(r + 1);
+	totalRow.getCell(5).value = "Total cost:";
+	totalRow.getCell(5).font = { bold: true };
+	totalRow.getCell(6).value = Number(total.toFixed(2));
+	totalRow.getCell(6).numFmt = "#,##0.00";
+	totalRow.getCell(6).font = { bold: true };
+
+	[18, 30, 14, 10, 7, 14, 18, 7, 40].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+	return wb;
+}
+
+// ─────────────────────── Private job earnings ───────────────────────
+
+export interface EarningsXlsxRow {
+	complaintId: number;
+	/** "YYYY-MM-DD", Dubai: completion day, or the day it was filed when not completed */
+	jobDate: string;
+	status: string;
+	customerName: string;
+	buildingName: string;
+	apartmentNumber: string;
+	charged: number | null;
+}
+
+export function buildEarningsWorkbook(rows: EarningsXlsxRow[], title: string): ExcelJS.Workbook {
+	const wb = new ExcelJS.Workbook();
+	wb.creator = "Fahad Al Sharq AC Systems LLC";
+	const ws = wb.addWorksheet("Private Job Earnings", { views: [{ state: "frozen", ySplit: 4 }] });
+
+	ws.mergeCells("A1:G1");
+	ws.getCell("A1").value = "Fahad Al Sharq AC Systems LLC — Private Job Earnings";
+	ws.getCell("A1").font = { bold: true, size: 13 };
+	ws.mergeCells("A2:G2");
+	ws.getCell("A2").value = title;
+	ws.getCell("A2").font = { size: 9, color: { argb: "FF6B7280" } };
+
+	const header = ws.getRow(4);
+	["Complaint #", "Job Date", "Status", "Customer", "Building", "Apartment", "Charged (AED)"].forEach((label, i) => {
+		const cell = header.getCell(1 + i);
+		cell.value = label;
+		cell.font = { bold: true, size: 10 };
+		cell.fill = FILL.header;
+	});
+
+	let r = 5;
+	let total = 0;
+	for (const row of rows) {
+		const wsRow = ws.getRow(r++);
+		wsRow.getCell(1).value = row.complaintId;
+		wsRow.getCell(2).value = row.jobDate;
+		wsRow.getCell(3).value = row.status;
+		wsRow.getCell(4).value = row.customerName;
+		wsRow.getCell(5).value = row.buildingName;
+		wsRow.getCell(6).value = row.apartmentNumber;
+		if (row.charged !== null) {
+			wsRow.getCell(7).value = row.charged;
+			wsRow.getCell(7).numFmt = "#,##0.00";
+			total += row.charged;
+		} else {
+			wsRow.getCell(7).value = "not entered";
+		}
+	}
+
+	const totalRow = ws.getRow(r + 1);
+	totalRow.getCell(6).value = "Total earned:";
+	totalRow.getCell(6).font = { bold: true };
+	totalRow.getCell(7).value = Number(total.toFixed(2));
+	totalRow.getCell(7).numFmt = "#,##0.00";
+	totalRow.getCell(7).font = { bold: true };
+
+	[12, 12, 12, 26, 26, 12, 15].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+	return wb;
+}
+
 export async function workbookToBase64(wb: ExcelJS.Workbook): Promise<string> {
 	const buffer = await wb.xlsx.writeBuffer();
 	return Buffer.from(buffer).toString("base64");

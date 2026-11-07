@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { Package, Plus, ArrowUpCircle, Users, List, Building } from "lucide-react";
+import { Package, Plus, ArrowUpCircle, Users, List, Building, Receipt } from "lucide-react";
 import { LogoutForm } from "./LogoutForm";
 import Image from "next/image";
 
@@ -24,6 +24,11 @@ const inventoryItems = [
 		title: "Restock",
 		url: "/dashboard/inventory_manager/restock/0",
 		icon: ArrowUpCircle,
+	},
+	{
+		title: "Restock Costs",
+		url: "/dashboard/inventory_manager/restock-costs",
+		icon: Receipt,
 	},
 	{
 		title: "New Item",

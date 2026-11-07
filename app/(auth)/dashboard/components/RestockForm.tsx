@@ -13,7 +13,10 @@ import { useRouter } from "next/navigation";
 import { restockInventoryItem, getAllInventoryItems } from "./inventory-actions";
 import { Loading } from "@/components/ui/loading";
 import { ItemsCombobox } from "@/components/ItemsCombobox";
-import { Package, Plus } from "lucide-react";
+import { FileText, Package, Plus, Receipt } from "lucide-react";
+import Link from "next/link";
+import { BILL_MESSAGES, BILL_TYPES, MAX_BILL_BYTES, MAX_RESTOCK_COST } from "@/lib/inventory-bill-rules";
+import { shrinkImageIfLarge } from "@/lib/shrink-image";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { formatQty, isValidQtyForUnit, qtyStep, unitLabel } from "@/lib/inventory-units";
@@ -22,6 +25,13 @@ import { inventoryBasePath } from "@/lib/inventory-paths";
 const restockFormSchema = z.object({
 	itemId: z.string().min(1, "Please select an item"),
 	quantityToAdd: z.coerce.number().positive("Quantity must be greater than 0"),
+	// kept as text in the form; checked as a number here and again on the server
+	cost: z
+		.string()
+		.trim()
+		.min(1, BILL_MESSAGES.costRequired)
+		.refine((v) => Number.isFinite(Number(v)) && Number(v) > 0, BILL_MESSAGES.costInvalid)
+		.refine((v) => Number(v) <= MAX_RESTOCK_COST, BILL_MESSAGES.costTooHigh),
 	notes: z.string().optional(),
 });
 
@@ -48,6 +58,9 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 	const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
 	const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [bill, setBill] = useState<File | null>(null);
+	const [billError, setBillError] = useState<string | null>(null);
+	const [billInputKey, setBillInputKey] = useState(0); // remounts the file input to clear it
 	const router = useRouter();
 
 	const form = useForm<RestockFormValues>({
@@ -55,9 +68,26 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 		defaultValues: {
 			itemId: initialItemId || "",
 			quantityToAdd: 1,
+			cost: "",
 			notes: "",
 		},
 	});
+
+	const onBillChange = async (file: File | undefined) => {
+		setBillError(null);
+		if (!file) {
+			setBill(null);
+			return;
+		}
+		// Phone photos are often too big — shrink before checking the size
+		const prepared = await shrinkImageIfLarge(file);
+		if (!BILL_TYPES[prepared.type] || prepared.size > MAX_BILL_BYTES) {
+			setBill(null);
+			setBillError(translateMessage(BILL_MESSAGES.invalidBill));
+			return;
+		}
+		setBill(prepared);
+	};
 
 	// Fetch inventory items on mount
 	useEffect(() => {
@@ -98,6 +128,11 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 			return;
 		}
 
+		if (!bill) {
+			setBillError(translateMessage(BILL_MESSAGES.billRequired));
+			return;
+		}
+
 		setIsSubmitting(true);
 		setSubmitError(null);
 		setSubmitSuccess(null);
@@ -105,6 +140,8 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 		const formData = new FormData();
 		formData.append("itemId", values.itemId);
 		formData.append("quantityToAdd", String(values.quantityToAdd));
+		formData.append("cost", values.cost);
+		formData.append("bill", bill);
 		formData.append("notes", values.notes || "");
 
 		try {
@@ -114,7 +151,10 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 				setSubmitSuccess(translateMessage(res.message));
 				// Reset quantity field but keep item selected
 				form.setValue("quantityToAdd", 1);
+				form.setValue("cost", "");
 				form.setValue("notes", "");
+				setBill(null);
+				setBillInputKey((k) => k + 1);
 
 				// Update the selected item's quantity locally
 				if (selectedItem) {
@@ -244,6 +284,47 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 					)}
 				/>
 
+				{/* Total cost of this purchase */}
+				<FormField
+					control={form.control}
+					name='cost'
+					render={({ field }) => (
+						<FormItem className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary'>
+							<FormLabel>
+								Total Cost (AED) <span className='text-red-500'>*</span>
+							</FormLabel>
+							<FormControl>
+								<Input type='number' min='0' step='0.01' inputMode='decimal' placeholder='Total amount on the bill, e.g. 350' {...field} disabled={isSubmitting || !selectedItem} />
+							</FormControl>
+							<p className='text-xs text-gray-500'>What was paid for this whole restock, as on the bill.</p>
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				{/* Bill */}
+				<div className='p-6 bg-white rounded-sm border-l-4 focus-within:border-primary space-y-2'>
+					<label htmlFor='restock-bill' className='text-sm font-medium flex items-center gap-1'>
+						<Receipt className='h-4 w-4' /> Bill <span className='text-red-500'>*</span>
+					</label>
+					<Input
+						key={billInputKey}
+						id='restock-bill'
+						type='file'
+						accept='image/jpeg,image/png,application/pdf'
+						onChange={(e) => onBillChange(e.target.files?.[0])}
+						disabled={isSubmitting || !selectedItem}
+						className='cursor-pointer'
+					/>
+					<p className='text-xs text-gray-500'>Photo or PDF of the supplier&apos;s bill (large photos are shrunk automatically).</p>
+					{bill && (
+						<p className='text-xs text-green-700 flex items-center gap-1'>
+							<FileText className='h-3.5 w-3.5' /> {bill.name} — {(bill.size / 1024 / 1024).toFixed(2)} MB
+						</p>
+					)}
+					{billError && <p className='text-sm text-red-500'>{billError}</p>}
+				</div>
+
 				{/* Notes */}
 				<FormField
 					control={form.control}
@@ -264,7 +345,14 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 				/>
 
 				{submitError && <p className='text-red-500 text-sm bg-red-50 border border-red-200 rounded p-3'>{submitError}</p>}
-				{submitSuccess && <p className='text-green-600 text-sm bg-green-50 border border-green-200 rounded p-3'>{submitSuccess}</p>}
+				{submitSuccess && (
+					<p className='text-green-600 text-sm bg-green-50 border border-green-200 rounded p-3'>
+						{submitSuccess}{" "}
+						<Link href={`${inventoryBasePath(role)}/restock-costs`} className='underline font-medium'>
+							View restock costs
+						</Link>
+					</p>
+				)}
 
 				<Button type='submit' className='w-full hover:cursor-pointer' disabled={isSubmitting || !selectedItem}>
 					{isSubmitting ? (

@@ -248,6 +248,14 @@ const MESSAGES_AR: Record<string, string> = {
 	"Cancel this leave request?": "هل تريد إلغاء طلب الإجازة هذا؟",
 	"Leave request not found.": "طلب الإجازة غير موجود.",
 	"Building reactivated.": "تمت إعادة تفعيل المبنى.",
+	// ── Private job charges ──
+	"Only admins can record charges.": "يمكن للمسؤولين فقط تسجيل المبالغ.",
+	"Charges are only recorded on private complaints.": "تُسجَّل المبالغ على الشكاوى الخاصة فقط.",
+	"The amount can't be negative.": "لا يمكن أن يكون المبلغ سالباً.",
+	"That amount looks too high. Please check it.": "يبدو هذا المبلغ مرتفعاً جداً. يرجى التحقق منه.",
+	"Charge saved.": "تم حفظ المبلغ.",
+	"Charge cleared.": "تم مسح المبلغ.",
+	"Enter the amount charged in AED.": "أدخل المبلغ المحصَّل بالدرهم.",
 	// ── Restock bills ──
 	"Please attach the bill for this restock.": "يرجى إرفاق فاتورة إعادة التخزين هذه.",
 	"Invalid bill. Use a photo (JPEG/PNG) or a PDF, max 4.5MB.": "فاتورة غير صالحة. استخدم صورة (JPEG/PNG) أو ملف PDF، بحد أقصى 4.5 ميجابايت.",

@@ -14,6 +14,7 @@ import { addEndWorkTime, addStartWorkTime, deleteComplaint, deleteComplaintRespo
 import { Loading } from "@/components/ui/loading";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import AssignmentForm from "./AssignmentForm";
+import ComplaintChargeCard, { type ComplaintCharge } from "./ComplaintChargeCard";
 import { generateComplaintPdfById } from "./reportActions";
 
 // NEW: shadcn dialog + inputs
@@ -67,6 +68,8 @@ interface ComplaintData {
 		inventory: { itemName: string; itemCode: string | null; category: string | null; unit: string };
 		employee: { fullName: string };
 	}[];
+	/** Private jobs, admins only: what the customer was charged */
+	charge?: ComplaintCharge | null;
 }
 
 interface ComplaintCardProps {
@@ -229,6 +232,8 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint }) => {
 					Convenient Time: <span className='font-medium text-gray-700 ml-1'>{complaint.convenientTime}</span>
 				</p>
 			</div>
+
+			{complaint.charge && complaint.currentUser.role === "ADMIN" && <ComplaintChargeCard complaintId={Number(complaint.id)} charge={complaint.charge} />}
 
 			{/* Body */}
 			<div className='p-5'>

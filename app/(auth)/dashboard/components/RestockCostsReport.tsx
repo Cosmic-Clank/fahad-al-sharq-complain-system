@@ -170,7 +170,7 @@ export default async function RestockCostsReport({ filters, role }: { filters: R
 						</div>
 					</Card>
 
-					<Card className='p-4 flex items-center justify-between'>
+					<Card className='p-4 flex flex-row items-center justify-between'>
 						<span className='font-semibold'>Total material cost · {rangeLabel}</span>
 						<span className='font-bold text-lg text-green-700'>AED {aed(report.totalCost)}</span>
 					</Card>

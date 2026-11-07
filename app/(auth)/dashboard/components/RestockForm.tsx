@@ -195,7 +195,12 @@ function RestockForm({ initialItemId, role = "inventory_manager" }: RestockFormP
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className='max-w-2xl mx-auto space-y-3 p-4'>
+			<form
+				onSubmit={form.handleSubmit(onSubmit, () => {
+					// show the missing bill together with the other field errors
+					if (!bill) setBillError(translateMessage(BILL_MESSAGES.billRequired));
+				})}
+				className='max-w-2xl mx-auto space-y-3 p-4'>
 				<div className='p-6 bg-white rounded-sm border-t-4 border-primary'>
 					<div className="flex items-center gap-2 mb-4">
 						<Plus className="h-6 w-6 text-primary" />

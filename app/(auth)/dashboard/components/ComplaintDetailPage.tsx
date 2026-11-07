@@ -8,6 +8,7 @@ import ComplaintCard from "./ComplaintCard"; // The Client Component to display 
 import { auth } from "@/auth";
 import { formatDubaiDateTime } from "@/lib/dubai-time";
 import { todayYmdDubai } from "@/lib/hr-dates";
+import { requireRole } from "@/lib/authz";
 
 // Define the props that this page component will receive
 interface ComplaintDetailPageProps {
@@ -102,6 +103,12 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 		notFound(); // Renders Next.js's default 404 page
 	}
 
+	// Customer charge on private jobs: admins only (kept out of the main query so it never reaches employees)
+	const chargeRow =
+		complaint.isPrivate && (await requireRole(["ADMIN"]))
+			? await prismaClient.complaint.findUnique({ where: { id: complaintId }, select: { chargedAmount: true, chargedAt: true, chargedByName: true } })
+			: null;
+
 	const timeLabels = {
 		EIGHT_AM_TO_TEN_AM: "8am to 10am",
 		TEN_AM_TO_TWELVE_PM: "10am to 12pm",
@@ -192,6 +199,9 @@ async function ComplaintDetailPage({ slug }: ComplaintDetailPageProps) {
 			employee: { fullName: u.employee.fullName },
 		})),
 		currentUserId: Number((session!.user as any).id),
+		charge: chargeRow
+			? { amount: chargeRow.chargedAmount, at: chargeRow.chargedAt ? formatDubaiDateTime(chargeRow.chargedAt) : null, by: chargeRow.chargedByName }
+			: null,
 	};
 
 	return (
